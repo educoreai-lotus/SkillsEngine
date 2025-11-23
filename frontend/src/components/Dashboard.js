@@ -91,7 +91,7 @@ export default function Dashboard({ userId }) {
                     className="btn-primary inline-flex items-center gap-2"
                   >
                     <Upload className="w-5 h-5" />
-                    <span className="hidden sm:inline">Upload CSV</span>
+                    <span className="hidden sm:inline">Add Custom Skills</span>
                   </button>
                 )}
               </div>

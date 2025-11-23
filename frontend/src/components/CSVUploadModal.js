@@ -55,7 +55,7 @@ export default function CSVUploadModal({ onClose, isDarkMode }) {
         {/* Header */}
         <div className={`p-6 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold dark:text-gray-100">Upload CSV</h2>
+            <h2 className="text-2xl font-bold dark:text-gray-100">Upload file</h2>
             <button
               onClick={onClose}
               className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
@@ -96,6 +96,51 @@ export default function CSVUploadModal({ onClose, isDarkMode }) {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* CSV instructions / format helper */}
+          <div className="mb-6 rounded-lg border border-dashed border-gray-200 dark:border-slate-700 bg-gray-50/60 dark:bg-slate-800/60 p-4 text-left text-sm leading-relaxed">
+            <p className="font-semibold mb-2 text-gray-800 dark:text-gray-100">
+              CSV format guidelines
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+              <li>
+                <span className="font-semibold">File type & size</span>: Upload a{' '}
+                <span className="font-mono">.csv</span> file only (max ~10&nbsp;MB).
+              </li>
+              <li>
+                <span className="font-semibold">Required columns</span>:{' '}
+                <span className="font-mono">name</span> and{' '}
+                <span className="font-mono">type</span>.
+                The <span className="font-mono">type</span> column should be one of{' '}
+                <span className="font-mono">competency</span>,{' '}
+                <span className="font-mono">skill</span>, or{' '}
+                <span className="font-mono">subskill</span> (not case-sensitive).
+              </li>
+              <li>
+                <span className="font-semibold">Hierarchy</span>: Use the optional{' '}
+                <span className="font-mono">parent_id</span> column to link rows in a
+                hierarchy: competencies at the top, their skills as children, and
+                subskills under skills.
+              </li>
+              <li>
+                <span className="font-semibold">Optional columns</span>: You can add
+                a <span className="font-mono">description</span> column to provide
+                more details for each competency, skill, or subskill.
+              </li>
+              <li>
+                <span className="font-semibold">Example structure</span> (header row):
+                <span className="ml-1 font-mono">
+                  name,type,parent_id,description
+                </span>
+              </li>
+              <li>
+                <span className="font-semibold">Common issues</span>: Make sure there
+                is exactly one header row, no empty required fields, and that values in{' '}
+                <span className="font-mono">type</span> are consistent (e.g. do not mix
+                "Skill" and "Skills").
+              </li>
+            </ul>
           </div>
 
           {/* Error */}
