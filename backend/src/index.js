@@ -105,7 +105,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   3. Run: node check-connection.js`);
 
   // Kick off source discovery + web extraction asynchronously on each system load.
-  (async () => {
+ /*  (async () => {
     try {
       console.log('🔎 [startup] Running initial source discovery in background...');
       const result = await sourceDiscoveryService.discoverAndStoreSources();
@@ -125,7 +125,7 @@ app.listen(PORT, '0.0.0.0', () => {
     } catch (err) {
       console.error('⚠️  [startup] Initialization pipeline failed (discovery or extraction):', err.message || err);
     }
-  })();
+  })(); */
 });
 
 module.exports = app;

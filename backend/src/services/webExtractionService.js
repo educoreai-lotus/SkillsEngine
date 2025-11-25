@@ -105,6 +105,7 @@ class WebExtractionService {
       competency_name: name,
       description: node.description || null,
       parent_competency_id: parentCompetencyId,
+      source:source.source_name
     });
 
     const competency = await competencyRepository.create(competencyModel);
@@ -160,6 +161,7 @@ class WebExtractionService {
       skill_name: name,
       parent_skill_id: parentSkillId,
       description,
+      source:source.source_name
     });
 
     const skill = await skillRepository.create(skillModel);

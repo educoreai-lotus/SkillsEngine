@@ -10,6 +10,7 @@ class Competency {
     this.competency_name = data.competency_name;
     this.description = data.description || null;
     this.parent_competency_id = data.parent_competency_id || null;
+    this.source = data.source || null;
     this.created_at = data.created_at || null;
     this.updated_at = data.updated_at || null;
   }
@@ -45,6 +46,10 @@ class Competency {
       errors.push('parent_competency_id must not exceed 255 characters');
     }
 
+    if (this.source && this.source.length > 100) {
+      errors.push('source must not exceed 100 characters');
+    }
+
     // Prevent self-reference
     if (this.parent_competency_id === this.competency_id) {
       errors.push('competency cannot be its own parent');
@@ -66,6 +71,7 @@ class Competency {
       competency_name: this.competency_name,
       description: this.description,
       parent_competency_id: this.parent_competency_id,
+      source: this.source,
       created_at: this.created_at,
       updated_at: this.updated_at
     };

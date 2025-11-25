@@ -11,6 +11,7 @@ class Skill {
     this.skill_name = data.skill_name;
     this.parent_skill_id = data.parent_skill_id || null;
     this.description = data.description || null;
+     this.source = data.source || null;
     this.created_at = data.created_at || null;
     this.updated_at = data.updated_at || null;
   }
@@ -46,6 +47,10 @@ class Skill {
       errors.push('parent_skill_id must not exceed 255 characters');
     }
 
+    if (this.source && this.source.length > 100) {
+      errors.push('source must not exceed 100 characters');
+    }
+
     // Prevent self-reference
     if (this.parent_skill_id === this.skill_id) {
       errors.push('skill cannot be its own parent');
@@ -67,6 +72,7 @@ class Skill {
       skill_name: this.skill_name,
       parent_skill_id: this.parent_skill_id,
       description: this.description,
+      source: this.source,
       created_at: this.created_at,
       updated_at: this.updated_at
     };

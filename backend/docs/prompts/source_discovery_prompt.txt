@@ -12,7 +12,6 @@ The JSON array must contain 40–50 objects. Each object MUST follow this exact 
   "provides": "skill | both",
   "topics_covered": "string",
   "skill_focus": "string",
-  "notes": "string"
 }
 
 REQUIREMENTS (strict):
@@ -41,6 +40,6 @@ REQUIREMENTS (strict):
 
 TASK:
 
-Identify 40 official, authoritative sources (and their internal references) that meet the requirements above and return them as a single JSON array of objects strictly following the schema. Each returned object must be scrapable by a standard HTML scraper (no authentication, no API required, no client-side-only rendering for the hierarchical data). If any candidate cannot be scraped or clearly documents an API as the primary access method, do not include it.
+Identify 40-50 official, authoritative sources (and their internal references) that meet the requirements above and return them as a single JSON array of objects strictly following the schema. Each returned object must be scrapable by a standard HTML scraper (no authentication, no API required, no client-side-only rendering for the hierarchical data). If any candidate cannot be scraped or clearly documents an API as the primary access method, do not include it.
 
 Return ONLY the JSON array now.

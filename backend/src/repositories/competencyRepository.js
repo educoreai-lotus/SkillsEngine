@@ -41,7 +41,8 @@ class CompetencyRepository {
         competency_id: competency.competency_id,
         competency_name: competency.competency_name,
         description: competency.description,
-        parent_competency_id: competency.parent_competency_id
+        parent_competency_id: competency.parent_competency_id,
+        source: competency.source
       })
       .select()
       .single();
@@ -161,7 +162,7 @@ class CompetencyRepository {
    * @returns {Promise<Competency|null>}
    */
   async update(competencyId, updates) {
-    const allowedFields = ['competency_name', 'description', 'parent_competency_id'];
+    const allowedFields = ['competency_name', 'description', 'parent_competency_id', 'source'];
     const updateData = {};
 
     for (const field of allowedFields) {
@@ -221,6 +222,7 @@ class CompetencyRepository {
           skill_name,
           description,
           parent_skill_id,
+          source,
           created_at,
           updated_at
         )

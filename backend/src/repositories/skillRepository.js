@@ -41,7 +41,8 @@ class SkillRepository {
         skill_id: skill.skill_id,
         skill_name: skill.skill_name,
         parent_skill_id: skill.parent_skill_id,
-        description: skill.description
+        description: skill.description,
+        source: skill.source
       })
       .select()
       .single();
@@ -161,7 +162,7 @@ class SkillRepository {
    * @returns {Promise<Skill|null>}
    */
   async update(skillId, updates) {
-    const allowedFields = ['skill_name', 'parent_skill_id', 'description'];
+    const allowedFields = ['skill_name', 'parent_skill_id', 'description', 'source'];
     const updateData = {};
 
     for (const field of allowedFields) {

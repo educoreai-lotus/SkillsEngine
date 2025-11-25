@@ -26,6 +26,9 @@ router.post('/mgs/by-name', competencyController.getRequiredMGSByName.bind(compe
 // Get complete competency hierarchy with skills and subskills (must be before /:competencyId)
 router.get('/:competencyId/complete-hierarchy', competencyController.getCompleteHierarchy.bind(competencyController));
 
+// Get skills directly linked to a competency (child skills)
+router.get('/:competencyId/skills', competencyController.getLinkedSkills.bind(competencyController));
+
 // Get required MGS for competency by ID
 router.get('/:competencyId/mgs', competencyController.getRequiredMGS.bind(competencyController));
 

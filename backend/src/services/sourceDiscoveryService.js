@@ -60,12 +60,11 @@ class SourceDiscoveryService {
         source_id: entry.source_id,
         source_name: entry.source_name,
         reference_index_url: entry.reference_index_url,
-        reference_type: "",
+        reference_type: entry.reference_type,
         hierarchy_support: hierarchySupportBool,
-        provides: "",
-        topics_covered: "",
-        skill_focus: "",
-        notes: "",
+        provides: entry.provides,
+        topics_covered: entry.topics_covered,
+        skill_focus: entry.skill_focus,
         last_checked: new Date().toISOString(),
       });
     });

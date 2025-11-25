@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS skills (
     skill_name VARCHAR(500) NOT NULL,
     parent_skill_id VARCHAR(255),
     description TEXT,
+    source VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
@@ -89,6 +90,7 @@ CREATE TABLE IF NOT EXISTS competencies (
     competency_id VARCHAR(255) PRIMARY KEY,
     competency_name VARCHAR(500) NOT NULL,
     description TEXT,
+    source VARCHAR(100),
     parent_competency_id VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
