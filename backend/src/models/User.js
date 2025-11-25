@@ -9,6 +9,7 @@ class User {
     this.user_id = data.user_id;
     this.user_name = data.user_name;
     this.company_id = data.company_id;
+    this.company_name = data.company_name || null;
     this.employee_type = data.employee_type || null;
     this.path_career = data.path_career || null;
     this.raw_data = data.raw_data || null;
@@ -44,6 +45,10 @@ class User {
       errors.push('company_id is required and must be a non-empty string');
     }
 
+    if (this.company_name && this.company_name.length > 255) {
+      errors.push('company_name must not exceed 255 characters');
+    }
+
     if (this.employee_type && !['regular', 'trainer'].includes(this.employee_type)) {
       errors.push('employee_type must be either "regular" or "trainer"');
     }
@@ -71,6 +76,7 @@ class User {
       user_id: this.user_id,
       user_name: this.user_name,
       company_id: this.company_id,
+      company_name: this.company_name,
       employee_type: this.employee_type,
       path_career: this.path_career,
       raw_data: this.raw_data,

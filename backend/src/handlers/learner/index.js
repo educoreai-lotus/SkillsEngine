@@ -16,7 +16,7 @@ class LearnerAIHandler {
    */
   async process(payload, responseTemplate) {
     try {
-      const { user_id, competency_id } = payload;
+      const { user_id, competency_id, competency_name } = payload;
 
       if (!user_id) {
         return {
@@ -26,8 +26,15 @@ class LearnerAIHandler {
         };
       }
 
-      // Calculate gap analysis
-      const gaps = await gapAnalysisService.calculateGapAnalysis(user_id, competency_id);
+      // If only competency_name is provided, resolve it to an ID for gap analysis
+      let resolvedCompetencyId = competency_id;
+      if (!resolvedCompetencyId && competency_name) {
+        const competency = await competencyService.getCompetencyByName(competency_name);
+        resolvedCompetencyId = competency ? competency.competency_id : null;
+      }
+
+      // Calculate gap analysis (optionally scoped to a specific competency)
+      const gaps = await gapAnalysisService.calculateGapAnalysis(user_id, resolvedCompetencyId);
 
       // Send to Learner AI MS (with fallback to mock data)
       const learnerAIMSClient = require('../../services/learnerAIMSClient');
@@ -38,10 +45,10 @@ class LearnerAIHandler {
         console.warn('Failed to send gap analysis to Learner AI MS, using mock data:', error.message);
       }
 
-      // If competency_id specified, get related skills
+      // If competency specified, get related skills (MGS)
       let relatedSkills = [];
-      if (competency_id) {
-        relatedSkills = await competencyService.getRequiredMGS(competency_id);
+      if (resolvedCompetencyId) {
+        relatedSkills = await competencyService.getRequiredMGS(resolvedCompetencyId);
       }
 
       return {
@@ -50,6 +57,8 @@ class LearnerAIHandler {
         data: {
           ...responseTemplate?.data,
           user_id,
+          competency_id: resolvedCompetencyId || null,
+          competency_name: competency_name || null,
           gaps: gaps,
           related_skills: relatedSkills
         }

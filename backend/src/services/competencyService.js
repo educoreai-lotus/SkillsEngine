@@ -160,6 +160,25 @@ class CompetencyService {
   }
 
   /**
+   * Get all required MGS for a competency by its name (case-insensitive exact match)
+   * Convenience wrapper used by external microservices that send competency_name only.
+   * @param {string} competencyName - Competency name
+   * @returns {Promise<Array>} Array of MGS skill objects
+   */
+  async getRequiredMGSByName(competencyName) {
+    if (!competencyName || typeof competencyName !== 'string') {
+      throw new Error('competency_name is required and must be a string');
+    }
+
+    const competency = await competencyRepository.findByName(competencyName);
+    if (!competency) {
+      throw new Error(`Competency with name "${competencyName}" not found`);
+    }
+
+    return this.getRequiredMGS(competency.competency_id);
+  }
+
+  /**
    * Count total MGS required for a competency
    * @param {string} competencyId - Competency ID
    * @returns {Promise<number>}
@@ -310,6 +329,19 @@ class CompetencyService {
    */
   async getCompetencyById(competencyId) {
     return await competencyRepository.findById(competencyId);
+  }
+
+  /**
+   * Get competency by name (case-insensitive exact match)
+   * @param {string} competencyName - Competency name
+   * @returns {Promise<Competency|null>}
+   */
+  async getCompetencyByName(competencyName) {
+    if (!competencyName || typeof competencyName !== 'string') {
+      throw new Error('competency_name is required and must be a string');
+    }
+
+    return await competencyRepository.findByName(competencyName);
   }
 
   /**

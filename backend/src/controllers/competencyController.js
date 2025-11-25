@@ -184,6 +184,29 @@ class CompetencyController {
   }
 
   /**
+   * Get required MGS for competency by name
+   * POST /api/competencies/mgs/by-name
+   * Body: { competency_name: string }
+   */
+  async getRequiredMGSByName(req, res) {
+    try {
+      const { competency_name } = req.body;
+
+      if (!competency_name || typeof competency_name !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'competency_name is required and must be a string'
+        });
+      }
+
+      const mgs = await competencyService.getRequiredMGSByName(competency_name);
+      res.json({ success: true, data: mgs, count: mgs.length });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
    * Search competencies
    * GET /api/competencies/search?q=pattern
    */

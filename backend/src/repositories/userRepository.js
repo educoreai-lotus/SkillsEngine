@@ -39,6 +39,7 @@ class UserRepository {
         user_id: user.user_id,
         user_name: user.user_name,
         company_id: user.company_id,
+        company_name: user.company_name,
         employee_type: user.employee_type,
         path_career: user.path_career,
         raw_data: user.raw_data,
@@ -118,7 +119,7 @@ class UserRepository {
    * @returns {Promise<User|null>}
    */
   async update(userId, updates) {
-    const allowedFields = ['user_name', 'company_id', 'employee_type', 'path_career', 'raw_data', 'relevance_score'];
+    const allowedFields = ['user_name', 'company_id', 'company_name', 'employee_type', 'path_career', 'raw_data', 'relevance_score'];
     const updateData = {};
 
     for (const field of allowedFields) {

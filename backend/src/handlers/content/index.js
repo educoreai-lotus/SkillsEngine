@@ -15,25 +15,28 @@ class ContentStudioHandler {
    */
   async process(payload, responseTemplate) {
     try {
-      const { competency_id } = payload;
+      const { competency_id, competency_name } = payload;
 
-      if (!competency_id) {
+      if (!competency_id && !competency_name) {
         return {
           status: 'error',
-          message: 'competency_id is required',
+          message: 'Either competency_id or competency_name is required',
           data: {}
         };
       }
 
-      // Get all related skills for this competency
-      const skills = await competencyService.getRequiredMGS(competency_id);
+      // Get all related skills (MGS) for this competency
+      const skills = competency_id
+        ? await competencyService.getRequiredMGS(competency_id)
+        : await competencyService.getRequiredMGSByName(competency_name);
 
       return {
         status: 'success',
         message: 'Skills retrieved successfully',
         data: {
           ...responseTemplate?.data,
-          competency_id,
+          competency_id: competency_id || null,
+          competency_name: competency_name || null,
           skills: skills
         }
       };

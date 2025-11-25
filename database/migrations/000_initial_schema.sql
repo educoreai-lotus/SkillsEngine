@@ -201,6 +201,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_id VARCHAR(255) PRIMARY KEY,
     user_name VARCHAR(255) NOT NULL,
     company_id VARCHAR(255) NOT NULL,
+    company_name VARCHAR(255),
     employee_type VARCHAR(100),
     path_career VARCHAR(500),
     raw_data TEXT,

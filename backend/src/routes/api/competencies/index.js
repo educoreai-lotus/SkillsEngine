@@ -17,8 +17,14 @@ router.get('/', competencyController.getAllCompetencies.bind(competencyControlle
 // Search competencies by name (case-insensitive, ?q=pattern)
 router.get('/search', competencyController.searchCompetencies.bind(competencyController));
 
+// Get MGS (leaf skills) for a competency by name (body: { competency_name })
+router.post('/mgs/by-name', competencyController.getRequiredMGSByName.bind(competencyController));
+
 // Get complete competency hierarchy with skills and subskills (must be before /:competencyId)
 router.get('/:competencyId/complete-hierarchy', competencyController.getCompleteHierarchy.bind(competencyController));
+
+// Get required MGS for competency by ID
+router.get('/:competencyId/mgs', competencyController.getRequiredMGS.bind(competencyController));
 
 // Get competency by ID
 router.get('/:competencyId', competencyController.getCompetencyById.bind(competencyController));
