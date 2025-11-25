@@ -17,6 +17,9 @@ router.get('/', competencyController.getAllCompetencies.bind(competencyControlle
 // Search competencies by name (case-insensitive, ?q=pattern)
 router.get('/search', competencyController.searchCompetencies.bind(competencyController));
 
+// Get single competency info by name (body: { competency_name })
+router.post('/by-name', competencyController.getCompetencyByName.bind(competencyController));
+
 // Get MGS (leaf skills) for a competency by name (body: { competency_name })
 router.post('/mgs/by-name', competencyController.getRequiredMGSByName.bind(competencyController));
 

@@ -44,6 +44,37 @@ class CompetencyController {
   }
 
   /**
+   * Get competency by name
+   * POST /api/competencies/by-name
+   * Body: { competency_name: string }
+   */
+  async getCompetencyByName(req, res) {
+    try {
+      const { competency_name } = req.body;
+
+      if (!competency_name || typeof competency_name !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'competency_name is required and must be a string'
+        });
+      }
+
+      const competency = await competencyService.getCompetencyByName(competency_name);
+
+      if (!competency) {
+        return res.status(404).json({
+          success: false,
+          error: 'Competency not found'
+        });
+      }
+
+      res.json({ success: true, data: competency });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
    * Create a new competency
    * POST /api/competencies
    */
