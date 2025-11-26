@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Dashboard from '@/components/Dashboard';
 
-const DEFAULT_USER_ID = 'user_123';
+const DEFAULT_USER_ID = '550e8400-e29b-41d4-a716-446655440000';
 
 export default function Home() {
   const router = useRouter();
