@@ -25,7 +25,7 @@ GET /api/user/{userId}/profile
 
 **Example:**
 ```bash
-curl http://localhost:8080/api/user/user_123/profile
+curl http://localhost:8080/api/user/550e8400-e29b-41d4-a716-446655440000/profile
 ```
 
 **Response:**
@@ -34,7 +34,7 @@ curl http://localhost:8080/api/user/user_123/profile
   "success": true,
   "data": {
     "user": {
-      "user_id": "user_123",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
       "user_name": "John Doe",
       "employee_type": "regular",
       "relevance_score": 75.5
@@ -180,7 +180,7 @@ POST /api/fill-content-metrics/
 {
   "requester_service": "directory-ms",
   "payload": {
-    "user_id": "user_123",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "action": "get_profile"
   },
   "response": {
@@ -198,7 +198,7 @@ curl -X POST \
      -H "Authorization: Bearer MICROSERVICE_TOKEN" \
      -d '{
        "requester_service": "directory-ms",
-       "payload": {"user_id": "user_123"},
+       "payload": {"user_id": "550e8400-e29b-41d4-a716-446655440000"},
        "response": {"status": "success", "message": "", "data": {}}
      }' \
      http://localhost:8080/api/fill-content-metrics/
@@ -211,7 +211,7 @@ curl -X POST \
      -d '{
        "requester_service": "assessment-ms",
        "payload": {
-         "user_id": "user_123",
+         "user_id": "550e8400-e29b-41d4-a716-446655440000",
          "exam_type": "baseline",
          "exam_results": {
            "verified_skills": [
@@ -281,7 +281,7 @@ const api = axios.create({
 });
 
 // Get user profile
-const profile = await api.get('/api/user/user_123/profile');
+const profile = await api.get('/api/user/550e8400-e29b-41d4-a716-446655440000/profile');
 
 // Import CSV
 const formData = new FormData();
@@ -293,7 +293,7 @@ const result = await api.post('/api/competencies/import', formData);
 
 ```javascript
 // Get user profile
-const response = await fetch('http://localhost:8080/api/user/user_123/profile', {
+const response = await fetch('http://localhost:8080/api/user/550e8400-e29b-41d4-a716-446655440000/profile', {
   headers: {
     'Authorization': `Bearer ${token}`
   }

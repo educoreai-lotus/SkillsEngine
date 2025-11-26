@@ -6,9 +6,9 @@
 -- ============================================
 
 -- Clear existing mock data (optional - comment out if you want to keep existing data)
--- DELETE FROM userCompetency WHERE user_id IN ('user_123', 'user_456');
--- DELETE FROM userSkill WHERE user_id IN ('user_123', 'user_456');
--- DELETE FROM users WHERE user_id IN ('user_123', 'user_456');
+-- DELETE FROM userCompetency WHERE user_id IN ('550e8400-e29b-41d4-a716-446655440000', 'user_456');
+-- DELETE FROM userSkill WHERE user_id IN ('550e8400-e29b-41d4-a716-446655440000', 'user_456');
+-- DELETE FROM users WHERE user_id IN ('550e8400-e29b-41d4-a716-446655440000', 'user_456');
 -- DELETE FROM competency_skill;
 -- DELETE FROM skill_subSkill;
 -- DELETE FROM competency_subCompetency;
@@ -22,7 +22,7 @@
 
 INSERT INTO users (user_id, user_name, company_id, employee_type, path_career, relevance_score, created_at, updated_at)
 VALUES 
-    ('user_123', 'John Doe', 'company_456', 'employee', 'Full Stack Developer', 75.50, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('550e8400-e29b-41d4-a716-446655440000', 'John Doe', 'company_456', 'employee', 'Full Stack Developer', 75.50, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('user_456', 'Jane Smith', 'company_456', 'trainer', 'Software Architect', 88.25, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (user_id) DO UPDATE SET
     user_name = EXCLUDED.user_name,
@@ -143,7 +143,7 @@ INSERT INTO userCompetency (
 VALUES 
     -- User 123: Full Stack Development
     (
-        'user_123',
+        '550e8400-e29b-41d4-a716-446655440000',
         'comp_1',
         65.0,
         'INTERMEDIATE',
@@ -159,7 +159,7 @@ VALUES
     ),
     -- User 123: Database Management
     (
-        'user_123',
+        '550e8400-e29b-41d4-a716-446655440000',
         'comp_2',
         45.0,
         'BEGINNER',
@@ -184,11 +184,11 @@ ON CONFLICT (user_id, competency_id) DO UPDATE SET
 INSERT INTO userSkill (user_id, skill_id, skill_name, verified, source, last_update, created_at)
 VALUES 
     -- User 123 verified skills
-    ('user_123', 'skill_1', 'JavaScript', TRUE, 'assessment', '2025-01-15 10:00:00', CURRENT_TIMESTAMP),
-    ('user_123', 'skill_2', 'React', TRUE, 'assessment', '2025-01-15 10:00:00', CURRENT_TIMESTAMP),
-    ('user_123', 'skill_3', 'Node.js', TRUE, 'assessment', '2025-01-15 10:00:00', CURRENT_TIMESTAMP),
-    ('user_123', 'skill_4', 'SQL', TRUE, 'certification', '2025-01-15 10:00:00', CURRENT_TIMESTAMP),
-    ('user_123', 'skill_5', 'PostgreSQL', TRUE, 'certification', '2025-01-15 10:00:00', CURRENT_TIMESTAMP)
+    ('550e8400-e29b-41d4-a716-446655440000', 'skill_1', 'JavaScript', TRUE, 'assessment', '2025-01-15 10:00:00', CURRENT_TIMESTAMP),
+    ('550e8400-e29b-41d4-a716-446655440000', 'skill_2', 'React', TRUE, 'assessment', '2025-01-15 10:00:00', CURRENT_TIMESTAMP),
+    ('550e8400-e29b-41d4-a716-446655440000', 'skill_3', 'Node.js', TRUE, 'assessment', '2025-01-15 10:00:00', CURRENT_TIMESTAMP),
+    ('550e8400-e29b-41d4-a716-446655440000', 'skill_4', 'SQL', TRUE, 'certification', '2025-01-15 10:00:00', CURRENT_TIMESTAMP),
+    ('550e8400-e29b-41d4-a716-446655440000', 'skill_5', 'PostgreSQL', TRUE, 'certification', '2025-01-15 10:00:00', CURRENT_TIMESTAMP)
 ON CONFLICT (user_id, skill_id) DO UPDATE SET
     skill_name = EXCLUDED.skill_name,
     verified = EXCLUDED.verified,
@@ -200,11 +200,11 @@ ON CONFLICT (user_id, skill_id) DO UPDATE SET
 -- ============================================
 -- Run these queries to verify the data was inserted correctly
 
--- SELECT COUNT(*) as user_count FROM users WHERE user_id IN ('user_123', 'user_456');
+-- SELECT COUNT(*) as user_count FROM users WHERE user_id IN ('user_1550e8400-e29b-41d4-a716-44665544000023', 'user_456');
 -- SELECT COUNT(*) as competency_count FROM competencies WHERE competency_id LIKE 'comp_%';
 -- SELECT COUNT(*) as skill_count FROM skills WHERE skill_id LIKE 'skill_%';
--- SELECT * FROM userCompetency WHERE user_id = 'user_123';
--- SELECT * FROM userSkill WHERE user_id = 'user_123';
+-- SELECT * FROM userCompetency WHERE user_id = 'us550e8400-e29b-41d4-a716-446655440000er_123';
+-- SELECT * FROM userSkill WHERE user_id = 'user_12550e8400-e29b-41d4-a716-4466554400003';
 
 -- ============================================
 -- END OF SEED SCRIPT

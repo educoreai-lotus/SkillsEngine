@@ -7,7 +7,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Target, Zap } from 'lucide-re
 
 // Mock profile fallback for demo/preview when no live profile is available
 const MOCK_PROFILE = {
-  user_id: 'user_123',
+  user_id: '550e8400-e29b-41d4-a716-446655440000',
   user_name: 'John Doe',
   company_id: 'company_456',
   relevance_score: 75.5,

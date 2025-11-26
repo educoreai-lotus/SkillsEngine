@@ -1,5 +1,5 @@
 {
-  "user_id": "user_123",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
   "user_name": "John Doe",
   "company_id": "company_001",
   "employee_type": "regular",
@@ -9,4 +9,3 @@
   "created_at": "2025-01-15T10:00:00Z",
   "updated_at": "2025-01-27T12:00:00Z"
 }
-

@@ -14,15 +14,12 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get userId from query params or localStorage, fallback to a default
-    let id = router.query.userId;
-
-    if (!id && typeof window !== 'undefined') {
-      id = window.localStorage.getItem('userId') || DEFAULT_USER_ID;
-    }
+    // Get userId from query params or use the default
+    // Note: We always use DEFAULT_USER_ID unless explicitly overridden via query param
+    let id = router.query.userId || DEFAULT_USER_ID;
 
     setUserId(id);
-    if (id && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       window.localStorage.setItem('userId', id);
     }
     setLoading(false);
