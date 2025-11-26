@@ -109,7 +109,8 @@ class AIService {
     let prompt = await this.loadPrompt(promptPath);
     
     // Replace placeholder with actual data
-    prompt = prompt.replace('{raw_data}', rawData);
+    // Prompt uses {{raw_text}} as the placeholder
+    prompt = prompt.replace('{{raw_text}}', rawData);
 
     return await this.callGeminiJSON(prompt, { modelType: 'flash' });
   }
@@ -196,9 +197,40 @@ class AIService {
     let prompt = await this.loadPrompt(promptPath);
     
     // Replace placeholder with actual data
-    prompt = prompt.replace('{extracted_data}', JSON.stringify(extractedData, null, 2));
+    prompt = prompt.replace('{{input_object}}', JSON.stringify(extractedData, null, 2));
 
-    return await this.callGeminiJSON(prompt, { modelType: 'flash' });
+    try {
+      return await this.callGeminiJSON(prompt, { modelType: 'flash' });
+    } catch (error) {
+      // Fallback: if Gemini fails or returns invalid/empty JSON, do a simple local normalization
+      console.warn(
+        '[AIService.normalizeData] Gemini normalization failed, falling back to local normalization:',
+        error.message
+      );
+
+      const normalizeArray = (items) =>
+        (items || []).map((item) => {
+          const name =
+            typeof item === 'string'
+              ? item
+              : item && typeof item.name === 'string'
+                ? item.name
+                : '';
+
+          const normalized_name = name.toLowerCase().trim();
+
+          return {
+            original_name: name,
+            normalized_name
+          };
+        });
+
+      return {
+        competencies: normalizeArray(extractedData.competencies),
+        skills: normalizeArray(extractedData.skills),
+        mapping: {}
+      };
+    }
   }
 
   /**
@@ -221,16 +253,24 @@ class AIService {
       return false;
     }
 
-    // Validate competency structure
+    // Validate competency structure (allow string or { name: string, ... })
     for (const competency of data.competencies) {
-      if (!competency.name || typeof competency.name !== 'string') {
+      if (typeof competency === 'string') {
+        if (!competency.trim()) return false;
+        continue;
+      }
+      if (!competency || typeof competency.name !== 'string' || !competency.name.trim()) {
         return false;
       }
     }
 
-    // Validate skill structure
+    // Validate skill structure (allow string or { name: string, ... })
     for (const skill of data.skills) {
-      if (!skill.name || typeof skill.name !== 'string') {
+      if (typeof skill === 'string') {
+        if (!skill.trim()) return false;
+        continue;
+      }
+      if (!skill || typeof skill.name !== 'string' || !skill.name.trim()) {
         return false;
       }
     }

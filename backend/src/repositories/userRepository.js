@@ -32,7 +32,6 @@ class UserRepository {
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
-
     const { data, error } = await this.getClient()
       .from('users')
       .insert({

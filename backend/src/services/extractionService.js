@@ -47,13 +47,13 @@ class ExtractionService {
     for (const chunk of chunkedData) {
       try {
         const extracted = await aiService.extractFromRawData(chunk);
-        
-        // Validate structure
+
+        // Validate structure (must have top-level competencies[] and skills[])
         if (!aiService.validateExtractedData(extracted)) {
           throw new Error('Invalid extracted data structure');
         }
 
-        // Merge results
+        // Merge results (AI returns { competencies: [], skills: [] })
         allExtracted.competencies.push(...(extracted.competencies || []));
         allExtracted.skills.push(...(extracted.skills || []));
       } catch (error) {
@@ -137,7 +137,14 @@ class ExtractionService {
   deduplicateByName(items) {
     const seen = new Set();
     return items.filter(item => {
-      const normalizedName = item.name?.toLowerCase().trim();
+      const rawName =
+        typeof item === 'string'
+          ? item
+          : item && typeof item.name === 'string'
+            ? item.name
+            : '';
+
+      const normalizedName = rawName.toLowerCase().trim();
       if (!normalizedName || seen.has(normalizedName)) {
         return false;
       }

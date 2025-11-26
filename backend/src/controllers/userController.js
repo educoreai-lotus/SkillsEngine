@@ -49,8 +49,22 @@ class UserController {
         return res.status(400).json({ success: false, error: 'rawData is required' });
       }
 
+      // Step 1: extract competencies & skills from raw data
       const extracted = await extractionService.extractFromUserData(userId, rawData);
-      res.json({ success: true, data: extracted });
+
+      // Step 2: normalize the extracted data (map to normalized names & taxonomy IDs)
+      const normalizedRaw = await normalizationService.normalize(extracted);
+
+      // Step 3: deduplicate normalized results
+      const normalized = normalizationService.deduplicate(normalizedRaw);
+
+      res.json({
+        success: true,
+        data: {
+          extracted,
+          normalized
+        }
+      });
     } catch (error) {
       res.status(400).json({ success: false, error: error.message });
     }

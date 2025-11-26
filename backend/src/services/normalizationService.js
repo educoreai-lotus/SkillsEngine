@@ -24,6 +24,16 @@ class NormalizationService {
     // Call AI for normalization
     const normalized = await aiService.normalizeData(extractedData);
 
+    // Gemini may return normalized competencies/skills as plain strings.
+    // Convert them to objects with normalized_name so downstream mapping works.
+    const normalizedCompetencies = (normalized.competencies || []).map((comp) =>
+      typeof comp === 'string' ? { normalized_name: comp } : comp
+    );
+
+    const normalizedSkills = (normalized.skills || []).map((skill) =>
+      typeof skill === 'string' ? { normalized_name: skill } : skill
+    );
+
     // Validate normalized structure
     if (!normalized.competencies || !Array.isArray(normalized.competencies)) {
       throw new Error('Normalized data must contain competencies array');
@@ -35,12 +45,12 @@ class NormalizationService {
 
     // Map to taxonomy IDs
     const mappedCompetencies = await this.mapToTaxonomyIds(
-      normalized.competencies,
+      normalizedCompetencies,
       'competency'
     );
 
     const mappedSkills = await this.mapToTaxonomyIds(
-      normalized.skills,
+      normalizedSkills,
       'skill'
     );
 
