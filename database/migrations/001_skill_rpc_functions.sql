@@ -1,17 +1,21 @@
 -- ============================================================================
--- Skills Engine - Skill RPC Functions
 -- ============================================================================
 -- Description:
---   Helper SQL functions used by Supabase RPC:
---     - public.get_mgs_for_skill(root_skill_id)
---     - public.get_skill_depth(skill_id_param)
 --   These are required by:
 --     - skillRepository.findMGS
 --     - skillRepository.getDepth
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION public.get_mgs_for_skill(root_skill_id VARCHAR)
-RETURNS SETOF skills
+CREATE OR REPLACE FUNCTION public.get_mgs_for_skill(root_skill_id UUID)
+RETURNS TABLE (
+  skill_id UUID,
+  skill_name VARCHAR,
+  parent_skill_id UUID,
+  description TEXT,
+  created_at TIMESTAMP WITHOUT TIME ZONE,
+  updated_at TIMESTAMP WITHOUT TIME ZONE,
+  source VARCHAR(100)
+)
 LANGUAGE sql
 STABLE
 AS $$
@@ -22,9 +26,9 @@ WITH RECURSIVE skill_tree AS (
     s.skill_name,
     s.parent_skill_id,
     s.description,
-    s.source,
     s.created_at,
-    s.updated_at
+    s.updated_at,
+    s.source
   FROM skills s
   WHERE s.skill_id = root_skill_id
 
@@ -36,9 +40,9 @@ WITH RECURSIVE skill_tree AS (
     child.skill_name,
     child.parent_skill_id,
     child.description,
-    child.source,
     child.created_at,
-    child.updated_at
+    child.updated_at,
+    child.source
   FROM skill_subSkill ss
   INNER JOIN skills child ON child.skill_id = ss.child_skill_id
   INNER JOIN skill_tree st ON ss.parent_skill_id = st.skill_id
@@ -54,7 +58,7 @@ $$;
 -- 2) get_skill_depth
 -- Returns the depth of a skill in the hierarchy:
 --   1 = root (L1), 2 = child (L2), etc.
-CREATE OR REPLACE FUNCTION public.get_skill_depth(skill_id_param VARCHAR)
+CREATE OR REPLACE FUNCTION public.get_skill_depth(skill_id_param UUID)
 RETURNS INTEGER
 LANGUAGE sql
 STABLE

@@ -7,22 +7,7 @@
 
 
 -- ============================================================================
--- STEP 1: DROP ALL TABLES (in dependency order)
--- ============================================================================
-
-DROP TABLE IF EXISTS public.userskill CASCADE;
-DROP TABLE IF EXISTS public.usercompetency CASCADE;
-DROP TABLE IF EXISTS public.competency_skill CASCADE;
-DROP TABLE IF EXISTS public.competency_subcompetency CASCADE;
-DROP TABLE IF EXISTS public.skill_subskill CASCADE;
-DROP TABLE IF EXISTS public.users CASCADE;
-DROP TABLE IF EXISTS public.skills CASCADE;
-DROP TABLE IF EXISTS public.competencies CASCADE;
-DROP TABLE IF EXISTS public.official_sources CASCADE;
-
-
--- ============================================================================
--- STEP 2: CREATE FUNCTIONS
+-- STEP 1: CREATE FUNCTIONS
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
