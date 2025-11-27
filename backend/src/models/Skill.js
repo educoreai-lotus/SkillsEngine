@@ -7,7 +7,8 @@
 
 class Skill {
   constructor(data) {
-    this.skill_id = data.skill_id;
+    // ID is optional on creation – database can generate UUID via default
+    this.skill_id = data.skill_id || null;
     this.skill_name = data.skill_name;
     this.parent_skill_id = data.parent_skill_id || null;
     this.description = data.description || null;
@@ -23,12 +24,14 @@ class Skill {
   validate() {
     const errors = [];
 
-    if (!this.skill_id || typeof this.skill_id !== 'string' || this.skill_id.trim().length === 0) {
-      errors.push('skill_id is required and must be a non-empty string');
-    }
-
-    if (this.skill_id && this.skill_id.length > 255) {
-      errors.push('skill_id must not exceed 255 characters');
+    // skill_id is optional for new records (DB default UUID is used).
+    // If provided, ensure it is a non-empty string with a reasonable length.
+    if (this.skill_id !== null) {
+      if (typeof this.skill_id !== 'string' || this.skill_id.trim().length === 0) {
+        errors.push('skill_id, if provided, must be a non-empty string');
+      } else if (this.skill_id.length > 255) {
+        errors.push('skill_id must not exceed 255 characters');
+      }
     }
 
     if (!this.skill_name || typeof this.skill_name !== 'string' || this.skill_name.trim().length === 0) {
@@ -51,8 +54,12 @@ class Skill {
       errors.push('source must not exceed 100 characters');
     }
 
-    // Prevent self-reference
-    if (this.parent_skill_id === this.skill_id) {
+    // Prevent self-reference (only when both IDs are present)
+    if (
+      this.skill_id &&
+      this.parent_skill_id &&
+      this.parent_skill_id === this.skill_id
+    ) {
       errors.push('skill cannot be its own parent');
     }
 

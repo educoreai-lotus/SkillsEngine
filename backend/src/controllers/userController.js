@@ -35,6 +35,58 @@ class UserController {
       res.status(400).json({ success: false, error: error.message });
     }
   }
+///for the dirctory request
+  /**
+   * One-shot onboarding: save basic profile + run full pipeline
+   * POST /api/user/onboard
+   * Body: full user data from Directory MS, including raw_data
+   */
+  async onboardAndIngest(req, res) {
+    try {
+      // Step 1: create or update basic profile (persists raw_data)
+      const user = await userService.createBasicProfile(req.body);
+      const userId = user.user_id;
+      const rawData = user.raw_data;
+
+      if (!rawData) {
+        return res.status(400).json({
+          success: false,
+          error: 'raw_data is required in user payload for onboarding'
+        });
+      }
+
+      // Step 2: extract from raw data
+      const extracted = await extractionService.extractFromUserData(userId, rawData);
+
+      // Step 3: normalize + deduplicate
+      const normalizedRaw = await normalizationService.normalize(extracted);
+      const normalized = normalizationService.deduplicate(normalizedRaw);
+
+      // Step 4: build initial profile (writes usercompetency & userskill, sends to Directory MS)
+      const profile = await userService.buildInitialProfile(userId, normalized);
+
+      // Directory only needs the initial profile payload here
+      res.status(201).json({
+        success: true,
+        data: profile
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  /*{what profile inclide:)
+  userId: userId,
+  relevanceScore: 0,
+  competencies: [
+    {
+      competencyId: ...,
+      level: 'undefined',
+      coverage: 0,
+      skills: [{ skillId, status }]
+    }
+  ]
+}*/
 
   /**
    * Extract skills and competencies from raw data
@@ -49,21 +101,12 @@ class UserController {
         return res.status(400).json({ success: false, error: 'rawData is required' });
       }
 
-      // Step 1: extract competencies & skills from raw data
+      // Extract competencies & skills from raw data only
       const extracted = await extractionService.extractFromUserData(userId, rawData);
-
-      // Step 2: normalize the extracted data (map to normalized names & taxonomy IDs)
-      const normalizedRaw = await normalizationService.normalize(extracted);
-
-      // Step 3: deduplicate normalized results
-      const normalized = normalizationService.deduplicate(normalizedRaw);
 
       res.json({
         success: true,
-        data: {
-          extracted,
-          normalized
-        }
+        data: extracted
       });
     } catch (error) {
       res.status(400).json({ success: false, error: error.message });
@@ -85,6 +128,45 @@ class UserController {
 
       const normalized = await normalizationService.normalize(extractedData);
       res.json({ success: true, data: normalized });
+    } catch (error) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Full pipeline: extract → normalize → build initial profile
+   * POST /api/user/:userId/ingest
+   * Body: { rawData } (optional if user.raw_data is already stored)
+   */
+  async ingestFromRawData(req, res) {
+    try {
+      const { userId } = req.params;
+      let { rawData } = req.body || {};
+
+      // If rawData not provided in the request, fall back to the stored user.raw_data
+      if (!rawData) {
+        const profile = await userService.getUserProfile(userId);
+        rawData = profile.user.raw_data;
+      }
+
+      if (!rawData) {
+        return res.status(400).json({ success: false, error: 'rawData is required (either in body or user.raw_data)' });
+      }
+
+      // Step 1: extract competencies & skills from raw data
+      const extracted = await extractionService.extractFromUserData(userId, rawData);
+
+      // Step 2: normalize + map to taxonomy
+      const normalizedRaw = await normalizationService.normalize(extracted);
+      const normalized = normalizationService.deduplicate(normalizedRaw);
+
+      // Step 3: build initial profile (writes usercompetency & userskill, sends to Directory MS)
+      const profile = await userService.buildInitialProfile(userId, normalized);
+
+      res.json({
+        success: true,
+        data: profile
+      });
     } catch (error) {
       res.status(400).json({ success: false, error: error.message });
     }

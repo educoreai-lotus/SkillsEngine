@@ -14,15 +14,6 @@ const Skill = require('../models/Skill');
 
 class ExtractionService {
   /**
-   * Generate a pseudo-unique ID for competencies/skills
-   * @param {string} prefix
-   * @returns {string}
-   */
-  generateId(prefix) {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
    * Extract competencies and skills from raw user data
    * @param {string} userId - User ID
    * @param {string} rawData - Raw data (resume, LinkedIn, GitHub, etc.)
@@ -187,8 +178,8 @@ class ExtractionService {
         const existing = await competencyRepository.findByName(name);
         if (existing) continue;
 
+        // Let the database generate the UUID for competency_id (default gen_random_uuid()).
         const model = new Competency({
-          competency_id: this.generateId('comp'),
           competency_name: name,
           description: item && typeof item.description === 'string' ? item.description : null,
           parent_competency_id: null,
@@ -213,8 +204,8 @@ class ExtractionService {
         const existing = await skillRepository.findByName(name);
         if (existing) continue;
 
+        // Let the database generate the UUID for skill_id (default gen_random_uuid()).
         const model = new Skill({
-          skill_id: this.generateId('skill'),
           skill_name: name,
           parent_skill_id: null,
           description: item && typeof item.description === 'string' ? item.description : null,

@@ -26,24 +26,33 @@ class SkillRepository {
 
   /**
    * Create a new skill
-   * @param {Skill} skill - Skill model instance
+   * @param {Skill|Object} skill - Skill model instance or plain object
    * @returns {Promise<Skill>}
    */
   async create(skill) {
-    const validation = skill.validate();
+    // Ensure we always work with a Skill model instance
+    const model = skill instanceof Skill ? skill : new Skill(skill);
+
+    const validation = model.validate();
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
+    // Let the database generate the UUID for skill_id if not provided.
+    const insertData = {
+      skill_name: model.skill_name,
+      parent_skill_id: model.parent_skill_id,
+      description: model.description,
+      source: model.source
+    };
+
+    if (model.skill_id) {
+      insertData.skill_id = model.skill_id;
+    }
+
     const { data, error } = await this.getClient()
       .from('skills')
-      .insert({
-        skill_id: skill.skill_id,
-        skill_name: skill.skill_name,
-        parent_skill_id: skill.parent_skill_id,
-        description: skill.description,
-        source: skill.source
-      })
+      .insert(insertData)
       .select()
       .single();
 

@@ -38,8 +38,9 @@ class UserCompetency {
       errors.push('coverage_percentage must be between 0.00 and 100.00');
     }
 
-    if (this.proficiency_level && !['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'].includes(this.proficiency_level)) {
-      errors.push('proficiency_level must be one of: BEGINNER, INTERMEDIATE, ADVANCED, EXPERT');
+    const allowedLevels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT', 'undefined'];
+    if (this.proficiency_level && !allowedLevels.includes(this.proficiency_level)) {
+      errors.push('proficiency_level must be one of: BEGINNER, INTERMEDIATE, ADVANCED, EXPERT, undefined');
     }
 
     if (!Array.isArray(this.verifiedSkills)) {

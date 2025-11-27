@@ -35,21 +35,23 @@ class UserService {
     // Step 1: Look up taxonomy IDs for competencies
     const competencyMappings = [];
     for (const comp of normalizedData.competencies || []) {
-      let competencyId = comp.taxonomy_id;
-      
-      // If not found in taxonomy, try to find by name
-      if (!comp.found_in_taxonomy) {
+      let competencyId = comp.taxonomy_id || null;
+
+      // If not found in taxonomy or taxonomy_id is missing, try to find/create by name
+      if (!comp.found_in_taxonomy || !competencyId) {
         const existing = await competencyRepository.findByName(comp.normalized_name);
         if (existing) {
           competencyId = existing.competency_id;
         } else {
-          // Create new competency if not exists
-          const newComp = await competencyRepository.create({
-            competency_id: comp.taxonomy_id,
-            competency_name: comp.normalized_name,
-            description: comp.description || null,
-            parent_competency_id: null
-          });
+          // Create new competency if not exists (let DB generate UUID)
+          const newComp = await competencyRepository.create(
+            new (require('../models/Competency'))({
+              competency_name: comp.normalized_name,
+              description: comp.description || null,
+              parent_competency_id: null,
+              source: comp.source || 'ai'
+            })
+          );
           competencyId = newComp.competency_id;
         }
       }
@@ -63,21 +65,23 @@ class UserService {
     // Step 2: Look up taxonomy IDs for skills
     const skillMappings = [];
     for (const skill of normalizedData.skills || []) {
-      let skillId = skill.taxonomy_id;
-      
-      // If not found in taxonomy, try to find by name
-      if (!skill.found_in_taxonomy) {
+      let skillId = skill.taxonomy_id || null;
+
+      // If not found in taxonomy or taxonomy_id is missing, try to find/create by name
+      if (!skill.found_in_taxonomy || !skillId) {
         const existing = await skillRepository.findByName(skill.normalized_name);
         if (existing) {
           skillId = existing.skill_id;
         } else {
-          // Create new skill if not exists
-          const newSkill = await skillRepository.create({
-            skill_id: skill.taxonomy_id,
-            skill_name: skill.normalized_name,
-            description: skill.description || null,
-            parent_skill_id: null
-          });
+          // Create new skill if not exists (let DB generate UUID)
+          const newSkill = await skillRepository.create(
+            new (require('../models/Skill'))({
+              skill_name: skill.normalized_name,
+              description: skill.description || null,
+              parent_skill_id: null,
+              source: skill.source || 'ai'
+            })
+          );
           skillId = newSkill.skill_id;
         }
       }
@@ -94,7 +98,7 @@ class UserService {
         user_id: userId,
         competency_id: mapping.competency_id,
         coverage_percentage: 0.00,
-        proficiency_level: null,
+        proficiency_level: 'undefined',
         verifiedSkills: []
       });
       await userCompetencyRepository.upsert(userComp);
@@ -129,7 +133,7 @@ class UserService {
         user_id: userId,
         competency_id: skillAsCompetencyId,
         coverage_percentage: 0.00,
-        proficiency_level: null,
+        proficiency_level: 'undefined',
         verifiedSkills: []
       });
       await userCompetencyRepository.upsert(userComp);

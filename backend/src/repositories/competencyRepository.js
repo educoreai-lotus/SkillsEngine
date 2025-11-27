@@ -26,24 +26,33 @@ class CompetencyRepository {
 
   /**
    * Create a new competency
-   * @param {Competency} competency - Competency model instance
+   * @param {Competency|Object} competency - Competency model instance or plain object
    * @returns {Promise<Competency>}
    */
   async create(competency) {
-    const validation = competency.validate();
+    // Ensure we always work with a Competency model instance
+    const model = competency instanceof Competency ? competency : new Competency(competency);
+
+    const validation = model.validate();
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
+    // Let the database generate the UUID for competency_id if not provided.
+    const insertData = {
+      competency_name: model.competency_name,
+      description: model.description,
+      parent_competency_id: model.parent_competency_id,
+      source: model.source
+    };
+
+    if (model.competency_id) {
+      insertData.competency_id = model.competency_id;
+    }
+
     const { data, error } = await this.getClient()
       .from('competencies')
-      .insert({
-        competency_id: competency.competency_id,
-        competency_name: competency.competency_name,
-        description: competency.description,
-        parent_competency_id: competency.parent_competency_id,
-        source: competency.source
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -368,10 +377,10 @@ class CompetencyRepository {
    */
   async getSubCompetencyLinks(parentCompetencyId) {
     const { data, error } = await this.getClient()
-      .from('competency_subCompetency')
+      .from('competency_subcompetency')
       .select(`
         child_competency_id,
-        competencies!competency_subCompetency_child_competency_id_fkey (*)
+        competencies!competency_subcompetency_child_competency_id_fkey (*)
       `)
       .eq('parent_competency_id', parentCompetencyId)
       .order('competencies(competency_name)');
@@ -389,7 +398,7 @@ class CompetencyRepository {
   async linkSubCompetency(parentCompetencyId, childCompetencyId) {
     // Check if already exists
     const { data: existing } = await this.getClient()
-      .from('competency_subCompetency')
+      .from('competency_subcompetency')
       .select('*')
       .eq('parent_competency_id', parentCompetencyId)
       .eq('child_competency_id', childCompetencyId)
@@ -398,7 +407,7 @@ class CompetencyRepository {
     if (existing) return true;
 
     const { error } = await this.getClient()
-      .from('competency_subCompetency')
+      .from('competency_subcompetency')
       .insert({ parent_competency_id: parentCompetencyId, child_competency_id: childCompetencyId });
 
     if (error) throw error;
@@ -413,7 +422,7 @@ class CompetencyRepository {
    */
   async unlinkSubCompetency(parentCompetencyId, childCompetencyId) {
     const { error } = await this.getClient()
-      .from('competency_subCompetency')
+      .from('competency_subcompetency')
       .delete()
       .eq('parent_competency_id', parentCompetencyId)
       .eq('child_competency_id', childCompetencyId);

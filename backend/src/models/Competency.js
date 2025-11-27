@@ -6,7 +6,8 @@
 
 class Competency {
   constructor(data) {
-    this.competency_id = data.competency_id;
+    // ID is optional on creation – database can generate UUID via default
+    this.competency_id = data.competency_id || null;
     this.competency_name = data.competency_name;
     this.description = data.description || null;
     this.parent_competency_id = data.parent_competency_id || null;
@@ -22,12 +23,14 @@ class Competency {
   validate() {
     const errors = [];
 
-    if (!this.competency_id || typeof this.competency_id !== 'string' || this.competency_id.trim().length === 0) {
-      errors.push('competency_id is required and must be a non-empty string');
-    }
-
-    if (this.competency_id && this.competency_id.length > 255) {
-      errors.push('competency_id must not exceed 255 characters');
+    // competency_id is optional for new records (DB default UUID is used).
+    // If provided, ensure it is a non-empty string with a reasonable length.
+    if (this.competency_id !== null) {
+      if (typeof this.competency_id !== 'string' || this.competency_id.trim().length === 0) {
+        errors.push('competency_id, if provided, must be a non-empty string');
+      } else if (this.competency_id.length > 255) {
+        errors.push('competency_id must not exceed 255 characters');
+      }
     }
 
     if (!this.competency_name || typeof this.competency_name !== 'string' || this.competency_name.trim().length === 0) {
@@ -50,8 +53,12 @@ class Competency {
       errors.push('source must not exceed 100 characters');
     }
 
-    // Prevent self-reference
-    if (this.parent_competency_id === this.competency_id) {
+    // Prevent self-reference (only when both IDs are present)
+    if (
+      this.competency_id &&
+      this.parent_competency_id &&
+      this.parent_competency_id === this.competency_id
+    ) {
       errors.push('competency cannot be its own parent');
     }
 

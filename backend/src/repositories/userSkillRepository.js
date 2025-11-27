@@ -1,7 +1,7 @@
 /**
  * User Skill Repository
  *
- * Data access layer for userSkill table.
+ * Data access layer for userskill table.
  * Uses Supabase client for database operations.
  */
 
@@ -35,7 +35,7 @@ class UserSkillRepository {
     }
 
     const { data, error } = await this.getClient()
-      .from('userSkill')
+      .from('userskill')
       .insert({
         user_id: userSkill.user_id,
         skill_id: userSkill.skill_id,
@@ -58,7 +58,7 @@ class UserSkillRepository {
    */
   async findByUserAndSkill(userId, skillId) {
     const { data, error } = await this.getClient()
-      .from('userSkill')
+      .from('userskill')
       .select('*')
       .eq('user_id', userId)
       .eq('skill_id', skillId)
@@ -82,7 +82,7 @@ class UserSkillRepository {
     const { verified = null, source = null } = options;
 
     let query = this.getClient()
-      .from('userSkill')
+      .from('userskill')
       .select('*')
       .eq('user_id', userId);
 
@@ -109,7 +109,7 @@ class UserSkillRepository {
    */
   async findBySkill(skillId) {
     const { data, error } = await this.getClient()
-      .from('userSkill')
+      .from('userskill')
       .select('*')
       .eq('skill_id', skillId)
       .order('user_id');
@@ -142,7 +142,7 @@ class UserSkillRepository {
     updateData.last_update = new Date().toISOString();
 
     const { data, error } = await this.getClient()
-      .from('userSkill')
+      .from('userskill')
       .update(updateData)
       .eq('user_id', userId)
       .eq('skill_id', skillId)
@@ -165,7 +165,7 @@ class UserSkillRepository {
    */
   async delete(userId, skillId) {
     const { error } = await this.getClient()
-      .from('userSkill')
+      .from('userskill')
       .delete()
       .eq('user_id', userId)
       .eq('skill_id', skillId);
@@ -180,6 +180,7 @@ class UserSkillRepository {
    * @returns {Promise<UserSkill>}
    */
   async upsert(userSkill) {
+    // Use the model's internal field names for lookups
     const existing = await this.findByUserAndSkill(userSkill.user_id, userSkill.skill_id);
     if (existing) {
       return await this.update(

@@ -78,12 +78,9 @@ class NormalizationService {
       // Try to find existing item in taxonomy
       let taxonomyId = null;
       const existing = await repository.findByName(item.normalized_name);
-      
+
       if (existing) {
         taxonomyId = type === 'competency' ? existing.competency_id : existing.skill_id;
-      } else {
-        // Generate new ID if not found (will be created later)
-        taxonomyId = `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
 
       mapped.push({
