@@ -7,6 +7,10 @@ const app = express();
 // Default to 3000 only if PORT is not set (e.g. local dev without .env).
 const PORT = process.env.PORT || 3000;
 
+// Behind Railway's reverse proxy, trust the X-Forwarded-* headers so
+// express-rate-limit can identify clients correctly.
+app.set('trust proxy', 1);
+
 // CORS Configuration
 const FRONTEND_URL = process.env.FRONTEND_URL;
 let corsOptions = {
@@ -105,27 +109,27 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   3. Run: node check-connection.js`);
 
   // Kick off source discovery + web extraction asynchronously on each system load.
-/*   (async () => {
-    try {
-      console.log('🔎 [startup] Running initial source discovery in background...');
-      const result = await sourceDiscoveryService.discoverAndStoreSources();
-      console.log('✅ [startup] Source discovery completed:', {
-        inserted: result.inserted,
-        skipped: result.skipped,
-        totalDiscovered: result.totalDiscovered,
-      });
-
-      console.log('🌐 [startup] Running initial web extraction for discovered sources in background...');
-      const extractionResult = await webExtractionService.extractFromOfficialSources();
-      console.log('✅ [startup] Web extraction completed:', {
-        competenciesInserted: extractionResult.stats?.competencies ?? 0,
-        skillsInserted: extractionResult.stats?.skills ?? 0,
-        sourceCount: extractionResult.sources?.length ?? 0,
-      }); 
-    } catch (err) {
-      console.error('⚠️  [startup] Initialization pipeline failed (discovery or extraction):', err.message || err);
-    }
-  })(); */ 
+  /*   (async () => {
+      try {
+        console.log('🔎 [startup] Running initial source discovery in background...');
+        const result = await sourceDiscoveryService.discoverAndStoreSources();
+        console.log('✅ [startup] Source discovery completed:', {
+          inserted: result.inserted,
+          skipped: result.skipped,
+          totalDiscovered: result.totalDiscovered,
+        });
+  
+        console.log('🌐 [startup] Running initial web extraction for discovered sources in background...');
+        const extractionResult = await webExtractionService.extractFromOfficialSources();
+        console.log('✅ [startup] Web extraction completed:', {
+          competenciesInserted: extractionResult.stats?.competencies ?? 0,
+          skillsInserted: extractionResult.stats?.skills ?? 0,
+          sourceCount: extractionResult.sources?.length ?? 0,
+        }); 
+      } catch (err) {
+        console.error('⚠️  [startup] Initialization pipeline failed (discovery or extraction):', err.message || err);
+      }
+    })(); */
 });
 
 module.exports = app;
