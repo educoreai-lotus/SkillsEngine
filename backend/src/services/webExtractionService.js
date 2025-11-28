@@ -12,6 +12,7 @@
  */
 
 const aiService = require('./aiService');
+const crypto = require('crypto');
 const officialSourceRepository = require('../repositories/officialSourceRepository');
 const competencyRepository = require('../repositories/competencyRepository');
 const skillRepository = require('../repositories/skillRepository');
@@ -101,11 +102,10 @@ class WebExtractionService {
     }
 
     const competencyModel = new Competency({
-      competency_id: this.generateId('comp'),
+      competency_id: crypto.randomUUID(),
       competency_name: name,
       description: node.description || null,
       parent_competency_id: parentCompetencyId,
-      source:source.source_name
     });
 
     const competency = await competencyRepository.create(competencyModel);
@@ -157,11 +157,10 @@ class WebExtractionService {
     }
 
     const skillModel = new Skill({
-      skill_id: this.generateId('skill'),
+      skill_id: crypto.randomUUID(),
       skill_name: name,
       parent_skill_id: parentSkillId,
       description,
-      source:source.source_name
     });
 
     const skill = await skillRepository.create(skillModel);
@@ -193,17 +192,26 @@ class WebExtractionService {
     const allSources = [];
     const aggregatedStats = { competencies: 0, skills: 0 };
 
-    // Process each URL independently: call Gemini, then persist immediately.
+    // Process each URL independently: call Gemini, validate + normalize, then persist.
     for (const url of urls || []) {
       if (!url || typeof url !== 'string' || !url.trim()) {
         continue;
       }
 
-      const extraction = await aiService.extractFromWeb(url);
-      const stats = await this.persistExtraction(extraction);
+      const rawExtraction = await aiService.extractFromWeb(url);
 
-      if (Array.isArray(extraction.sources)) {
-        allSources.push(...extraction.sources);
+      // Basic validation of extraction structure
+      if (!rawExtraction || !Array.isArray(rawExtraction.sources) || rawExtraction.sources.length === 0) {
+        console.warn('[WebExtractionService.extractFromUrls] Skipping URL with no valid sources', { url });
+        continue;
+      }
+
+      // Normalize + clean the hierarchical structure using the dedicated prompt
+      const normalizedExtraction = await aiService.normalizeWebExtractionResult(rawExtraction);
+      const stats = await this.persistExtraction(normalizedExtraction);
+
+      if (Array.isArray(normalizedExtraction.sources)) {
+        allSources.push(...normalizedExtraction.sources);
       }
 
       aggregatedStats.competencies += stats.competencies || 0;
@@ -236,13 +244,21 @@ class WebExtractionService {
     const allSources = [];
     const aggregatedStats = { competencies: 0, skills: 0 };
 
-    // Same per-URL pipeline as extractFromUrls: Gemini call + persistence per URL.
+    // Same per-URL pipeline as extractFromUrls:
+    // Gemini call → validation → normalization → persistence per URL.
     for (const url of urls) {
-      const extraction = await aiService.extractFromWeb(url);
-      const stats = await this.persistExtraction(extraction);
+      const rawExtraction = await aiService.extractFromWeb(url);
 
-      if (Array.isArray(extraction.sources)) {
-        allSources.push(...extraction.sources);
+      if (!rawExtraction || !Array.isArray(rawExtraction.sources) || rawExtraction.sources.length === 0) {
+        console.warn('[WebExtractionService.extractFromOfficialSources] Skipping URL with no valid sources', { url });
+        continue;
+      }
+
+      const normalizedExtraction = await aiService.normalizeWebExtractionResult(rawExtraction);
+      const stats = await this.persistExtraction(normalizedExtraction);
+
+      if (Array.isArray(normalizedExtraction.sources)) {
+        allSources.push(...normalizedExtraction.sources);
       }
 
       aggregatedStats.competencies += stats.competencies || 0;
