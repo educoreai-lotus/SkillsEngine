@@ -233,29 +233,57 @@ class WebExtractionService {
    */
   async extractFromOfficialSources() {
     const minimal = await officialSourceRepository.findAllMinimal();
-    const urls = minimal
-      .map((entry) => entry.reference_index_url)
-      .filter((url) => typeof url === 'string' && url.trim().length > 0);
 
-    if (urls.length === 0) {
+    if (!Array.isArray(minimal) || minimal.length === 0) {
       return { sources: [], stats: { competencies: 0, skills: 0 } };
     }
 
     const allSources = [];
     const aggregatedStats = { competencies: 0, skills: 0 };
 
-    // Same per-URL pipeline as extractFromUrls:
-    // Gemini call → validation → normalization → persistence per URL.
-    for (const url of urls) {
+    // Same per-source pipeline as extractFromUrls:
+    // Gemini call → validation → normalization → persistence per URL,
+    // but skip any source that has already been extracted.
+    for (const entry of minimal) {
+      const url = typeof entry.reference_index_url === 'string'
+        ? entry.reference_index_url.trim()
+        : '';
+
+      if (!url) {
+        continue;
+      }
+
+      // Skip URLs that have already been extracted
+      if (entry.is_extracted) {
+        console.log('[WebExtractionService.extractFromOfficialSources] Skipping already-extracted URL', {
+          source_id: entry.source_id,
+          url,
+        });
+        continue;
+      }
+
       const rawExtraction = await aiService.extractFromWeb(url);
 
       if (!rawExtraction || !Array.isArray(rawExtraction.sources) || rawExtraction.sources.length === 0) {
-        console.warn('[WebExtractionService.extractFromOfficialSources] Skipping URL with no valid sources', { url });
+        console.warn('[WebExtractionService.extractFromOfficialSources] Skipping URL with no valid sources', {
+          source_id: entry.source_id,
+          url,
+        });
         continue;
       }
 
       const normalizedExtraction = await aiService.normalizeWebExtractionResult(rawExtraction);
       const stats = await this.persistExtraction(normalizedExtraction);
+
+      // Mark this source as extracted after successful persistence
+      try {
+        await officialSourceRepository.updateIsExtracted(entry.source_id, true);
+      } catch (err) {
+        console.warn(
+          '[WebExtractionService.extractFromOfficialSources] Failed to update is_extracted flag',
+          { source_id: entry.source_id, error: err.message }
+        );
+      }
 
       if (Array.isArray(normalizedExtraction.sources)) {
         allSources.push(...normalizedExtraction.sources);

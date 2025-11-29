@@ -41,12 +41,14 @@ class OfficialSourceRepository {
         source_name: source.source_name,
         reference_index_url: source.reference_index_url,
         reference_type: source.reference_type,
+        access_method: source.access_method,
         hierarchy_support: source.hierarchy_support,
         provides: source.provides,
         topics_covered: source.topics_covered,
         skill_focus: source.skill_focus,
         notes: source.notes,
         last_checked: source.last_checked,
+        is_extracted: source.is_extracted,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'source_id'
@@ -74,15 +76,36 @@ class OfficialSourceRepository {
 
   /**
    * Get minimal view of all existing sources (for de-duplication)
-   * @returns {Promise<Array<{source_id: string, reference_index_url: string}>>}
+   * @returns {Promise<Array<{source_id: string, reference_index_url: string, is_extracted: boolean}>>}
    */
   async findAllMinimal() {
     const { data, error } = await this.getClient()
       .from('official_sources')
-      .select('source_id, reference_index_url');
+      .select('source_id, reference_index_url, is_extracted');
 
     if (error) throw error;
     return data;
+  }
+
+  /**
+   * Mark a source as extracted (or not) by source_id
+   * @param {string} sourceId
+   * @param {boolean} isExtracted
+   * @returns {Promise<OfficialSource>}
+   */
+  async updateIsExtracted(sourceId, isExtracted) {
+    const { data, error } = await this.getClient()
+      .from('official_sources')
+      .update({
+        is_extracted: isExtracted,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('source_id', sourceId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return new OfficialSource(data);
   }
 }
 

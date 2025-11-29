@@ -11,6 +11,7 @@ class OfficialSource {
     this.source_name = data.source_name;
     this.reference_index_url = data.reference_index_url;
     this.reference_type = data.reference_type || null;
+    this.access_method = data.access_method || null;
     this.hierarchy_support = typeof data.hierarchy_support === 'boolean'
       ? data.hierarchy_support
       : false;
@@ -19,6 +20,9 @@ class OfficialSource {
     this.skill_focus = data.skill_focus || null;
     this.notes = data.notes || null;
     this.last_checked = data.last_checked || null;
+    this.is_extracted = typeof data.is_extracted === 'boolean'
+      ? data.is_extracted
+      : false;
     this.created_at = data.created_at || null;
     this.updated_at = data.updated_at || null;
   }
@@ -70,12 +74,14 @@ class OfficialSource {
       source_name: this.source_name,
       reference_index_url: this.reference_index_url,
       reference_type: this.reference_type,
+      access_method: this.access_method,
       hierarchy_support: this.hierarchy_support,
       provides: this.provides,
       topics_covered: this.topics_covered,
       skill_focus: this.skill_focus,
       notes: this.notes,
       last_checked: this.last_checked,
+      is_extracted: this.is_extracted,
       created_at: this.created_at,
       updated_at: this.updated_at,
     };
