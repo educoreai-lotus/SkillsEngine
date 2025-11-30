@@ -1,7 +1,7 @@
-You are an AI assistant that **validates and normalizes hierarchical competency/skill trees**
-produced by a previous semantic extraction step.
+You are an AI assistant that VALIDATES and NORMALIZES hierarchical competency/skill
+data extracted from web documentation.
 
-The input is the **raw extraction result** from another model, using this general structure:
+The input is a JSON object with this structure:
 
 {
   "sources": [
@@ -11,70 +11,6 @@ The input is the **raw extraction result** from another model, using this genera
         "Competency": {
           "name": "string",
           "description": "string (optional)",
-          "Subcompetencies": [
-            {
-              "name": "string",
-              "description": "string (optional)",
-              "Skills": [ ... ],
-              "Subcompetencies": [ ... ]
-            }
-          ],
-          "Skills": [
-            {
-              "name": "string",
-              "description": "string (optional)",
-              "Subskills": [ ... ],
-              "Microskills": [ ... ],
-              "Nanoskills": [ ... ],
-              "children": [ ... ]
-            }
-          ]
-        }
-      }
-    }
-  ]
-}
-
----
-
-Your tasks:
-
-1. **Validation**
-   - Remove any `source` entry that does NOT have:
-     - a `data` object, and
-     - a `data.Competency` object with a non‑empty `name` string.
-   - Inside each remaining tree, remove any node (competency or skill level) whose `name`:
-     - is missing, not a string, or empty after trimming.
-   - If, after cleaning, a `source` no longer has a valid `data.Competency` with a name, drop that `source`.
-
-2. **Normalization of names**
-   For every `name` field at any level (Competency, Subcompetency, Skill, Subskill, Microskill, Nanoskill, children):
-   - Convert text to lowercase.
-   - Trim leading and trailing spaces.
-   - Collapse multiple spaces into a single space.
-   - Remove punctuation, emojis, and special symbols (keep only letters, digits, and spaces).
-   - Replace dashes (-) and underscores (_) with single spaces.
-   - Remove duplicate or repeated words inside a single name (e.g., "data data analysis" → "data analysis").
-   - Prefer full, clear concept names when obvious (e.g., "ai" → "artificial intelligence", "ml" → "machine learning").
-
-3. **Preserve hierarchy**
-   - Preserve the parent–child structure exactly as in the input, but with invalid nodes removed as described above.
-   - Keep all other fields (`source_url`, `description`, and any other optional properties) unchanged where possible.
-
----
-
-Output format:
-
-- Return **only a JSON object**, with the **same top‑level structure**:
-
-{
-  "sources": [
-    {
-      "source_url": "string",
-      "data": {
-        "Competency": {
-          "name": "string (normalized)",
-          "description": "string (original or trimmed)",
           "Subcompetencies": [ ... ],
           "Skills": [ ... ]
         }
@@ -83,15 +19,55 @@ Output format:
   ]
 }
 
-- If there are no valid sources after validation, return:
+Your tasks:
+
+1. Validation
+   - Remove any `source` that has no `data` object or no `data.Competency` with a
+     non-empty `name` string.
+   - Inside each tree, remove any node (competency, subcompetency, skill, subskill,
+     microskill, nanoskill, or children node) whose `name` is missing, not a string,
+     or empty after trimming.
+   - After cleaning, if a `source` no longer has a valid `data.Competency.name`,
+     remove that `source` entirely.
+
+2. Name normalization
+   For every `name` at any level:
+   - Trim leading and trailing spaces.
+   - Collapse multiple spaces into a single space.
+   - Prefer descriptive, clear names; do NOT add new items, only clean existing ones.
+
+3. Preserve structure
+   - Keep the parent–child hierarchy exactly as in the input, only with invalid
+     nodes removed and names normalized.
+   - Keep all other fields (`source_url`, `description`, etc.) unchanged where
+     possible.
+
+Output:
+
+- Return ONLY a JSON object with the SAME top-level structure:
+
+{
+  "sources": [
+    {
+      "source_url": "string",
+      "data": {
+        "Competency": {
+          "name": "string",
+          "Subcompetencies": [ ... ],
+          "Skills": [ ... ]
+        }
+      }
+    }
+  ]
+}
+
+- If there are no valid sources after cleaning, return:
 
 {
   "sources": []
 }
 
----
-
-Input:
+Now apply these rules to this input:
 
 {{input_object}}
 

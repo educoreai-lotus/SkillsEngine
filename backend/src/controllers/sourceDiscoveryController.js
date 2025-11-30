@@ -15,7 +15,7 @@ class SourceDiscoveryController {
   async runDiscovery(req, res) {
     try {
       const result = await sourceDiscoveryService.discoverAndStoreSources();
-
+      //console.log('result',result);
       return res.status(201).json({
         success: true,
         inserted: result.inserted,

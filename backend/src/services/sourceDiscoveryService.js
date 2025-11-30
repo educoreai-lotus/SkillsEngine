@@ -9,6 +9,7 @@
 const aiService = require('./aiService');
 const officialSourceRepository = require('../repositories/officialSourceRepository');
 const OfficialSource = require('../models/OfficialSource');
+const { access } = require('fs');
 
 class SourceDiscoveryService {
   /**
@@ -62,6 +63,7 @@ class SourceDiscoveryService {
         reference_index_url: entry.reference_index_url,
         reference_type: entry.reference_type,
         hierarchy_support: hierarchySupportBool,
+        access_method:entry.access_method,
         provides: entry.provides,
         topics_covered: entry.topics_covered,
         skill_focus: entry.skill_focus,

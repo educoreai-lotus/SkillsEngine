@@ -23,14 +23,55 @@ class VerificationService {
     // Update userCompetency with verified skills
     const updatedCompetencies = new Set();
 
-    for (const verifiedSkill of verified_skills) {
-      const { skill_id, skill_name, score, passed } = verifiedSkill;
+    // Helper: normalize a single verified skill coming from Assessment MS
+    // - Ensure JSON shape: { skill_id, skill_name, verified }
+    // - Only persist leaf / MGS skills (last level in the hierarchy)
+    const normalizeVerifiedSkill = async (rawSkill) => {
+      if (!rawSkill || !rawSkill.skill_id) {
+        return null;
+      }
+
+      const { skill_id, skill_name, score, passed } = rawSkill;
+
+      // Ensure we only persist MGS / leaf skills in verifiedSkills
+      // If this skill has children, skip it here so verifiedSkills
+      // always represents the most granular skills only.
+      try {
+        const isLeaf = await skillRepository.isLeaf(skill_id);
+        if (!isLeaf) {
+          return null;
+        }
+      } catch (err) {
+        // If leaf check fails for any reason, fail-safe by skipping this entry
+        console.warn(
+          '[VerificationService.processBaselineExamResults] Failed to check leaf for skill',
+          { skill_id, error: err.message }
+        );
+        return null;
+      }
+
+      return {
+        skill_id,
+        skill_name,
+        verified: passed || score >= 70, // Assuming 70% is passing
+      };
+    };
+
+    for (const rawVerifiedSkill of verified_skills) {
+      const normalized = await normalizeVerifiedSkill(rawVerifiedSkill);
+
+      // If the skill is not a leaf or invalid, ignore it for verifiedSkills persistence
+      if (!normalized) {
+        continue;
+      }
+
+      const { skill_id, skill_name, verified } = normalized;
 
       // Update userSkill
       const userSkill = await userSkillRepository.findByUserAndSkill(userId, skill_id);
       if (userSkill) {
         await userSkillRepository.update(userId, skill_id, {
-          verified: passed || score >= 70, // Assuming 70% is passing
+          verified,
           source: 'assessment'
         });
       }
@@ -59,11 +100,11 @@ class VerificationService {
         const verifiedSkills = userComp.verifiedSkills || [];
         const existingIndex = verifiedSkills.findIndex(s => s.skill_id === skill_id);
 
+        // Persist only the minimal JSON shape in verifiedSkills
         const verifiedSkillData = {
-          skill_id: skill_id,
-          skill_name: skill_name,
-          verified: passed || score >= 70,
-          lastUpdate: new Date().toISOString()
+          skill_id,
+          skill_name,
+          verified,
         };
 
         if (existingIndex >= 0) {

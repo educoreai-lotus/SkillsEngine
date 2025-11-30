@@ -1,45 +1,129 @@
-IMPORTANT: Your response MUST be ONLY a valid JSON array. Do NOT include any text, explanation, description, markdown, comments, or formatting outside the JSON. Do NOT include trailing commas. Do NOT include code blocks. If you cannot produce results, return [].
+You are an AI assistant tasked with curating a comprehensive and ever-expanding dataset of
+**official and authoritative sources** that provide **technological skills and/or professional
+competencies** in a structured, hierarchical format.
 
-The JSON array must contain 40–50 objects. Each object MUST follow this exact structure with string values only:
+Your job is to produce **40–50 high-quality entries** of official sources AND their internal
+subpages, modules, or references **with hierarchical skills or skill-competency structures**.
 
-{
-"source_id": "string",
-"source_name": "string",
-"reference_index_url": "string",
-"reference_type": "Documentation Index | Learning Path | Skills Catalog | Module",
-  "access_method": "Scraping only",
-  "hierarchy_support": "Yes | Partial | No",
-  "provides": "skill | both",
-  "topics_covered": "string",
-  "skill_focus": "string",
-}
+Each time this prompt runs, you must generate a **fresh and expanded dataset**. Avoid repeating
+the same URLs that typically appear in standard or previous datasets (e.g., limit repetitive
+use of the same MDN, AWS, Azure, IBM, etc., unless needed for hierarchy completeness).
 
-REQUIREMENTS (strict):
+---
 
-1.INCLUDE ONLY sources where "access_method" is exactly "Scraping only". Do NOT include any source that exposes an API, downloadable dataset, SDK, RSS feed, or any other machine interface. If a site clearly documents an API or machine-accessible endpoint for the same content, DO NOT include that source.
+🎯 GOAL
 
-2.Only include official or authoritative sources (examples: MDN, Microsoft Learn, AWS Docs, Google Developers, IBM, Oracle, Cisco, Linux Foundation, ISO, e-CF, SFIA, Red Hat, VMware, SAP, Adobe, TensorFlow, PyTorch, Coursera, OpenAI, Databricks). Non-official blogs, forums, or aggregator sites are NOT allowed.
+1. Identify **40–50 official sources**, including lesser-known but still authoritative vendors,
+   foundations, standards organizations, and certification frameworks that describe:
+   - hierarchical skills, or
+   - skills + competencies with parent-child structure.
 
-3.Only include pages that provide hierarchical skills or skills + competencies with linked skills (parent-child relationships). Skip pages that are flat lists without sub-skills, purely conceptual overviews, tutorials, or guides.
+2. For each source, **traverse all internal references, subpages, modules, or sections** that contain hierarchical skills or competencies with linked skills, and create a **separate JSON entry for each reference**.
 
-4.Preferred URLs must match one of these patterns: /reference, /api/ (ONLY if the page itself is documentation but note rule 1 prohibits API access_method — if the content is only available via API, exclude), /docs/, /learn/, /skills/, /framework/, /ref/spec. However, final inclusion depends on scrapability — the page must be scrapable (rendered HTML with the hierarchical data visible). Exclude pages whose hierarchical data is only visible after client-side JS rendering that cannot be scraped by a standard HTML GET.
+3. **Skip any page or source that provides only general competencies without sub-competencies or associated skills**, and skip tutorials, conceptual explanations, overview pages, or guides.
 
-5.For any main source that contains internal references, modules, or subpages with hierarchical skills, create a separate JSON object per internal reference with a unique source_id. Indicate parent-child relationships and provenance in the notes field (e.g., "parent: orgname-main; child: orgname-main-subpage").
+3. Create a **separate JSON entry** for every hierarchical reference found.
 
-6.hierarchy_support field:
+4. **Each run must prioritize new or expanded discovery**:
+   - Include both major and lesser-known official ecosystems.
+   - Avoid producing the same set of URLs across runs unless necessary.
+   - Introduce controlled variability (e.g., different domains each run).
 
-"Yes" if the page contains full multi-level skill hierarchies with explicit sub-skill links.
+---
 
-"Partial" if it contains some nested structure but not complete linkable sub-skills.
+🌐 DOMAINS TO COVER  
+(Examples, not limited to — you should expand to avoid repetition each run)
 
-"No" if it does not — such pages must be excluded.
+- Frontend: JavaScript, CSS, HTML
+- Backend: Python, Java, Node.js, C#
+- Full Stack
+- Data / ML / AI
+- Cloud & DevOps: AWS, Azure, Google Cloud, Kubernetes, container ecosystems
+- Cybersecurity
+- Networking: Cisco, Juniper, IEEE standards
+- Software Architecture
+- Databases & Modern Data Platforms
+- UX/UI
+- Open-source ecosystems (CNCF, Apache, Linux Foundation)
+- Certification frameworks (CompTIA, GIAC, PMI, ISTQB)
+- Standards bodies (W3C, ISO, IEEE, ITU)
+- University or government skill frameworks
+- Vendor ecosystems with official docs (SAP, Oracle, Redis, MongoDB, Unity, Unreal, ESRI)
 
-7.provides field: use "skill" if the page only lists skills; use "both" if it includes competencies and skills.
+This list should grow and rotate to ensure variety per run.
 
-8.All string fields must be concise. reference_index_url must be the exact URL of the page/section included. source_id must be unique and follow a predictable pattern (e.g., orgname-topic-subpage).
+---
 
-TASK:
+💾 OUTPUT FORMAT  
+Return ONLY a **valid JSON array** structured as:
 
-Identify 40-50 official, authoritative sources (and their internal references) that meet the requirements above and return them as a single JSON array of objects strictly following the schema. Each returned object must be scrapable by a standard HTML scraper (no authentication, no API required, no client-side-only rendering for the hierarchical data). If any candidate cannot be scraped or clearly documents an API as the primary access method, do not include it.
+[
+  {
+    "source_id": "string",                  // unique ID (orgname-topic-subpage)
+    "source_name": "string",                // organization or website name
+    "reference_index_url": "string",        // URL of this page/section
+    "reference_type": "Documentation Index | Learning Path | Skills Catalog | Module",
+    "access_method": "API | Scraping only",
+    "hierarchy_support": "Yes | Partial | No",
+    "provides": "skill | both",             // include only sources that provide skills or both
+    "topics_covered": "string",
+    "skill_focus": "string",
+    "notes": "string"                       // parent-child relationships, module links, etc.
+  }
+]
 
-Return ONLY the JSON array now.
+---
+
+⚙️ RULES
+
+1. Only include **official or authoritative sources** such as:
+   - MDN, Microsoft Learn, AWS Docs, Google Developers, IBM Skills, Oracle, Cisco,
+     Linux Foundation, ISO, e-CF, Red Hat, VMware, SAP, Adobe,SEFIX,
+     TensorFlow, PyTorch, Databricks, OpenAI,
+   - AND additional official vendors, foundations, standards bodies, and
+     certification frameworks to increase variation across runs.
+
+2. Prioritize sources that provide **structured hierarchy**:
+   - Skill → Subskill
+   - Competency → Sub-competency → Skills
+   - Module → Topics → Skills
+
+3. **Expand discovery each run**:
+   - Introduce lesser-known but official documentation ecosystems.
+   - Rotate domain emphasis (e.g., one run focuses on cloud vendors, another on open-source foundations).
+   - Avoid generating the same URLs repeatedly.
+
+4. For internal subpages, ALWAYS create **unique `source_id` entries** and include hierarchy
+   relationships in `notes`.
+
+5. Preferred URLs to include:
+   - /reference
+   - /api/
+   - /docs/
+   - /learn/
+   - /skills/
+   - /framework/
+   - /ref/spec
+
+6. Skip:
+   - /guide/
+   - /tutorial/
+   - /overview/
+   - /concepts/
+
+7. If 40–50 entries cannot be reached with top vendors, automatically expand to:
+   - industry consortiums
+   - certification frameworks
+   - university frameworks
+   - open-source ecosystems
+
+8. Return **only JSON**, no text, no comments, and no explanations.
+
+---
+
+📌 Additional Requirement for Non-Repetition  
+To ensure fresh and varied results each run:
+
+- Favor *new* organizations and ecosystems that still meet the rules.
+- Randomly rotate which domains you source from, as long as you maintain quality.
+- Discover deeper or alternate internal indexes within existing ecosystems.

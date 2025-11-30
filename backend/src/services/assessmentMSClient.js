@@ -15,14 +15,27 @@ const assessmentClient = createAPIClient({
 /**
  * Request baseline exam for user
  * @param {string} userId - User ID
- * @param {Array} mgsList - List of MGS to test
+ * @param {Array} competenciesWithMGS - Array of competencies with their MGS
  * @returns {Promise<Object>} Exam request response
+ * 
+ * Expected structure for competenciesWithMGS:
+ * [
+ *   {
+ *     competency_id: "comp_001",
+ *     competency_name: "Software Development",
+ *     mgs: [
+ *       { skill_id: "skill_mgs_001", skill_name: "JavaScript Variables" },
+ *       { skill_id: "skill_mgs_002", skill_name: "React Hooks" }
+ *     ]
+ *   }
+ * ]
  */
-async function requestBaselineExam(userId, mgsList) {
+async function requestBaselineExam(userId, competenciesWithMGS) {
   try {
     const response = await assessmentClient.post('/api/exams/baseline', {
       user_id: userId,
-      skills: mgsList
+      exam_type: 'baseline',
+      competencies: competenciesWithMGS
     }, {
       Authorization: `Bearer ${process.env.ASSESSMENT_SERVICE_TOKEN || ''}`
     });

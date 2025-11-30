@@ -66,12 +66,8 @@ class AIService {
   async callGeminiJSON(prompt, options = {}) {
     // Let callGemini handle model + retry; we keep JSON handling focused here.
     const responseText = await this.callGemini(prompt, options);
-    // Verbose logging of full Gemini responses can easily hit log-rate limits
-    // on platforms like Railway. Enable only when explicitly debugging.
-    if (process.env.DEBUG_GEMINI === 'true') {
-      console.log('[Gemini raw response length]', responseText.length);
-      console.log('[Gemini raw response full]', responseText);
-    }
+    console.log('[Gemini raw response length]', responseText.length);
+    console.log('[Gemini raw response full]', responseText);
     // Try to extract JSON from response (handle markdown code blocks)
     let jsonText = (responseText || '').trim();
 
@@ -92,15 +88,11 @@ class AIService {
 
     try {
       const parsed = JSON.parse(jsonText);
-      if (process.env.DEBUG_GEMINI === 'true') {
-        console.log('[callGeminiJSON] Parsed JSON:', JSON.stringify(parsed, null, 2));
-      }
+      console.log('[callGeminiJSON] Parsed JSON:', JSON.stringify(parsed, null, 2));
       return parsed;
     } catch (parseError) {
       const preview = jsonText.slice(0, 200);
-      if (process.env.DEBUG_GEMINI === 'true') {
-        console.error('[callGeminiJSON] Raw response preview:', preview);
-      }
+      console.error('[callGeminiJSON] Raw response preview:', preview);
       throw new Error(
         `Gemini did not return valid JSON. Parse error: ${parseError.message}. Response preview: ${preview}`
       );
@@ -187,7 +179,7 @@ class AIService {
     const prompt = await this.loadPrompt(promptPath);
     // Use the flash model by default for better availability and lower latency.
     const result = await this.callGeminiJSON(prompt, { modelType: 'flash' });
-    // console.log('result', result);
+    console.log('result', result);
     if (!Array.isArray(result)) {
       throw new Error('Expected Gemini to return an array of sources');
     }
@@ -242,11 +234,10 @@ class AIService {
   }
 
   /**
-   * Validate + normalize web extraction hierarchy (Feature 9.2)
+   * Normalize web extraction result (Feature 9.2)
    *
-   * This uses a dedicated prompt tailored for the hierarchical
-   * { sources: [{ source_url, data: { Competency: {...} } }] } shape
-   * produced by semantic_extraction_prompt.txt.
+   * This uses a dedicated prompt to validate and lightly normalize the
+   * hierarchical { sources: [...] } structure returned by extractFromWeb.
    *
    * @param {Object} extraction - Raw extraction object from extractFromWeb
    * @returns {Promise<Object>} Normalized extraction object

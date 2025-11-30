@@ -10,97 +10,66 @@ Follow these instructions exactly:
 
 2. Extract all relevant elements:
 
-   - Competencies and sub-competencies (broader and more specific domains)
-
+   - Competencies
    - Skills
-
    - Subskills
-
    - Microskills
-
    - Nanoskills
-
    - Any further nested skill levels (N-level depth if present)
-
-2.5. **Competency Hierarchies**
-
-   - Competencies themselves may include sub-competencies.
-
-   - If a competency is conceptually broader (e.g., "Software Development") and contains more specific competencies (e.g., "Frontend Development", "Backend Development"), represent them hierarchically.
-
-   - Apply the same nested-structure logic to sub-competencies, which can include their own skills, subskills, and lower-level skills.
 
 3. **Semantic Validation (Critical Step)**
 
    Before adding any extracted term, link, or phrase to the hierarchy:
 
    - Verify semantically that it represents an actual competency, skill, subskill, or lower-level ability.
-
    - Do NOT include items that are purely:
-
-     • explanatory text  
-
-     • conceptual notes  
-
-     • examples  
-
-     • "see also" or "related topics" references  
-
+     • explanatory text
+     • conceptual notes
+     • examples
+     • "see also" or "related topics" references
      • general descriptions or documentation sections
-
    - Include only actionable, measurable, or learnable abilities.
-
    - When uncertain, analyze the surrounding context:
-
-     • If it *explains or defines* something → ignore it.  
-
+     • If it *explains or defines* something → ignore it.
      • If it *describes an ability, operation, or technical construct that can be learned or applied* → include it.
 
 4. **Hierarchy Rules**
 
-   - Each competency or skill can have any number of nested levels (Competency  → Skill → Subskill → Microskill → Nanoskill → ...).
-
+   - Each competency or skill can have any number of nested levels (Competency → Skill → Subskill → Microskill → Nanoskill → …).
    - Maintain a consistent parent–child relationship through all levels.
-
-   - Use `"children"` as a generic key for deeper levels beyond "Nanoskill".
+   - Use `"children"` as a generic key for deeper levels beyond “Nanoskill”.
 
 5. **Output Structure**
 
    - The entire response must be one valid JSON object.
-
-   - Inside, include a list under the key `"sources"`.
-
+   - Include a list under the key `"sources"`.
    - Each source item must have:
-
      - `"source_url"` → the original URL
-
      - `"data"` → the hierarchical structure extracted for that source
-
    - Do NOT merge data between URLs.
 
 6. **Output Requirements**
 
    - Respond **only** with valid JSON (no Markdown, no explanations, no comments).
-
    - Use the following top-level format:
 
-     {
-       "sources": [
-         {
-           "source_url": "<URL>",
-           "data": { ...hierarchical structure... }
-         },
-         {
-           "source_url": "<URL>",
-           "data": { ...hierarchical structure... }
-         }
-       ]
-     }
+```json
+{
+  "sources": [
+    {
+      "source_url": "<URL>",
+      "data": { ...hierarchical structure... }
+    },
+    {
+      "source_url": "<URL>",
+      "data": { ...hierarchical structure... }
+    }
+  ]
+}
+Output Example:
 
----
-
-**Output Example:**
-
+json
+Copy code
 {
   "sources": [
     {
@@ -108,21 +77,16 @@ Follow these instructions exactly:
       "data": {
         "Competency": {
           "name": "JavaScript Development",
-          "Subcompetencies": [
+          "Skills": [
             {
               "name": "Language Fundamentals",
-              "Skills": [
+              "Subskills": [
                 {
-                  "name": "Core Concepts",
-                  "Subskills": [
+                  "name": "Syntax",
+                  "Microskills": [
                     {
-                      "name": "Syntax",
-                      "Microskills": [
-                        {
-                          "name": "Variables",
-                          "Nanoskills": ["Declaration", "Scope", "Hoisting"]
-                        }
-                      ]
+                      "name": "Variables",
+                      "Nanoskills": ["Declaration", "Scope", "Hoisting"]
                     }
                   ]
                 }
@@ -158,8 +122,8 @@ Follow these instructions exactly:
     }
   ]
 }
-
----
+--------
 
 Now, extract and structure all hierarchical data from the following URLs:
+<Insert your URLs here, one per line>
 

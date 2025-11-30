@@ -8,6 +8,7 @@ const userCompetencyRepository = require('../repositories/userCompetencyReposito
 const competencyRepository = require('../repositories/competencyRepository');
 const UserCompetency = require('../models/UserCompetency');
 const { paginate } = require('../utils/helpers');
+const skillRepository = require('../repositories/skillRepository');
 
 class UserCompetencyController {
   /**
@@ -77,13 +78,47 @@ class UserCompetencyController {
         return res.status(404).json({ success: false, error: 'Competency not found' });
       }
 
+      // Normalize verifiedSkills so that only last-level (leaf) skills are stored
+      // in the JSON and each entry has the minimal shape:
+      // { skill_id, skill_name, verified }
+      const rawVerifiedSkills = req.body.verified_skills || req.body.verifiedSkills || [];
+
+      const normalizedVerifiedSkills = [];
+      if (Array.isArray(rawVerifiedSkills)) {
+        for (const entry of rawVerifiedSkills) {
+          if (!entry || typeof entry !== 'object' || !entry.skill_id) {
+            continue;
+          }
+
+          try {
+            const isLeaf = await skillRepository.isLeaf(entry.skill_id);
+            if (!isLeaf) {
+              // Skip non-leaf skills: verifiedSkills should only contain last-level skills
+              continue;
+            }
+          } catch (err) {
+            console.warn(
+              '[UserCompetencyController.upsertUserCompetency] Failed to check leaf for skill',
+              { skill_id: entry.skill_id, error: err.message }
+            );
+            continue;
+          }
+
+          normalizedVerifiedSkills.push({
+            skill_id: entry.skill_id,
+            skill_name: entry.skill_name || null,
+            verified: !!entry.verified,
+          });
+        }
+      }
+
       const payload = {
         user_id: userId,
         competency_id: competencyId,
         coverage_percentage:
           req.body.coverage_percentage ?? req.body.coveragePercentage ?? 0,
         proficiency_level: req.body.proficiency_level || req.body.proficiencyLevel || null,
-        verifiedSkills: req.body.verified_skills || req.body.verifiedSkills || [],
+        verifiedSkills: normalizedVerifiedSkills,
       };
 
       const userCompetency = new UserCompetency(payload);
