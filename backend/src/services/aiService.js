@@ -198,7 +198,7 @@ class AIService {
 
     // Replace placeholder with actual data
     prompt = prompt.replace('{{input_object}}', JSON.stringify(extractedData, null, 2));
-
+    console.log("test");
     try {
       return await this.callGeminiJSON(prompt, { modelType: 'flash' });
     } catch (error) {
