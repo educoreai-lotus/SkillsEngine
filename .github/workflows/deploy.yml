@@ -21,6 +21,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
         
     - name: Navigate to backend directory
       run: cd backend
@@ -61,6 +62,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
         
     - name: Navigate to frontend directory
       run: cd frontend
@@ -97,6 +99,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
         
     - name: Install backend dependencies
       run: |
