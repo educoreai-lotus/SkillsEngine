@@ -22,6 +22,7 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: './package-lock.json'
         
     - name: Navigate to backend directory
       run: cd backend
@@ -63,6 +64,7 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
         
     - name: Navigate to frontend directory
       run: cd frontend
@@ -100,6 +102,7 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: './package-lock.json'
         
     - name: Install backend dependencies
       run: |
