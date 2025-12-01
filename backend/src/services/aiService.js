@@ -261,11 +261,25 @@ class AIService {
 
   /**
    * Validate extracted data structure
-   * Note: Skills are now treated as competencies - only competencies array is required
-   * @param {Object} data - Data to validate
+   * Note: AI now returns a simple array of competencies (strings) or object format
+   * @param {Array|Object} data - Data to validate (array or object with competencies key)
    * @returns {boolean}
    */
   validateExtractedData(data) {
+    // Handle direct array format (new format from updated prompt)
+    if (Array.isArray(data)) {
+      if (data.length === 0) return true; // Empty array is valid
+      
+      // Validate each item is a non-empty string
+      for (const item of data) {
+        if (typeof item !== 'string' || !item.trim()) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // Handle object format (backward compatibility)
     if (!data || typeof data !== 'object') {
       return false;
     }

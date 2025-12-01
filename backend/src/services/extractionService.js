@@ -39,16 +39,24 @@ class ExtractionService {
       try {
         const extracted = await aiService.extractFromRawData(chunk);
 
-        // Validate structure (must have top-level competencies[])
+        // Validate structure
         if (!aiService.validateExtractedData(extracted)) {
           throw new Error('Invalid extracted data structure');
         }
 
-        // Merge results (AI returns { competencies: [] })
-        // If AI still returns skills array (backward compatibility), merge it into competencies
-        allExtracted.competencies.push(...(extracted.competencies || []));
-        if (extracted.skills && Array.isArray(extracted.skills)) {
-          allExtracted.competencies.push(...extracted.skills);
+        // Handle different response formats:
+        // 1. Direct array format: ["React", "Node.js", ...] (new prompt format)
+        // 2. Object format: { competencies: [...] } (backward compatibility)
+        if (Array.isArray(extracted)) {
+          // New format: direct array of competencies
+          allExtracted.competencies.push(...extracted);
+        } else if (extracted.competencies && Array.isArray(extracted.competencies)) {
+          // Old format: object with competencies array
+          allExtracted.competencies.push(...extracted.competencies);
+          // Backward compatibility: merge skills array if present
+          if (extracted.skills && Array.isArray(extracted.skills)) {
+            allExtracted.competencies.push(...extracted.skills);
+          }
         }
       } catch (error) {
         console.error(`Error extracting from chunk: ${error.message}`);
@@ -87,14 +95,14 @@ class ExtractionService {
 
     // Try to split by paragraphs or sentences
     const paragraphs = data.split(/\n\n+/);
-    
+
     for (const paragraph of paragraphs) {
       if (currentChunk.length + paragraph.length > maxChunkSize) {
         if (currentChunk) {
           chunks.push(currentChunk);
           currentChunk = '';
         }
-        
+
         // If single paragraph is too large, split by sentences
         if (paragraph.length > maxChunkSize) {
           const sentences = paragraph.split(/[.!?]+\s+/);

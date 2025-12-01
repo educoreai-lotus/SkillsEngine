@@ -25,23 +25,31 @@ class NormalizationService {
     // Call AI for normalization
     const normalized = await aiService.normalizeData(extractedData);
 
-    // Gemini may return normalized competencies as plain strings.
-    // Convert them to objects with normalized_name so downstream mapping works.
-    const normalizedCompetencies = (normalized.competencies || []).map((comp) =>
-      typeof comp === 'string' ? { normalized_name: comp } : comp
-    );
+    let normalizedCompetencies = [];
 
-    // For backward compatibility: if skills array exists, merge it into competencies
-    if (normalized.skills && Array.isArray(normalized.skills)) {
-      const normalizedSkills = normalized.skills.map((skill) =>
-        typeof skill === 'string' ? { normalized_name: skill } : skill
+    // Handle different response formats from AI:
+    // 1. Direct array: ["react", "nodejs", ...] (new format)
+    // 2. Object format: { competencies: [...] } (backward compatibility)
+    if (Array.isArray(normalized)) {
+      // New format: direct array of normalized strings
+      normalizedCompetencies = normalized.map((comp) =>
+        typeof comp === 'string' ? { normalized_name: comp } : comp
       );
-      normalizedCompetencies.push(...normalizedSkills);
-    }
-
-    // Validate normalized structure
-    if (!normalized.competencies || !Array.isArray(normalized.competencies)) {
-      throw new Error('Normalized data must contain competencies array');
+    } else if (normalized.competencies && Array.isArray(normalized.competencies)) {
+      // Old format: object with competencies array
+      normalizedCompetencies = normalized.competencies.map((comp) =>
+        typeof comp === 'string' ? { normalized_name: comp } : comp
+      );
+      
+      // For backward compatibility: if skills array exists, merge it into competencies
+      if (normalized.skills && Array.isArray(normalized.skills)) {
+        const normalizedSkills = normalized.skills.map((skill) =>
+          typeof skill === 'string' ? { normalized_name: skill } : skill
+        );
+        normalizedCompetencies.push(...normalizedSkills);
+      }
+    } else {
+      throw new Error('Normalized data must be an array or contain competencies array');
     }
 
     // Map to taxonomy IDs (all items are competencies now)
