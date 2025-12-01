@@ -11,8 +11,9 @@ const competencyRepository = require('../repositories/competencyRepository');
 
 class NormalizationService {
   /**
-   * Normalize extracted competencies and skills
-   * @param {Object} extractedData - Extracted data with competencies and skills arrays
+   * Normalize extracted competencies
+   * Note: Skills are now treated as competencies - only competencies array is processed
+   * @param {Object} extractedData - Extracted data with competencies array
    * @returns {Promise<Object>} Normalized data with taxonomy ID mappings
    */
   async normalize(extractedData) {
@@ -24,39 +25,33 @@ class NormalizationService {
     // Call AI for normalization
     const normalized = await aiService.normalizeData(extractedData);
 
-    // Gemini may return normalized competencies/skills as plain strings.
+    // Gemini may return normalized competencies as plain strings.
     // Convert them to objects with normalized_name so downstream mapping works.
     const normalizedCompetencies = (normalized.competencies || []).map((comp) =>
       typeof comp === 'string' ? { normalized_name: comp } : comp
     );
 
-    const normalizedSkills = (normalized.skills || []).map((skill) =>
-      typeof skill === 'string' ? { normalized_name: skill } : skill
-    );
+    // For backward compatibility: if skills array exists, merge it into competencies
+    if (normalized.skills && Array.isArray(normalized.skills)) {
+      const normalizedSkills = normalized.skills.map((skill) =>
+        typeof skill === 'string' ? { normalized_name: skill } : skill
+      );
+      normalizedCompetencies.push(...normalizedSkills);
+    }
 
     // Validate normalized structure
     if (!normalized.competencies || !Array.isArray(normalized.competencies)) {
       throw new Error('Normalized data must contain competencies array');
     }
 
-    if (!normalized.skills || !Array.isArray(normalized.skills)) {
-      throw new Error('Normalized data must contain skills array');
-    }
-
-    // Map to taxonomy IDs
+    // Map to taxonomy IDs (all items are competencies now)
     const mappedCompetencies = await this.mapToTaxonomyIds(
       normalizedCompetencies,
       'competency'
     );
 
-    const mappedSkills = await this.mapToTaxonomyIds(
-      normalizedSkills,
-      'skill'
-    );
-
     return {
-      competencies: mappedCompetencies,
-      skills: mappedSkills
+      competencies: mappedCompetencies
     };
   }
 
@@ -95,6 +90,7 @@ class NormalizationService {
 
   /**
    * Remove duplicates from normalized data
+   * Note: Skills are now treated as competencies - only competencies array is deduplicated
    * @param {Object} normalizedData - Normalized data
    * @returns {Object} Deduplicated data
    */
@@ -108,18 +104,8 @@ class NormalizationService {
       }
     }
 
-    // Remove duplicate skills by normalized_name
-    const skillMap = new Map();
-    for (const skill of normalizedData.skills || []) {
-      const key = skill.normalized_name?.toLowerCase().trim();
-      if (key && !skillMap.has(key)) {
-        skillMap.set(key, skill);
-      }
-    }
-
     return {
-      competencies: Array.from(competencyMap.values()),
-      skills: Array.from(skillMap.values())
+      competencies: Array.from(competencyMap.values())
     };
   }
 }

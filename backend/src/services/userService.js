@@ -27,12 +27,13 @@ class UserService {
 
   /**
    * Build initial competency profile for Directory MS (Feature 2.4)
+   * Note: Skills are now treated as competencies - only competencies array is processed
    * @param {string} userId - User ID
    * @param {Object} normalizedData - Normalized data from Feature 2.3
    * @returns {Promise<Object>} Initial profile payload
    */
   async buildInitialProfile(userId, normalizedData) {
-    // Step 1: Look up taxonomy IDs for competencies
+    // Step 1: Look up taxonomy IDs for competencies (includes both traditional competencies and skills)
     const competencyMappings = [];
     for (const comp of normalizedData.competencies || []) {
       let competencyId = comp.taxonomy_id || null;
@@ -62,37 +63,7 @@ class UserService {
       });
     }
 
-    // Step 2: Look up taxonomy IDs for skills
-    const skillMappings = [];
-    for (const skill of normalizedData.skills || []) {
-      let skillId = skill.taxonomy_id || null;
-
-      // If not found in taxonomy or taxonomy_id is missing, try to find/create by name
-      if (!skill.found_in_taxonomy || !skillId) {
-        const existing = await skillRepository.findByName(skill.normalized_name);
-        if (existing) {
-          skillId = existing.skill_id;
-        } else {
-          // Create new skill if not exists (let DB generate UUID)
-          const newSkill = await skillRepository.create(
-            new (require('../models/Skill'))({
-              skill_name: skill.normalized_name,
-              description: skill.description || null,
-              parent_skill_id: null,
-              source: skill.source || 'ai'
-            })
-          );
-          skillId = newSkill.skill_id;
-        }
-      }
-
-      skillMappings.push({
-        original: skill,
-        skill_id: skillId
-      });
-    }
-
-    // Step 3: Store competencies in user_competencies
+    // Step 2: Store competencies in user_competencies (includes both traditional competencies and skills)
     for (const mapping of competencyMappings) {
       const userComp = new UserCompetency({
         user_id: userId,
@@ -104,48 +75,13 @@ class UserService {
       await userCompetencyRepository.upsert(userComp);
     }
 
-    // Step 4: Store skills in user_skill
-    for (const mapping of skillMappings) {
-      const userSkill = new UserSkill({
-        user_id: userId,
-        skill_id: mapping.skill_id,
-        skill_name: mapping.original.normalized_name,
-        verified: false,
-        source: 'ai'
-      });
-      await userSkillRepository.upsert(userSkill);
-
-      // Also store skill as competency in user_competencies
-      // Check if skill exists as competency
-      let skillAsCompetencyId = mapping.skill_id;
-      const existingComp = await competencyRepository.findById(mapping.skill_id);
-      if (!existingComp) {
-        // Create competency from skill
-        await competencyRepository.create({
-          competency_id: mapping.skill_id,
-          competency_name: mapping.original.normalized_name,
-          description: mapping.original.description || null,
-          parent_competency_id: null
-        });
-      }
-
-      const userComp = new UserCompetency({
-        user_id: userId,
-        competency_id: skillAsCompetencyId,
-        coverage_percentage: 0.00,
-        proficiency_level: 'undefined',
-        verifiedSkills: []
-      });
-      await userCompetencyRepository.upsert(userComp);
-    }
-
-    // Step 5: Fetch stored user competencies
+    // Step 3: Fetch stored user competencies
     const userCompetencies = await userCompetencyRepository.findByUser(userId);
 
-    // Step 6: Fetch stored user skills
+    // Step 4: Fetch stored user skills (for backward compatibility with existing skill-competency mappings)
     const userSkills = await userSkillRepository.findByUser(userId);
 
-    // Step 7-10: Build profile payload
+    // Step 5-8: Build profile payload
     const competencies = [];
     const competencyIds = new Set(userCompetencies.map(uc => uc.competency_id));
 

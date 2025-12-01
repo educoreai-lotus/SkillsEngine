@@ -14,10 +14,11 @@ const Skill = require('../models/Skill');
 
 class ExtractionService {
   /**
-   * Extract competencies and skills from raw user data
+   * Extract competencies from raw user data
+   * Note: Skills are now treated as competencies - all extracted items go into competencies array
    * @param {string} userId - User ID
    * @param {string} rawData - Raw data (resume, LinkedIn, GitHub, etc.)
-   * @returns {Promise<Object>} Extracted data with competencies and skills arrays
+   * @returns {Promise<Object>} Extracted data with competencies array only
    */
   async extractFromUserData(userId, rawData) {
     // Validate user exists
@@ -30,8 +31,7 @@ class ExtractionService {
     const chunkedData = this.chunkData(rawData, 50000); // ~50k characters per chunk
 
     let allExtracted = {
-      competencies: [],
-      skills: []
+      competencies: []
     };
 
     // Process each chunk
@@ -39,14 +39,17 @@ class ExtractionService {
       try {
         const extracted = await aiService.extractFromRawData(chunk);
 
-        // Validate structure (must have top-level competencies[] and skills[])
+        // Validate structure (must have top-level competencies[])
         if (!aiService.validateExtractedData(extracted)) {
           throw new Error('Invalid extracted data structure');
         }
 
-        // Merge results (AI returns { competencies: [], skills: [] })
+        // Merge results (AI returns { competencies: [] })
+        // If AI still returns skills array (backward compatibility), merge it into competencies
         allExtracted.competencies.push(...(extracted.competencies || []));
-        allExtracted.skills.push(...(extracted.skills || []));
+        if (extracted.skills && Array.isArray(extracted.skills)) {
+          allExtracted.competencies.push(...extracted.skills);
+        }
       } catch (error) {
         console.error(`Error extracting from chunk: ${error.message}`);
         throw error;
@@ -55,9 +58,8 @@ class ExtractionService {
 
     // Remove duplicates by name (case-insensitive)
     allExtracted.competencies = this.deduplicateByName(allExtracted.competencies);
-    allExtracted.skills = this.deduplicateByName(allExtracted.skills);
 
-    // Persist extracted items into taxonomy tables (competencies & skills)
+    // Persist extracted items into taxonomy tables (competencies only)
     const stats = await this.persistToTaxonomy(allExtracted);
 
     // TODO: Emit extraction event for downstream processing
@@ -145,26 +147,25 @@ class ExtractionService {
   }
 
   /**
-   * Persist extracted competencies & skills into taxonomy tables.
+   * Persist extracted competencies into taxonomy tables.
    *
    * - Creates competencies in `competencies` table if they don't already exist
-   * - Creates skills in `skills` table if they don't already exist
+   * - Skills are now treated as competencies, so everything goes into competencies table
    * - Does NOT create hierarchy links here (those are handled by other features)
    *
-   * @param {Object} extracted - { competencies: [], skills: [] }
-   * @returns {Promise<{competencies: number, skills: number}>}
+   * @param {Object} extracted - { competencies: [] }
+   * @returns {Promise<{competencies: number}>}
    */
   async persistToTaxonomy(extracted) {
     const stats = {
       competencies: 0,
-      skills: 0,
     };
 
     if (!extracted) {
       return stats;
     }
 
-    // Persist competencies
+    // Persist competencies (includes both traditional competencies and skills)
     if (Array.isArray(extracted.competencies)) {
       for (const item of extracted.competencies) {
         const name =
@@ -187,32 +188,6 @@ class ExtractionService {
 
         await competencyRepository.create(model);
         stats.competencies += 1;
-      }
-    }
-
-    // Persist skills
-    if (Array.isArray(extracted.skills)) {
-      for (const item of extracted.skills) {
-        const name =
-          typeof item === 'string'
-            ? item.trim()
-            : (item && typeof item.name === 'string' ? item.name.trim() : '');
-
-        if (!name) continue;
-
-        // Skip if skill already exists (case-insensitive match)
-        const existing = await skillRepository.findByName(name);
-        if (existing) continue;
-
-        // Let the database generate the UUID for skill_id (default gen_random_uuid()).
-        const model = new Skill({
-          skill_name: name,
-          parent_skill_id: null,
-          description: item && typeof item.description === 'string' ? item.description : null,
-        });
-
-        await skillRepository.create(model);
-        stats.skills += 1;
       }
     }
 

@@ -1,10 +1,11 @@
-You are an AI assistant that normalizes and organizes competencies and skills.
+You are an AI assistant that normalizes and organizes competencies.
+
+Note: Skills are now treated as competencies. All items (both traditional competencies and specific skills) should be normalized and returned in the competencies array.
 
 Input format:
 
 {
-  "competencies": [...],
-  "skills": [...]
+  "competencies": [...]
 }
 
 Your tasks:
@@ -19,21 +20,14 @@ Your tasks:
    - Prefer full, clear forms of concepts (e.g., "ai" → "artificial intelligence").
    - Return only unique normalized strings.
 
-2. **Map skills to competencies**:
-   - Determine which normalized skills logically belong under each normalized competency.
-   - A skill may belong to multiple competencies if appropriate.
-   - If a competency has no matching skills, return an empty list.
-   - Do not invent new skills or competencies.
+2. **Remove duplicates**:
+   - Ensure each competency appears only once in the output.
+   - Merge synonyms and similar terms into a single normalized form.
 
 Output format (JSON only):
 
 {
-  "competencies": [...],       // list of normalized competencies
-  "skills": [...],             // list of normalized skills
-  "mapping": {                 // mapping of competency → skills
-    "<competency>": ["skill1", "skill2"],
-    ...
-  }
+  "competencies": [...]       // list of normalized competencies (includes both broad competencies and specific skills)
 }
 
 Input:

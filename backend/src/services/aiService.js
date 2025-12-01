@@ -261,6 +261,7 @@ class AIService {
 
   /**
    * Validate extracted data structure
+   * Note: Skills are now treated as competencies - only competencies array is required
    * @param {Object} data - Data to validate
    * @returns {boolean}
    */
@@ -269,13 +270,8 @@ class AIService {
       return false;
     }
 
-    // Check for competencies array
+    // Check for competencies array (required)
     if (!Array.isArray(data.competencies)) {
-      return false;
-    }
-
-    // Check for skills array
-    if (!Array.isArray(data.skills)) {
       return false;
     }
 
@@ -290,14 +286,16 @@ class AIService {
       }
     }
 
-    // Validate skill structure (allow string or { name: string, ... })
-    for (const skill of data.skills) {
-      if (typeof skill === 'string') {
-        if (!skill.trim()) return false;
-        continue;
-      }
-      if (!skill || typeof skill.name !== 'string' || !skill.name.trim()) {
-        return false;
+    // For backward compatibility: if skills array exists, validate it too
+    if (data.skills && Array.isArray(data.skills)) {
+      for (const skill of data.skills) {
+        if (typeof skill === 'string') {
+          if (!skill.trim()) return false;
+          continue;
+        }
+        if (!skill || typeof skill.name !== 'string' || !skill.name.trim()) {
+          return false;
+        }
       }
     }
 
