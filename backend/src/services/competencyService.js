@@ -428,7 +428,7 @@ class CompetencyService {
     // Map to store competency name -> competency_id
     const competencyIdMap = new Map();
 
-    // Step 1: Create/find all competencies first (without parent relationships)
+    // Step 1: Create/find all competencies first (and set parent_competency_id where possible)
     for (const node of nodes) {
       const existingComp = await competencyRepository.findByName(node.name);
 
@@ -438,12 +438,19 @@ class CompetencyService {
         stats.competenciesExisting++;
         console.log(`[CompetencyService] Found existing competency: ${node.name} (${existingComp.competency_id})`);
       } else {
+        // Resolve parent_competency_id by name if parent already processed
+        let parentCompetencyId = null;
+        if (node.parentId) {
+          parentCompetencyId = competencyIdMap.get(node.parentId) || null;
+        }
+
         // Create new competency
         const newComp = await competencyRepository.create(
           new Competency({
             competency_name: node.name,
             description: node.isCoreCompetency ? 'Core competency (high-level skill)' : null,
-            parent_competency_id: null, // Will be set later via junction table
+            // Also store parent in the competencies table hierarchy
+            parent_competency_id: parentCompetencyId,
             source: 'career_path_ai'
           })
         );
@@ -453,7 +460,7 @@ class CompetencyService {
       }
     }
 
-    // Step 2: Create parent-child relationships in competency_subcompetency table
+    // Step 2: Create parent-child relationships in competency_subCompetency table
     for (const node of nodes) {
       if (!node.parentId) {
         // Root node, no parent relationship

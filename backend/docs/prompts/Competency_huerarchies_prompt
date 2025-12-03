@@ -14,26 +14,27 @@ RULES:
 6. Only return valid JSON — no explanations, no markdown.  
 7. Handle any competency domain: Frontend, Backend, Fullstack, DevOps, Data, AI, Cybersecurity, etc.  
 8. If a node is a broad competency but not a high-level skill, continue expanding into subcompetencies until you reach high-level skills.
+9. **All competency names must be in lowercase** (e.g., "backend development", "sql", "node.js").
 
 
 OUTPUT FORMAT EXAMPLE:
 
 {
-  "competency": "Backend Development",
+  "competency": "backend development",
   "subcompetencies": [
     {
-      "competency": "Database Management",
+      "competency": "database management",
       "subcompetencies": [
-        { "competency": "SQL", "core-competency": true },
-        { "competency": "PostgreSQL", "core-competency": true },
-        { "competency": "MongoDB", "core-competency": true }
+        { "competency": "sql", "core-competency": true },
+        { "competency": "postgresql", "core-competency": true },
+        { "competency": "mongodb", "core-competency": true }
       ]
     },
     {
-      "competency": "Server-Side Programming",
+      "competency": "server-side programming",
       "subcompetencies": [
-        { "competency": "Node.js", "core-competency": true },
-        { "competency": "Python", "core-competency": true }
+        { "competency": "node.js", "core-competency": true },
+        { "competency": "python", "core-competency": true }
       ]
     }
   ]
