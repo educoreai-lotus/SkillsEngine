@@ -208,19 +208,6 @@ export default function SkillsGapSidebar() {
           </div>
         )}
       </div>
-
-      {/* CTA Card */}
-      <div className="bg-gradient-to-r from-primary-500 to-accent-500 rounded-2xl p-6 text-white shadow-xl">
-        <h3 className="font-bold text-lg mb-2">
-          Ready to Close the Gap?
-        </h3>
-        <p className="text-sm text-white/90 mb-4">
-          Start with high-priority skills
-        </p>
-        <button className="w-full py-2.5 bg-white text-primary-600 font-bold rounded-xl hover:bg-white/90 hover:scale-105 transition-all shadow-lg">
-          Get Started
-        </button>
-      </div>
     </div>
   );
 }
