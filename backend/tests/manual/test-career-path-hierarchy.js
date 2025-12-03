@@ -5,6 +5,9 @@
  * Run with: node backend/tests/manual/test-career-path-hierarchy.js
  */
 
+// Load environment variables from .env file
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+
 const competencyService = require('../../src/services/competencyService');
 const aiService = require('../../src/services/aiService');
 const competencyRepository = require('../../src/repositories/competencyRepository');
