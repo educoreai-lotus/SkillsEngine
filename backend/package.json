@@ -4,6 +4,7 @@
   "description": "Skills Engine Backend API",
   "main": "src/index.js",
   "scripts": {
+    "build": "echo 'No build step required for JavaScript'",
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "start:simple": "node src/simple-server.js",
