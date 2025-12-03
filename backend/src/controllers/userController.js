@@ -36,7 +36,7 @@ class UserController {
       res.status(400).json({ success: false, error: error.message });
     }
   }
-///for the dirctory request
+  ///for the dirctory request
   /**
    * One-shot onboarding: save basic profile + run full pipeline
    * POST /api/user/onboard
@@ -58,10 +58,9 @@ class UserController {
       }
 
       // Step 1.5: Build competency hierarchy from career path (if provided)
-      let hierarchyStats = null;
       if (pathCareer && pathCareer.trim()) {
         console.log(`[UserController] Building competency hierarchy for career path: ${pathCareer}`);
-        hierarchyStats = await competencyHierarchyService.buildFromCareerPath(pathCareer);
+        const hierarchyStats = await competencyHierarchyService.buildFromCareerPath(pathCareer);
         console.log('[UserController] Hierarchy build stats:', hierarchyStats);
       } else {
         console.log('[UserController] No path_career provided, skipping hierarchy generation');
@@ -80,10 +79,7 @@ class UserController {
       // Directory only needs the initial profile payload here
       res.status(201).json({
         success: true,
-        data: {
-          profile,
-          hierarchyStats
-        }
+        data: profile
       });
     } catch (error) {
       res.status(400).json({ success: false, error: error.message });
@@ -201,7 +197,7 @@ class UserController {
       }
 
       const profile = await userService.buildInitialProfile(userId, normalizedData);
-      
+
       // TODO: Send to Directory MS
       // await directoryMSClient.sendInitialProfile(userId, profile);
 
@@ -219,7 +215,7 @@ class UserController {
     try {
       const { userId } = req.params;
       const user = await userService.updateUserProfile(userId, req.body);
-      
+
       if (!user) {
         return res.status(404).json({ success: false, error: 'User not found' });
       }
