@@ -7,6 +7,7 @@
 const userService = require('../services/userService');
 const extractionService = require('../services/extractionService');
 const normalizationService = require('../services/normalizationService');
+const competencyHierarchyService = require('../services/competencyHierarchyService');
 
 class UserController {
   /**
@@ -39,7 +40,7 @@ class UserController {
   /**
    * One-shot onboarding: save basic profile + run full pipeline
    * POST /api/user/onboard
-   * Body: full user data from Directory MS, including raw_data
+   * Body: full user data from Directory MS, including raw_data and path_career
    */
   async onboardAndIngest(req, res) {
     try {
@@ -47,12 +48,23 @@ class UserController {
       const user = await userService.createBasicProfile(req.body);
       const userId = user.user_id;
       const rawData = user.raw_data;
+      const pathCareer = user.path_career;
 
       if (!rawData) {
         return res.status(400).json({
           success: false,
           error: 'raw_data is required in user payload for onboarding'
         });
+      }
+
+      // Step 1.5: Build competency hierarchy from career path (if provided)
+      let hierarchyStats = null;
+      if (pathCareer && pathCareer.trim()) {
+        console.log(`[UserController] Building competency hierarchy for career path: ${pathCareer}`);
+        hierarchyStats = await competencyHierarchyService.buildFromCareerPath(pathCareer);
+        console.log('[UserController] Hierarchy build stats:', hierarchyStats);
+      } else {
+        console.log('[UserController] No path_career provided, skipping hierarchy generation');
       }
 
       // Step 2: extract from raw data
@@ -68,7 +80,10 @@ class UserController {
       // Directory only needs the initial profile payload here
       res.status(201).json({
         success: true,
-        data: profile
+        data: {
+          profile,
+          hierarchyStats
+        }
       });
     } catch (error) {
       res.status(400).json({ success: false, error: error.message });

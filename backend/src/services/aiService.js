@@ -260,6 +260,21 @@ class AIService {
   }
 
   /**
+   * Generate competency hierarchy from career path (Feature: Career Path Competency Hierarchy)
+   * @param {string} careerPath - Career path name (e.g., "Backend Development")
+   * @returns {Promise<Object>} Hierarchical tree structure
+   */
+  async generateCompetencyHierarchy(careerPath) {
+    const promptPath = 'docs/prompts/Competency_huerarchies_prompt';
+    let prompt = await this.loadPrompt(promptPath);
+
+    // Replace placeholder with career path name
+    prompt = prompt.replace('<insert competency name here>', careerPath);
+
+    return await this.callGeminiJSON(prompt, { modelType: 'flash' });
+  }
+
+  /**
    * Validate extracted data structure
    * Note: AI now returns a simple array of competencies (strings) or object format
    * @param {Array|Object} data - Data to validate (array or object with competencies key)

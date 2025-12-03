@@ -1,0 +1,266 @@
+{
+  "description": "Example output from Competency_huerarchies_prompt for 'Backend Development'",
+  "input": "Backend Development",
+  "output": {
+    "competency": "Backend Development",
+    "subcompetencies": [
+      {
+        "competency": "Database Management",
+        "subcompetencies": [
+          {
+            "competency": "SQL",
+            "core-competency": true
+          },
+          {
+            "competency": "PostgreSQL",
+            "core-competency": true
+          },
+          {
+            "competency": "MongoDB",
+            "core-competency": true
+          },
+          {
+            "competency": "Redis",
+            "core-competency": true
+          }
+        ]
+      },
+      {
+        "competency": "Server-Side Programming",
+        "subcompetencies": [
+          {
+            "competency": "Node.js",
+            "core-competency": true
+          },
+          {
+            "competency": "Python",
+            "core-competency": true
+          },
+          {
+            "competency": "Java",
+            "core-competency": true
+          },
+          {
+            "competency": "Go",
+            "core-competency": true
+          }
+        ]
+      },
+      {
+        "competency": "API Development",
+        "subcompetencies": [
+          {
+            "competency": "RESTful APIs",
+            "core-competency": true
+          },
+          {
+            "competency": "GraphQL",
+            "core-competency": true
+          },
+          {
+            "competency": "WebSockets",
+            "core-competency": true
+          }
+        ]
+      },
+      {
+        "competency": "Authentication & Security",
+        "subcompetencies": [
+          {
+            "competency": "OAuth 2.0",
+            "core-competency": true
+          },
+          {
+            "competency": "JWT",
+            "core-competency": true
+          },
+          {
+            "competency": "Encryption",
+            "core-competency": true
+          }
+        ]
+      },
+      {
+        "competency": "DevOps & Deployment",
+        "subcompetencies": [
+          {
+            "competency": "Docker",
+            "core-competency": true
+          },
+          {
+            "competency": "Kubernetes",
+            "core-competency": true
+          },
+          {
+            "competency": "CI/CD",
+            "core-competency": true
+          },
+          {
+            "competency": "AWS",
+            "core-competency": true
+          }
+        ]
+      }
+    ]
+  },
+  "extracted_nodes": [
+    {
+      "name": "Backend Development",
+      "parentId": null,
+      "isCoreCompetency": false
+    },
+    {
+      "name": "Database Management",
+      "parentId": "Backend Development",
+      "isCoreCompetency": false
+    },
+    {
+      "name": "SQL",
+      "parentId": "Database Management",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "PostgreSQL",
+      "parentId": "Database Management",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "MongoDB",
+      "parentId": "Database Management",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "Redis",
+      "parentId": "Database Management",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "Server-Side Programming",
+      "parentId": "Backend Development",
+      "isCoreCompetency": false
+    },
+    {
+      "name": "Node.js",
+      "parentId": "Server-Side Programming",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "Python",
+      "parentId": "Server-Side Programming",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "Java",
+      "parentId": "Server-Side Programming",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "Go",
+      "parentId": "Server-Side Programming",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "API Development",
+      "parentId": "Backend Development",
+      "isCoreCompetency": false
+    },
+    {
+      "name": "RESTful APIs",
+      "parentId": "API Development",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "GraphQL",
+      "parentId": "API Development",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "WebSockets",
+      "parentId": "API Development",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "Authentication & Security",
+      "parentId": "Backend Development",
+      "isCoreCompetency": false
+    },
+    {
+      "name": "OAuth 2.0",
+      "parentId": "Authentication & Security",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "JWT",
+      "parentId": "Authentication & Security",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "Encryption",
+      "parentId": "Authentication & Security",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "DevOps & Deployment",
+      "parentId": "Backend Development",
+      "isCoreCompetency": false
+    },
+    {
+      "name": "Docker",
+      "parentId": "DevOps & Deployment",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "Kubernetes",
+      "parentId": "DevOps & Deployment",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "CI/CD",
+      "parentId": "DevOps & Deployment",
+      "isCoreCompetency": true
+    },
+    {
+      "name": "AWS",
+      "parentId": "DevOps & Deployment",
+      "isCoreCompetency": true
+    }
+  ],
+  "database_operations": {
+    "competencies_table": [
+      {
+        "competency_id": "uuid-1",
+        "competency_name": "Backend Development",
+        "description": null,
+        "parent_competency_id": null,
+        "source": "career_path_ai"
+      },
+      {
+        "competency_id": "uuid-2",
+        "competency_name": "Database Management",
+        "description": null,
+        "parent_competency_id": null,
+        "source": "career_path_ai"
+      },
+      {
+        "competency_id": "uuid-3",
+        "competency_name": "SQL",
+        "description": "Core competency (high-level skill)",
+        "parent_competency_id": null,
+        "source": "career_path_ai"
+      }
+    ],
+    "competency_subcompetency_table": [
+      {
+        "parent_competency_id": "uuid-1",
+        "child_competency_id": "uuid-2",
+        "comment": "Backend Development -> Database Management"
+      },
+      {
+        "parent_competency_id": "uuid-2",
+        "child_competency_id": "uuid-3",
+        "comment": "Database Management -> SQL"
+      }
+    ]
+  }
+}
+
