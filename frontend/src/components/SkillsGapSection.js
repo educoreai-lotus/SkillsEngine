@@ -3,7 +3,7 @@
  * Transformed from fixed sidebar to responsive inline section
  */
 
-import { AlertCircle, AlertTriangle, CheckCircle2, Target, Zap } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Target } from 'lucide-react';
 
 // Mock profile fallback for demo/preview when no live profile is available
 const MOCK_PROFILE = {
@@ -226,26 +226,6 @@ export default function SkillsGapSection() {
             </div>
           );
         })}
-      </div>
-
-      {/* Call to action */}
-      <div className="bg-gradient-to-r from-primary-500 to-accent-500 rounded-2xl p-6 text-white shadow-xl">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
-            <Zap className="w-6 h-6" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-lg mb-1">
-              Ready to Close the Gap?
-            </h3>
-            <p className="text-sm text-white/90">
-              Start with high-priority skills to maximize your impact
-            </p>
-          </div>
-          <button className="px-6 py-3 bg-white text-primary-600 font-bold rounded-xl hover:bg-white/90 hover:scale-105 transition-all shadow-lg">
-            Get Started
-          </button>
-        </div>
       </div>
     </div>
   );
