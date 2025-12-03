@@ -5,7 +5,7 @@
  * Run with: node backend/tests/manual/test-career-path-hierarchy.js
  */
 
-const competencyHierarchyService = require('../../src/services/competencyHierarchyService');
+const competencyService = require('../../src/services/competencyService');
 const aiService = require('../../src/services/aiService');
 const competencyRepository = require('../../src/repositories/competencyRepository');
 
@@ -23,13 +23,13 @@ async function testCareerPathHierarchy() {
 
     // Test 2: Extract nodes
     console.log('\n[TEST 2] Extracting nodes from hierarchy...');
-    const nodes = competencyHierarchyService.extractNodes(hierarchy);
+    const nodes = competencyService.extractNodesFromTree(hierarchy);
     console.log(`✓ Extracted ${nodes.length} nodes`);
     console.log('Sample nodes:', nodes.slice(0, 3));
 
     // Test 3: Build and persist hierarchy
     console.log('\n[TEST 3] Building and persisting hierarchy...');
-    const stats = await competencyHierarchyService.buildFromCareerPath('Backend Development');
+    const stats = await competencyService.buildHierarchyFromCareerPath('Backend Development');
     console.log('✓ Hierarchy persisted successfully');
     console.log('Statistics:', stats);
 

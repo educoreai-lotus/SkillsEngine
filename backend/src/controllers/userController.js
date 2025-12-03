@@ -7,7 +7,7 @@
 const userService = require('../services/userService');
 const extractionService = require('../services/extractionService');
 const normalizationService = require('../services/normalizationService');
-const competencyHierarchyService = require('../services/competencyHierarchyService');
+const competencyService = require('../services/competencyService');
 
 class UserController {
   /**
@@ -60,7 +60,7 @@ class UserController {
       // Step 1.5: Build competency hierarchy from career path (if provided)
       if (pathCareer && pathCareer.trim()) {
         console.log(`[UserController] Building competency hierarchy for career path: ${pathCareer}`);
-        const hierarchyStats = await competencyHierarchyService.buildFromCareerPath(pathCareer);
+        const hierarchyStats = await competencyService.buildHierarchyFromCareerPath(pathCareer);
         console.log('[UserController] Hierarchy build stats:', hierarchyStats);
       } else {
         console.log('[UserController] No path_career provided, skipping hierarchy generation');

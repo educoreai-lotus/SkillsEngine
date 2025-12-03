@@ -127,10 +127,10 @@ PRIMARY KEY (parent_competency_id, child_competency_id)
 - Calls Gemini API (flash model)
 - Returns hierarchical JSON structure
 
-### `competencyHierarchyService.js`
+### `competencyService.js`
 **Methods:**
-1. `buildFromCareerPath(careerPath)` - Main orchestrator
-2. `extractNodes(tree, parentId)` - Flattens tree into node array
+1. `buildHierarchyFromCareerPath(careerPath)` - Main orchestrator
+2. `extractNodesFromTree(tree, parentId)` - Flattens tree into node array
 3. `persistHierarchy(nodes)` - Saves nodes and relationships to database
 4. `validateHierarchyTree(tree)` - Validates AI response structure
 
@@ -295,7 +295,7 @@ curl -X POST http://localhost:3000/api/user/onboard \
 ## Related Files
 
 - `backend/src/services/aiService.js`
-- `backend/src/services/competencyHierarchyService.js`
+- `backend/src/services/competencyService.js`
 - `backend/src/controllers/userController.js`
 - `backend/src/models/Competency.js`
 - `backend/src/repositories/competencyRepository.js`
