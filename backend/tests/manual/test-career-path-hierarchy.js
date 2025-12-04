@@ -41,7 +41,7 @@ async function testCareerPathHierarchy() {
     const backendComp = await competencyRepository.findByName('Backend Development');
     if (backendComp) {
       console.log('✓ Found "Backend Development" competency:', backendComp.competency_id);
-      
+
       // Check for subcompetencies
       const subComps = await competencyRepository.getSubCompetencyLinks(backendComp.competency_id);
       console.log(`✓ Found ${subComps.length} subcompetencies`);

@@ -376,17 +376,34 @@ class CompetencyRepository {
    * @returns {Promise<Competency[]>}
    */
   async getSubCompetencyLinks(parentCompetencyId) {
+    // We fetch links from the junction table first, then resolve each child
+    // competency via a separate lookup. This avoids depending on the exact
+    // foreign key constraint name or PostgREST relationship alias, and works
+    // regardless of whether the table is named competency_subcompetency or
+    // competency_subCompetency at the SQL level, as long as Supabase exposes
+    // it under this name.
     const { data, error } = await this.getClient()
-      .from('competency_subcompetency')
-      .select(`
-        child_competency_id,
-        competencies!competency_subcompetency_child_competency_id_fkey (*)
-      `)
-      .eq('parent_competency_id', parentCompetencyId)
-      .order('competencies(competency_name)');
+      .from('competency_subCompetency')
+      .select('child_competency_id')
+      .eq('parent_competency_id', parentCompetencyId);
 
     if (error) throw error;
-    return data.map(row => new Competency(row.competencies));
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    const children = [];
+    for (const row of data) {
+      if (!row.child_competency_id) continue;
+      const child = await this.findById(row.child_competency_id);
+      if (child) {
+        children.push(child);
+      }
+    }
+
+    // Sort by competency_name for stable ordering
+    children.sort((a, b) => (a.competency_name || '').localeCompare(b.competency_name || ''));
+    return children;
   }
 
   /**
@@ -398,7 +415,7 @@ class CompetencyRepository {
   async linkSubCompetency(parentCompetencyId, childCompetencyId) {
     // Check if already exists
     const { data: existing } = await this.getClient()
-      .from('competency_subcompetency')
+      .from('competency_subCompetency')
       .select('*')
       .eq('parent_competency_id', parentCompetencyId)
       .eq('child_competency_id', childCompetencyId)
@@ -407,7 +424,7 @@ class CompetencyRepository {
     if (existing) return true;
 
     const { error } = await this.getClient()
-      .from('competency_subcompetency')
+      .from('competency_subCompetency')
       .insert({ parent_competency_id: parentCompetencyId, child_competency_id: childCompetencyId });
 
     if (error) throw error;
@@ -422,7 +439,7 @@ class CompetencyRepository {
    */
   async unlinkSubCompetency(parentCompetencyId, childCompetencyId) {
     const { error } = await this.getClient()
-      .from('competency_subcompetency')
+      .from('competency_subCompetency')
       .delete()
       .eq('parent_competency_id', parentCompetencyId)
       .eq('child_competency_id', childCompetencyId);

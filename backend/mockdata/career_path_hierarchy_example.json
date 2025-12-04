@@ -249,7 +249,7 @@
         "source": "career_path_ai"
       }
     ],
-    "competency_subcompetency_table": [
+    "competency_subCompetency_table": [
       {
         "parent_competency_id": "uuid-1",
         "child_competency_id": "uuid-2",

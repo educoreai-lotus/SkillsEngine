@@ -30,7 +30,7 @@ This feature automatically builds and persists competency hierarchies based on a
    - If not, create new competency
    - Map to competency_id
                     ↓
-6. Create parent-child relationships in competency_subcompetency table
+6. Create parent-child relationships in competency_subCompetency table
                     ↓
 7. Proceed with raw data extraction (existing flow)
 ```
@@ -71,7 +71,7 @@ created_at             TIMESTAMP
 updated_at             TIMESTAMP
 ```
 
-#### `competency_subcompetency` (Junction Table)
+#### `competency_subCompetency` (Junction Table)
 ```sql
 parent_competency_id   UUID REFERENCES competencies(competency_id)
 child_competency_id    UUID REFERENCES competencies(competency_id)
