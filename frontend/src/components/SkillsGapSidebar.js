@@ -57,12 +57,6 @@ export default function SkillsGapSidebar() {
     }
   });
 
-  // Get priority style
-  const getPriorityBadge = (index) => {
-    if (index < 3) return { bg: 'bg-red-500', label: 'High' };
-    if (index < 6) return { bg: 'bg-amber-500', label: 'Medium' };
-    return { bg: 'bg-slate-500', label: 'Low' };
-  };
 
   if (!hasProfile) {
     return (
@@ -142,7 +136,7 @@ export default function SkillsGapSidebar() {
             </div>
 
             <p className="text-xs text-slate-400">
-              Focus on priority skills
+              Focus on missing skills
             </p>
           </div>
         </div>
@@ -157,7 +151,6 @@ export default function SkillsGapSidebar() {
         </div>
         <div className="divide-y divide-slate-200 dark:divide-slate-700 max-h-[600px] overflow-y-auto">
           {allMissingMGS.slice(0, 15).map((skill, index) => {
-            const priority = getPriorityBadge(index);
             return (
               <div
                 key={`${skill.skill_id}-${index}`}
@@ -165,7 +158,7 @@ export default function SkillsGapSidebar() {
               >
                 <div className="flex gap-3">
                   {/* Number Badge */}
-                  <div className={`w-8 h-8 rounded-lg ${priority.bg} flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-md`}>
+                  <div className="w-8 h-8 rounded-lg bg-slate-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-md">
                     {index + 1}
                   </div>
 
@@ -175,9 +168,6 @@ export default function SkillsGapSidebar() {
                       <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-50 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                         {skill.skill_name}
                       </h4>
-                      <span className={`${priority.bg} text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded-full flex-shrink-0`}>
-                        {priority.label}
-                      </span>
                     </div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1 mb-2">
                       {skill.competencyName}

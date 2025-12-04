@@ -57,37 +57,6 @@ export default function SkillsGapSection() {
     }
   });
 
-  // Prioritize skills (for demo - in real app this would be backend logic)
-  const prioritizedSkills = allMissingMGS.map((skill, index) => ({
-    ...skill,
-    priority: index < 3 ? 'high' : index < 6 ? 'medium' : 'low',
-  }));
-
-  const getPriorityStyle = (priority) => {
-    switch (priority) {
-      case 'high':
-        return {
-          bg: 'bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30',
-          border: 'border-red-200 dark:border-red-800',
-          badge: 'bg-gradient-to-r from-red-500 to-rose-500',
-          icon: 'text-red-600 dark:text-red-400',
-        };
-      case 'medium':
-        return {
-          bg: 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30',
-          border: 'border-amber-200 dark:border-amber-800',
-          badge: 'bg-gradient-to-r from-amber-500 to-orange-500',
-          icon: 'text-amber-600 dark:text-amber-400',
-        };
-      default:
-        return {
-          bg: 'bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-900/30 dark:to-gray-900/30',
-          border: 'border-slate-200 dark:border-slate-700',
-          badge: 'bg-gradient-to-r from-slate-500 to-gray-500',
-          icon: 'text-slate-600 dark:text-slate-400',
-        };
-    }
-  };
 
   if (!hasProfile) {
     return (
@@ -171,32 +140,24 @@ export default function SkillsGapSection() {
             </div>
 
             <p className="text-xs text-slate-400 mt-3">
-              Focus on high-priority skills to improve your competency coverage
+              Focus on missing skills to improve your competency coverage
             </p>
           </div>
         </div>
       )}
 
-      {/* Priority skills grid */}
+      {/* Skills grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {prioritizedSkills.map((skill, index) => {
-          const styles = getPriorityStyle(skill.priority);
+        {allMissingMGS.map((skill, index) => {
           return (
             <div
               key={`${skill.skill_id}-${index}`}
-              className={`group relative ${styles.bg} ${styles.border} border rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 animate-slide-up`}
+              className="group relative bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-900/30 dark:to-gray-900/30 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 animate-slide-up"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              {/* Priority badge */}
-              <div className="absolute -top-2 -right-2">
-                <div className={`${styles.badge} text-white text-[10px] font-bold uppercase px-2 py-1 rounded-full shadow-md`}>
-                  {skill.priority}
-                </div>
-              </div>
-
               <div className="flex gap-3">
                 {/* Number badge */}
-                <div className={`w-10 h-10 rounded-lg ${styles.badge} flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-md group-hover:scale-110 transition-transform`}>
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-slate-500 to-gray-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-md group-hover:scale-110 transition-transform">
                   {index + 1}
                 </div>
 
