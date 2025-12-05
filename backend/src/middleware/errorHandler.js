@@ -31,6 +31,27 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  // Request aborted errors
+  if (err.message === 'request aborted' || err.message?.includes('aborted') || err.name === 'BadRequestError') {
+    // Don't log as error - client disconnected, which is normal
+    console.warn('Request aborted by client:', {
+      url: req.url,
+      method: req.method,
+      timestamp: new Date().toISOString()
+    });
+    // Don't send response if headers already sent or connection closed
+    if (!res.headersSent && !req.aborted) {
+      return res.status(499).json({
+        response: {
+          status: 'error',
+          message: 'Request was cancelled',
+          data: {}
+        }
+      });
+    }
+    return; // Connection already closed
+  }
+
   // Validation errors
   if (err.name === 'ValidationError') {
     return res.status(400).json({

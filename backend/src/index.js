@@ -37,7 +37,31 @@ console.log(`⚠️  CORS: Allowing all origins (FRONTEND_URL=${FRONTEND_URL || 
 
 // Middleware
 app.use(cors(corsOptions));
-app.use(express.json());
+
+// Body parser with size limits and error handling
+app.use(express.json({
+  limit: '10mb', // Limit request body size
+  verify: (req, res, buf, encoding) => {
+    // Check if request was aborted
+    if (req.aborted) {
+      throw new Error('Request aborted');
+    }
+  }
+}));
+
+// Handle JSON parsing errors
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({
+      response: {
+        status: 'error',
+        message: 'Invalid JSON in request body',
+        data: {}
+      }
+    });
+  }
+  next(err);
+});
 
 // Rate limiting
 const { apiLimiter } = require('./middleware/rateLimiter');

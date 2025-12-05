@@ -31,9 +31,35 @@ class UnifiedEndpointHandler {
    * @param {Object} res - Express response object
    */
   async handle(req, res) {
+    // Check if request was aborted
+    if (req.aborted) {
+      console.warn('[UnifiedEndpointHandler] Request aborted before processing');
+      return;
+    }
+
+    // Set up request timeout (30 seconds)
+    const timeout = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(504).json({
+          response: {
+            status: 'error',
+            message: 'Request timeout',
+            data: {}
+          }
+        });
+      }
+    }, 30000);
+
     try {
+      // Check if request was aborted during body parsing
+      if (req.aborted) {
+        clearTimeout(timeout);
+        return;
+      }
+
       // Validate request body exists
       if (!req.body || typeof req.body !== 'object') {
+        clearTimeout(timeout);
         return res.status(400).json({
           response: {
             status: 'error',
@@ -47,6 +73,7 @@ class UnifiedEndpointHandler {
 
       // Validate request structure
       if (!requester_service) {
+        clearTimeout(timeout);
         return res.status(400).json({
           response: {
             status: 'error',
@@ -59,6 +86,7 @@ class UnifiedEndpointHandler {
       // Get handler for this service
       const handler = HANDLER_MAP[requester_service];
       if (!handler) {
+        clearTimeout(timeout);
         return res.status(400).json({
           response: {
             status: 'error',
@@ -70,6 +98,7 @@ class UnifiedEndpointHandler {
 
       // Validate handler has process method
       if (typeof handler.process !== 'function') {
+        clearTimeout(timeout);
         console.error(
           '[UnifiedEndpointHandler] Handler missing process method',
           { requester_service, handlerType: typeof handler }
@@ -88,6 +117,7 @@ class UnifiedEndpointHandler {
 
       // Validate result structure
       if (!result || typeof result !== 'object') {
+        clearTimeout(timeout);
         console.error(
           '[UnifiedEndpointHandler] Handler returned invalid result',
           { requester_service, resultType: typeof result }
@@ -101,6 +131,15 @@ class UnifiedEndpointHandler {
         });
       }
 
+      // Clear timeout on success
+      clearTimeout(timeout);
+
+      // Check if request was aborted before sending response
+      if (req.aborted) {
+        console.warn('[UnifiedEndpointHandler] Request aborted before sending response');
+        return;
+      }
+
       // Return in unified format
       return res.json({
         requester_service,
@@ -108,15 +147,25 @@ class UnifiedEndpointHandler {
         response: result
       });
     } catch (error) {
+      // Clear timeout on error
+      clearTimeout(timeout);
+
+      // Handle aborted requests gracefully
+      if (error.message === 'request aborted' || error.message?.includes('aborted') || req.aborted) {
+        console.warn('[UnifiedEndpointHandler] Request aborted during processing');
+        return; // Don't send response if request was aborted
+      }
+
       // Log error for debugging
       console.error('[UnifiedEndpointHandler] Error processing request:', {
         error: error.message,
         stack: error.stack,
-        body: req.body
+        url: req.url,
+        method: req.method
       });
 
-      // Ensure response is sent
-      if (!res.headersSent) {
+      // Ensure response is sent (only if not aborted)
+      if (!res.headersSent && !req.aborted) {
         return res.status(500).json({
           response: {
             status: 'error',
