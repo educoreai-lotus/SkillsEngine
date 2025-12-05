@@ -56,7 +56,7 @@ export default function Header({ user, isDarkMode, setIsDarkMode }) {
                 {userName}
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">
-                {user?.employee_type === 'trainer' ? 'Trainer' : 'Learner'}
+                {user?.employee_type?.toLowerCase()?.trim() === 'trainer' ? 'Trainer' : 'Learner'}
               </span>
             </div>
           </div>

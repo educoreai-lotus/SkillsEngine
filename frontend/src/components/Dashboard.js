@@ -35,10 +35,24 @@ export default function Dashboard({ userId }) {
   const { hierarchies, loading: hierarchyLoading } = useCompetencyHierarchies(competencyIds);
 
   const hasProfile = !!profile;
+  // Handle different profile structures: profile.user or profile directly
   const user = hasProfile
-    ? profile.user
+    ? (profile.user || profile)
     : { user_name: 'Guest User', employee_type: 'regular' };
-  const isTrainer = user.employee_type === 'trainer';
+  // Case-insensitive check for trainer, also handle null/undefined
+  const employeeType = user?.employee_type?.toLowerCase()?.trim();
+  const isTrainer = employeeType === 'trainer';
+
+  // Debug logging (remove in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Dashboard] Profile check:', {
+      hasProfile,
+      profile: profile ? Object.keys(profile) : null,
+      user: user ? { ...user, employee_type: user.employee_type } : null,
+      employeeType,
+      isTrainer
+    });
+  }
 
   const loading = profileLoading || competenciesLoading;
   const error = profileError || competenciesError;
@@ -70,55 +84,55 @@ export default function Dashboard({ userId }) {
         )}
 
         {/* Main Content-Two Column Layout */}
-        {hasProfile && (
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left Column - Competencies */}
-            <div className="flex-1 space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-50">
-                    Your Competencies
-                  </h2>
-                  <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 mt-1">
-                    Track your progress across {competencies.length} competencies
-                  </p>
-                </div>
-
-                {isTrainer && (
-                  <button
-                    type="button"
-                    onClick={() => setShowUploadModal(true)}
-                    className="btn-primary inline-flex items-center gap-2"
-                  >
-                    <Upload className="w-5 h-5" />
-                    <span className="hidden sm:inline">Add Custom Skills</span>
-                  </button>
-                )}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Left Column - Competencies */}
+          <div className="flex-1 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-50">
+                  Your Competencies
+                </h2>
+                <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 mt-1">
+                  Track your progress across {competencies.length} competencies
+                </p>
               </div>
 
-              {/* Competency Cards Grid */}
-              {competencies.length === 0 ? (
-                <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700">
-                  <p className="text-slate-600 dark:text-slate-400 text-lg">
-                    No competencies available yet for this profile.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {competencies.map((userComp) => (
-                    <CompetencyCard
-                      key={userComp.competency_id}
-                      userCompetency={userComp}
-                      onClick={() => setSelectedCompetency(userComp.competency_id)}
-                      isLoadingHierarchy={hierarchyLoading[userComp.competency_id]}
-                      hierarchyData={hierarchies[userComp.competency_id]}
-                    />
-                  ))}
-                </div>
+              {isTrainer && (
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(true)}
+                  className="btn-primary inline-flex items-center gap-2"
+                >
+                  <Upload className="w-5 h-5" />
+                  <span className="hidden sm:inline">Add Custom Skills</span>
+                </button>
               )}
             </div>
 
-            {/* Right Column - Relevance Score, Career Path & Skills Gap */}
+            {/* Competency Cards Grid */}
+            {competencies.length === 0 ? (
+              <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700">
+                <p className="text-slate-600 dark:text-slate-400 text-lg">
+                  No competencies available yet for this profile.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {competencies.map((userComp) => (
+                  <CompetencyCard
+                    key={userComp.competency_id}
+                    userCompetency={userComp}
+                    onClick={() => setSelectedCompetency(userComp.competency_id)}
+                    isLoadingHierarchy={hierarchyLoading[userComp.competency_id]}
+                    hierarchyData={hierarchies[userComp.competency_id]}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Relevance Score, Career Path & Skills Gap */}
+          {hasProfile && (
             <div className="w-full lg:w-96 space-y-6">
               {/* Relevance Score Card */}
               <StatsOverview
@@ -130,8 +144,8 @@ export default function Dashboard({ userId }) {
               {/* Skills Gap Sidebar */}
               <SkillsGapSidebar profile={profile} />
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
 
       {/* Competency Modal */}
