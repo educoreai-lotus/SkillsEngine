@@ -20,55 +20,74 @@ class VerificationService {
    */
   async processBaselineExamResults(userId, examResults) {
     try {
-      const { verified_skills = [] } = examResults;
+      // Support multiple field names from Assessment MS for backward compatibility:
+      // - verified_skills (new, recommended)
+      // - skills (legacy)
+      // - verifiedSkills (camelCase variant)
+      const verifiedSkillsInput =
+        examResults?.verified_skills ||
+        examResults?.skills ||
+        examResults?.verifiedSkills ||
+        [];
 
       // Update userCompetency with verified skills
       const updatedCompetencies = new Set();
 
     // Helper: normalize a single verified skill coming from Assessment MS
-    // - Ensure JSON shape: { skill_id, skill_name, verified }
-    // - Only persist leaf / MGS skills (last level in the hierarchy)
-    // - Only process MGS with status "pass" (skip status "fail")
-    const normalizeVerifiedSkill = async (rawSkill) => {
-      if (!rawSkill || !rawSkill.skill_id) {
-        return null;
-      }
-
-      const { skill_id, skill_name, score, passed, status } = rawSkill;
-
-      // Support both old format (passed boolean) and new format (status: "pass"/"fail")
-      const skillStatus = status || (passed ? 'pass' : 'fail');
-      
-      // Only process MGS with status "pass"
-      if (skillStatus !== 'pass') {
-        return null; // Skip MGS that did not pass
-      }
-
-      // Ensure we only persist MGS / leaf skills in verifiedSkills
-      // If this skill has children, skip it here so verifiedSkills
-      // always represents the most granular skills only.
-      try {
-        const isLeaf = await skillRepository.isLeaf(skill_id);
-        if (!isLeaf) {
+      // - Ensure JSON shape: { skill_id, skill_name, verified }
+      // - Only persist leaf / MGS skills (last level in the hierarchy)
+      // - Only process MGS with status "pass" (skip status "fail")
+      const normalizeVerifiedSkill = async (rawSkill) => {
+        if (!rawSkill || !rawSkill.skill_id) {
           return null;
         }
-      } catch (err) {
-        // If leaf check fails for any reason, fail-safe by skipping this entry
-        console.warn(
-          '[VerificationService.processBaselineExamResults] Failed to check leaf for skill',
-          { skill_id, error: err.message }
-        );
-        return null;
-      }
 
-      return {
-        skill_id,
-        skill_name,
-        verified: true // Only MGS with status "pass" are added
+        const { skill_id, skill_name, score, passed, status } = rawSkill;
+
+        // Support both old format (passed boolean) and new format (status: "pass"/"fail")
+        // Normalize to lowercase string for robustness ("PASS", "Pass", etc.)
+        let skillStatus = status;
+
+        if (skillStatus == null) {
+          if (typeof passed === 'boolean') {
+            skillStatus = passed ? 'pass' : 'fail';
+          }
+        }
+
+        if (typeof skillStatus === 'string') {
+          skillStatus = skillStatus.toLowerCase().trim();
+        }
+
+        // Only process MGS with status "pass"
+        if (skillStatus !== 'pass') {
+          return null; // Skip MGS that did not pass
+        }
+
+        // Ensure we only persist MGS / leaf skills in verifiedSkills
+        // If this skill has children, skip it here so verifiedSkills
+        // always represents the most granular skills only.
+        try {
+          const isLeaf = await skillRepository.isLeaf(skill_id);
+          if (!isLeaf) {
+            return null;
+          }
+        } catch (err) {
+          // If leaf check fails for any reason, fail-safe by skipping this entry
+          console.warn(
+            '[VerificationService.processBaselineExamResults] Failed to check leaf for skill',
+            { skill_id, error: err.message }
+          );
+          return null;
+        }
+
+        return {
+          skill_id,
+          skill_name,
+          verified: true // Only MGS with status "pass" are added
+        };
       };
-    };
 
-    for (const rawVerifiedSkill of verified_skills) {
+      for (const rawVerifiedSkill of verifiedSkillsInput) {
       try {
         const normalized = await normalizeVerifiedSkill(rawVerifiedSkill);
 
@@ -216,7 +235,7 @@ class VerificationService {
       return {
         userId,
         updated_competencies: Array.from(updatedCompetencies),
-        verified_skills_count: verified_skills.length
+        verified_skills_count: verifiedSkillsInput.length
       };
     } catch (error) {
       // Log error but return partial results
