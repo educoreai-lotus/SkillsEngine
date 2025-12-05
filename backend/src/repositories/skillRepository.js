@@ -152,11 +152,42 @@ class SkillRepository {
   }
 
   /**
-   * Find parent skill
+   * Find parent skill using either:
+   * - skill_subSkill junction table (L2 → L3 → L4 relations)
+   * - or legacy parent_skill_id column on skills table (fallback)
    * @param {string} skillId - Skill ID
    * @returns {Promise<Skill|null>}
    */
   async findParent(skillId) {
+    // 1) Prefer junction table skill_subSkill (parent_skill_id, child_skill_id)
+    try {
+      const { data, error } = await this.getClient()
+        .from('skill_subSkill')
+        .select('parent_skill_id')
+        .eq('child_skill_id', skillId)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        // Log warning but continue to legacy fallback
+        console.warn('[SkillRepository.findParent] Error querying skill_subSkill', {
+          skillId,
+          error: error.message
+        });
+      } else if (data && data.parent_skill_id) {
+        const parent = await this.findById(data.parent_skill_id);
+        if (parent) {
+          return parent;
+        }
+      }
+    } catch (err) {
+      console.error('[SkillRepository.findParent] Unexpected error with skill_subSkill', {
+        skillId,
+        error: err.message
+      });
+    }
+
+    // 2) Fallback: use parent_skill_id column on skills table
     const skill = await this.findById(skillId);
     if (!skill || !skill.parent_skill_id) {
       return null;
@@ -288,15 +319,36 @@ class SkillRepository {
    */
   async isLeaf(skillId) {
     // We treat a skill as a leaf (MGS) when it has NO children.
-    // Use count with head: true for an efficient existence check.
-    const { count, error } = await this.getClient()
+    // Children are defined primarily via the skill_subSkill junction table.
+    try {
+      // 1) Check junction table for any children
+      const { count, error } = await this.getClient()
+        .from('skill_subSkill')
+        .select('child_skill_id', { count: 'exact', head: true })
+        .eq('parent_skill_id', skillId);
+
+      if (error) throw error;
+      if ((count || 0) > 0) {
+        // Has children via junction table → not a leaf
+        return false;
+      }
+    } catch (err) {
+      console.error('[SkillRepository.isLeaf] Error checking skill_subSkill', {
+        skillId,
+        error: err.message
+      });
+      // Fall through to legacy check
+    }
+
+    // 2) Fallback: check legacy parent_skill_id column on skills
+    const { count: legacyCount, error: legacyError } = await this.getClient()
       .from('skills')
       .select('skill_id', { count: 'exact', head: true })
       .eq('parent_skill_id', skillId);
 
-    if (error) throw error;
-    // If there are zero children, this is a leaf/MGS skill
-    return (count || 0) === 0;
+    if (legacyError) throw legacyError;
+    // If there are zero children in both places, this is a leaf/MGS skill
+    return (legacyCount || 0) === 0;
   }
 
   /**

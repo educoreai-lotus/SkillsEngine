@@ -318,6 +318,8 @@ class CompetencyService {
    * Get all competencies that require a specific skill
    * For MGS (leaf skills), we traverse up the skill hierarchy to find
    * any ancestor skills that are linked to competencies via competency_skill.
+   * The L2 → L3 → L4 relations are stored in the skill_subSkill junction table,
+   * which is accessed via SkillRepository.findParent().
    * @param {string} skillId - Skill ID (can be MGS or any level)
    * @returns {Promise<Competency[]>}
    */
@@ -332,7 +334,7 @@ class CompetencyService {
     let currentSkillId = skillId;
 
     // Traverse up the skill hierarchy: MGS -> parent skill -> L1 skill
-    // At each level, find competencies linked to that skill.
+    // At each level, find competencies linked to that skill via competency_skill.
     while (currentSkillId && !visitedSkillIds.has(currentSkillId)) {
       visitedSkillIds.add(currentSkillId);
 
@@ -350,13 +352,13 @@ class CompetencyService {
         // If this level fails, try the parent skill (if any)
       }
 
-      // 2. Move up to parent skill
+      // 2. Move up to parent skill (uses skill_subSkill via SkillRepository.findParent)
       try {
-        const skill = await skillRepository.findById(currentSkillId);
-        if (!skill || !skill.parent_skill_id) {
+        const parentSkill = await skillRepository.findParent(currentSkillId);
+        if (!parentSkill) {
           break; // Reached top of skill hierarchy
         }
-        currentSkillId = skill.parent_skill_id;
+        currentSkillId = parentSkill.skill_id;
       } catch (error) {
         console.error(
           '[CompetencyService.getCompetenciesBySkill] Error loading skill parent',
