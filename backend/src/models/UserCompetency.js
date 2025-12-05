@@ -9,7 +9,9 @@ class UserCompetency {
     this.user_id = data.user_id;
     this.competency_id = data.competency_id;
     this.coverage_percentage = data.coverage_percentage || 0.00;
-    this.proficiency_level = data.proficiency_level || null;
+    // Default to 'undefined' (string) if not provided - matches documentation
+    // null is also accepted for backward compatibility
+    this.proficiency_level = data.proficiency_level !== undefined ? data.proficiency_level : 'undefined';
     // Support both camelCase (model) and snake_case (DB) for verified skills
     this.verifiedSkills = data.verifiedSkills || data.verifiedskills || [];
     // Optional competency name when joined with competencies table

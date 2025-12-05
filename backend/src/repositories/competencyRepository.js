@@ -447,6 +447,53 @@ class CompetencyRepository {
     if (error) throw error;
     return true;
   }
+
+  /**
+   * Get parent competencies for a child competency (traversing up the hierarchy)
+   * Uses competency_subCompetency table to find all parent competencies
+   * @param {string} childCompetencyId - Child competency ID
+   * @returns {Promise<Competency[]>} Array of parent competencies (all levels up)
+   */
+  async getParentCompetencies(childCompetencyId) {
+    const parents = [];
+    let currentCompetencyId = childCompetencyId;
+    const visited = new Set(); // Prevent infinite loops
+
+    // Traverse up the hierarchy to find all parent competencies
+    while (currentCompetencyId && !visited.has(currentCompetencyId)) {
+      visited.add(currentCompetencyId);
+
+      // Find parent via competency_subCompetency table
+      const { data: parentLinks, error } = await this.getClient()
+        .from('competency_subCompetency')
+        .select('parent_competency_id')
+        .eq('child_competency_id', currentCompetencyId)
+        .limit(1)
+        .single();
+
+      if (error) {
+        // If no parent found (PGRST116 = not found), we've reached the top
+        if (error.code === 'PGRST116') {
+          break;
+        }
+        throw error;
+      }
+
+      if (parentLinks && parentLinks.parent_competency_id) {
+        const parent = await this.findById(parentLinks.parent_competency_id);
+        if (parent) {
+          parents.push(parent);
+          currentCompetencyId = parent.competency_id;
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+
+    return parents;
+  }
 }
 
 module.exports = new CompetencyRepository();
