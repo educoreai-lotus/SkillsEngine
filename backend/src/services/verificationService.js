@@ -19,10 +19,11 @@ class VerificationService {
    * @returns {Promise<Object>} Updated profile
    */
   async processBaselineExamResults(userId, examResults) {
-    const { verified_skills = [] } = examResults;
+    try {
+      const { verified_skills = [] } = examResults;
 
-    // Update userCompetency with verified skills
-    const updatedCompetencies = new Set();
+      // Update userCompetency with verified skills
+      const updatedCompetencies = new Set();
 
     // Helper: normalize a single verified skill coming from Assessment MS
     // - Ensure JSON shape: { skill_id, skill_name, verified }
@@ -68,86 +69,169 @@ class VerificationService {
     };
 
     for (const rawVerifiedSkill of verified_skills) {
-      const normalized = await normalizeVerifiedSkill(rawVerifiedSkill);
+      try {
+        const normalized = await normalizeVerifiedSkill(rawVerifiedSkill);
 
-      // If the skill is not a leaf or invalid, ignore it for verifiedSkills persistence
-      if (!normalized) {
-        continue;
-      }
+        // If the skill is not a leaf or invalid, ignore it for verifiedSkills persistence
+        if (!normalized) {
+          continue;
+        }
 
-      const { skill_id, skill_name, verified } = normalized;
+        const { skill_id, skill_name, verified } = normalized;
 
-      // Update userSkill
-      const userSkill = await userSkillRepository.findByUserAndSkill(userId, skill_id);
-      if (userSkill) {
-        await userSkillRepository.update(userId, skill_id, {
-          verified,
-          source: 'assessment'
-        });
-      }
+        // Update userSkill
+        try {
+          const userSkill = await userSkillRepository.findByUserAndSkill(userId, skill_id);
+          if (userSkill) {
+            await userSkillRepository.update(userId, skill_id, {
+              verified,
+              source: 'assessment'
+            });
+          }
+        } catch (err) {
+          console.warn(
+            '[VerificationService.processBaselineExamResults] Error updating userSkill',
+            { userId, skill_id, error: err.message }
+          );
+          // Continue processing other skills
+        }
 
-      // Find competencies that require this skill
-      const competencies = await competencyService.getCompetenciesBySkill(skill_id);
+        // Find competencies that require this skill
+        let competencies = [];
+        try {
+          competencies = await competencyService.getCompetenciesBySkill(skill_id);
+        } catch (err) {
+          console.error(
+            '[VerificationService.processBaselineExamResults] Error finding competencies for skill',
+            { skill_id, error: err.message }
+          );
+          // Skip this skill if we can't find competencies
+          continue;
+        }
 
-      for (const competency of competencies) {
-        let userComp = await userCompetencyRepository.findByUserAndCompetency(
-          userId,
-          competency.competency_id
+        for (const competency of competencies) {
+          try {
+            let userComp = await userCompetencyRepository.findByUserAndCompetency(
+              userId,
+              competency.competency_id
+            );
+
+            if (!userComp) {
+              // Create userCompetency if doesn't exist
+              // Initial proficiency_level is 'undefined' (string) - will be determined after baseline exam
+              try {
+                userComp = await userCompetencyRepository.create({
+                  user_id: userId,
+                  competency_id: competency.competency_id,
+                  coverage_percentage: 0.00,
+                  proficiency_level: 'undefined', // Initially undefined - will be determined after baseline exam
+                  verifiedSkills: []
+                });
+              } catch (err) {
+                console.error(
+                  '[VerificationService.processBaselineExamResults] Error creating userCompetency',
+                  { userId, competency_id: competency.competency_id, error: err.message }
+                );
+                // Skip this competency if creation fails
+                continue;
+              }
+            }
+
+            // Update verifiedSkills array
+            const verifiedSkills = userComp.verifiedSkills || [];
+            const existingIndex = verifiedSkills.findIndex(s => s.skill_id === skill_id);
+
+            // Persist only the minimal JSON shape in verifiedSkills
+            const verifiedSkillData = {
+              skill_id,
+              skill_name,
+              verified,
+            };
+
+            if (existingIndex >= 0) {
+              verifiedSkills[existingIndex] = verifiedSkillData;
+            } else {
+              verifiedSkills.push(verifiedSkillData);
+            }
+
+            // Recalculate coverage percentage
+            let coverage = 0;
+            try {
+              coverage = await this.calculateCoverage(userId, competency.competency_id);
+            } catch (err) {
+              console.warn(
+                '[VerificationService.processBaselineExamResults] Error calculating coverage',
+                { userId, competency_id: competency.competency_id, error: err.message }
+              );
+              // Use existing coverage if calculation fails
+              coverage = userComp.coverage_percentage || 0;
+            }
+
+            // Map coverage to proficiency level
+            const proficiencyLevel = this.mapCoverageToProficiency(coverage);
+
+            try {
+              await userCompetencyRepository.update(userId, competency.competency_id, {
+                verifiedSkills: verifiedSkills,
+                coverage_percentage: coverage,
+                proficiency_level: proficiencyLevel
+              });
+
+              updatedCompetencies.add(competency.competency_id);
+
+              // Update parent competencies if user owns them (don't fail if this fails)
+              try {
+                await this.updateParentCompetencies(userId, competency.competency_id);
+              } catch (err) {
+                console.warn(
+                  '[VerificationService.processBaselineExamResults] Error updating parent competencies',
+                  { userId, competency_id: competency.competency_id, error: err.message }
+                );
+                // Continue - parent update failure shouldn't fail the whole process
+              }
+            } catch (err) {
+              console.error(
+                '[VerificationService.processBaselineExamResults] Error updating userCompetency',
+                { userId, competency_id: competency.competency_id, error: err.message }
+              );
+              // Continue processing other competencies
+            }
+          } catch (err) {
+            console.error(
+              '[VerificationService.processBaselineExamResults] Error processing competency',
+              { userId, competency_id: competency?.competency_id, error: err.message }
+            );
+            // Continue processing other competencies
+          }
+        }
+      } catch (err) {
+        console.error(
+          '[VerificationService.processBaselineExamResults] Error processing skill',
+          { skill_id: rawVerifiedSkill?.skill_id, error: err.message }
         );
-
-        if (!userComp) {
-          // Create userCompetency if doesn't exist
-          // Initial proficiency_level is 'undefined' (string) - will be determined after baseline exam
-          userComp = await userCompetencyRepository.create({
-            user_id: userId,
-            competency_id: competency.competency_id,
-            coverage_percentage: 0.00,
-            proficiency_level: 'undefined', // Initially undefined - will be determined after baseline exam
-            verifiedSkills: []
-          });
-        }
-
-        // Update verifiedSkills array
-        const verifiedSkills = userComp.verifiedSkills || [];
-        const existingIndex = verifiedSkills.findIndex(s => s.skill_id === skill_id);
-
-        // Persist only the minimal JSON shape in verifiedSkills
-        const verifiedSkillData = {
-          skill_id,
-          skill_name,
-          verified,
-        };
-
-        if (existingIndex >= 0) {
-          verifiedSkills[existingIndex] = verifiedSkillData;
-        } else {
-          verifiedSkills.push(verifiedSkillData);
-        }
-
-        // Recalculate coverage percentage
-        const coverage = await this.calculateCoverage(userId, competency.competency_id);
-
-        // Map coverage to proficiency level
-        const proficiencyLevel = this.mapCoverageToProficiency(coverage);
-
-        await userCompetencyRepository.update(userId, competency.competency_id, {
-          verifiedSkills: verifiedSkills,
-          coverage_percentage: coverage,
-          proficiency_level: proficiencyLevel
-        });
-
-        updatedCompetencies.add(competency.competency_id);
-
-        // Update parent competencies if user owns them
-        await this.updateParentCompetencies(userId, competency.competency_id);
+        // Continue processing other skills
       }
     }
 
-    return {
-      userId,
-      updated_competencies: Array.from(updatedCompetencies),
-      verified_skills_count: verified_skills.length
-    };
+      return {
+        userId,
+        updated_competencies: Array.from(updatedCompetencies),
+        verified_skills_count: verified_skills.length
+      };
+    } catch (error) {
+      // Log error but return partial results
+      console.error(
+        '[VerificationService.processBaselineExamResults] Fatal error processing exam results',
+        { userId, error: error.message, stack: error.stack }
+      );
+      // Return partial results if available, or empty result
+      return {
+        userId,
+        updated_competencies: [],
+        verified_skills_count: 0,
+        error: error.message
+      };
+    }
   }
 
   /**

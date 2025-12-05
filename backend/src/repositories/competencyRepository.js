@@ -463,32 +463,45 @@ class CompetencyRepository {
     while (currentCompetencyId && !visited.has(currentCompetencyId)) {
       visited.add(currentCompetencyId);
 
-      // Find parent via competency_subCompetency table
-      const { data: parentLinks, error } = await this.getClient()
-        .from('competency_subCompetency')
-        .select('parent_competency_id')
-        .eq('child_competency_id', currentCompetencyId)
-        .limit(1)
-        .single();
+      try {
+        // Find parent via competency_subCompetency table
+        // Use .maybeSingle() instead of .single() to avoid errors when no parent exists
+        const { data: parentLinks, error } = await this.getClient()
+          .from('competency_subCompetency')
+          .select('parent_competency_id')
+          .eq('child_competency_id', currentCompetencyId)
+          .limit(1)
+          .maybeSingle();
 
-      if (error) {
-        // If no parent found (PGRST116 = not found), we've reached the top
-        if (error.code === 'PGRST116') {
+        if (error) {
+          // Log error but don't throw - gracefully return what we have so far
+          console.warn(
+            '[CompetencyRepository.getParentCompetencies] Error finding parent',
+            { childCompetencyId: currentCompetencyId, error: error.message }
+          );
           break;
         }
-        throw error;
-      }
 
-      if (parentLinks && parentLinks.parent_competency_id) {
+        if (!parentLinks || !parentLinks.parent_competency_id) {
+          // No parent found, we've reached the top
+          break;
+        }
+
         const parent = await this.findById(parentLinks.parent_competency_id);
         if (parent) {
           parents.push(parent);
           currentCompetencyId = parent.competency_id;
         } else {
+          // Parent ID exists but competency not found - break to avoid infinite loop
           break;
         }
-      } else {
-        break;
+      } catch (err) {
+        // Catch any unexpected errors (e.g., database connection issues)
+        console.error(
+          '[CompetencyRepository.getParentCompetencies] Unexpected error',
+          { childCompetencyId: currentCompetencyId, error: err.message }
+        );
+        break; // Gracefully exit loop instead of crashing
       }
     }
 

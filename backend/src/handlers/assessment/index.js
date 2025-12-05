@@ -15,12 +15,30 @@ class AssessmentHandler {
    */
   async process(payload, responseTemplate) {
     try {
+      // Validate payload structure
+      if (!payload || typeof payload !== 'object') {
+        return {
+          status: 'error',
+          message: 'Invalid payload structure',
+          data: {}
+        };
+      }
+
       const { user_id, exam_type, exam_results } = payload;
 
       if (!user_id || !exam_results) {
         return {
           status: 'error',
           message: 'user_id and exam_results are required',
+          data: {}
+        };
+      }
+
+      // Validate exam_results is an object
+      if (typeof exam_results !== 'object' || exam_results === null) {
+        return {
+          status: 'error',
+          message: 'exam_results must be an object',
           data: {}
         };
       }
@@ -39,6 +57,19 @@ class AssessmentHandler {
         };
       }
 
+      // Validate result structure
+      if (!result || typeof result !== 'object') {
+        console.error(
+          '[AssessmentHandler] Verification service returned invalid result',
+          { user_id, exam_type, resultType: typeof result }
+        );
+        return {
+          status: 'error',
+          message: 'Failed to process exam results',
+          data: {}
+        };
+      }
+
       return {
         status: 'success',
         message: 'Exam results processed successfully',
@@ -48,9 +79,16 @@ class AssessmentHandler {
         }
       };
     } catch (error) {
+      // Log error for debugging
+      console.error('[AssessmentHandler] Error processing request:', {
+        error: error.message,
+        stack: error.stack,
+        payload: payload
+      });
+
       return {
         status: 'error',
-        message: error.message,
+        message: error.message || 'Internal server error',
         data: {}
       };
     }

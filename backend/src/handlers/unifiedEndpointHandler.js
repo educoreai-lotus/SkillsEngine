@@ -32,6 +32,17 @@ class UnifiedEndpointHandler {
    */
   async handle(req, res) {
     try {
+      // Validate request body exists
+      if (!req.body || typeof req.body !== 'object') {
+        return res.status(400).json({
+          response: {
+            status: 'error',
+            message: 'Request body is required',
+            data: {}
+          }
+        });
+      }
+
       const { requester_service, payload, response: responseTemplate } = req.body;
 
       // Validate request structure
@@ -57,23 +68,63 @@ class UnifiedEndpointHandler {
         });
       }
 
+      // Validate handler has process method
+      if (typeof handler.process !== 'function') {
+        console.error(
+          '[UnifiedEndpointHandler] Handler missing process method',
+          { requester_service, handlerType: typeof handler }
+        );
+        return res.status(500).json({
+          response: {
+            status: 'error',
+            message: 'Handler configuration error',
+            data: {}
+          }
+        });
+      }
+
       // Route to handler
       const result = await handler.process(payload, responseTemplate);
 
+      // Validate result structure
+      if (!result || typeof result !== 'object') {
+        console.error(
+          '[UnifiedEndpointHandler] Handler returned invalid result',
+          { requester_service, resultType: typeof result }
+        );
+        return res.status(500).json({
+          response: {
+            status: 'error',
+            message: 'Handler returned invalid response',
+            data: {}
+          }
+        });
+      }
+
       // Return in unified format
-      res.json({
+      return res.json({
         requester_service,
         payload,
         response: result
       });
     } catch (error) {
-      res.status(500).json({
-        response: {
-          status: 'error',
-          message: error.message,
-          data: {}
-        }
+      // Log error for debugging
+      console.error('[UnifiedEndpointHandler] Error processing request:', {
+        error: error.message,
+        stack: error.stack,
+        body: req.body
       });
+
+      // Ensure response is sent
+      if (!res.headersSent) {
+        return res.status(500).json({
+          response: {
+            status: 'error',
+            message: error.message || 'Internal server error',
+            data: {}
+          }
+        });
+      }
     }
   }
 }

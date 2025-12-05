@@ -2,6 +2,17 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Global error handlers for unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️  Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process, just log the error
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('⚠️  Uncaught Exception:', error);
+  // Don't exit the process, just log the error
+});
+
 const app = express();
 // Railway (and most PaaS providers) inject a PORT env var that we must respect.
 // Default to 3000 only if PORT is not set (e.g. local dev without .env).
