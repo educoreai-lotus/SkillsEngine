@@ -25,11 +25,16 @@ class UserCompetencyRepository {
 
   /**
    * Create a new user competency
-   * @param {UserCompetency} userCompetency - UserCompetency model instance
+   * @param {UserCompetency|Object} userCompetency - UserCompetency model instance or plain object
    * @returns {Promise<UserCompetency>}
    */
   async create(userCompetency) {
-    const validation = userCompetency.validate();
+    // Ensure we always work with a UserCompetency model instance
+    const model = userCompetency instanceof UserCompetency
+      ? userCompetency
+      : new UserCompetency(userCompetency);
+
+    const validation = model.validate();
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
@@ -37,11 +42,11 @@ class UserCompetencyRepository {
     const { data, error } = await this.getClient()
       .from('usercompetency')
       .insert({
-        user_id: userCompetency.user_id,
-        competency_id: userCompetency.competency_id,
-        coverage_percentage: userCompetency.coverage_percentage,
-        proficiency_level: userCompetency.proficiency_level,
-        verifiedskills: userCompetency.verifiedSkills
+        user_id: model.user_id,
+        competency_id: model.competency_id,
+        coverage_percentage: model.coverage_percentage,
+        proficiency_level: model.proficiency_level,
+        verifiedskills: model.verifiedSkills
       })
       .select()
       .single();

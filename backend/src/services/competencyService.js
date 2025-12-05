@@ -316,11 +316,57 @@ class CompetencyService {
 
   /**
    * Get all competencies that require a specific skill
-   * @param {string} skillId - Skill ID
+   * For MGS (leaf skills), we traverse up the skill hierarchy to find
+   * any ancestor skills that are linked to competencies via competency_skill.
+   * @param {string} skillId - Skill ID (can be MGS or any level)
    * @returns {Promise<Competency[]>}
    */
   async getCompetenciesBySkill(skillId) {
-    return await competencyRepository.findBySkill(skillId);
+    if (!skillId) {
+      return [];
+    }
+
+    const visitedSkillIds = new Set();
+    const competencyMap = new Map(); // competency_id -> Competency
+
+    let currentSkillId = skillId;
+
+    // Traverse up the skill hierarchy: MGS -> parent skill -> L1 skill
+    // At each level, find competencies linked to that skill.
+    while (currentSkillId && !visitedSkillIds.has(currentSkillId)) {
+      visitedSkillIds.add(currentSkillId);
+
+      // 1. Find competencies directly linked to this skill_id
+      try {
+        const comps = await competencyRepository.findBySkill(currentSkillId);
+        for (const comp of comps) {
+          competencyMap.set(comp.competency_id, comp);
+        }
+      } catch (error) {
+        console.error(
+          '[CompetencyService.getCompetenciesBySkill] Error finding competencies for skill',
+          { skillId: currentSkillId, error: error.message }
+        );
+        // If this level fails, try the parent skill (if any)
+      }
+
+      // 2. Move up to parent skill
+      try {
+        const skill = await skillRepository.findById(currentSkillId);
+        if (!skill || !skill.parent_skill_id) {
+          break; // Reached top of skill hierarchy
+        }
+        currentSkillId = skill.parent_skill_id;
+      } catch (error) {
+        console.error(
+          '[CompetencyService.getCompetenciesBySkill] Error loading skill parent',
+          { skillId: currentSkillId, error: error.message }
+        );
+        break;
+      }
+    }
+
+    return Array.from(competencyMap.values());
   }
 
   /**

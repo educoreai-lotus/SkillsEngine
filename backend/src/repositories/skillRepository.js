@@ -287,13 +287,16 @@ class SkillRepository {
    * @returns {Promise<boolean>}
    */
   async isLeaf(skillId) {
-    const { data, error } = await this.getClient()
+    // We treat a skill as a leaf (MGS) when it has NO children.
+    // Use count with head: true for an efficient existence check.
+    const { count, error } = await this.getClient()
       .from('skills')
       .select('skill_id', { count: 'exact', head: true })
       .eq('parent_skill_id', skillId);
 
     if (error) throw error;
-    return data === 0;
+    // If there are zero children, this is a leaf/MGS skill
+    return (count || 0) === 0;
   }
 
   /**
