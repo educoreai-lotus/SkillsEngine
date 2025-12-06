@@ -1,0 +1,955 @@
+{
+  "migrationFile": {
+    "version": "1.0.0",
+    "database": {
+      "tables": [
+        {
+          "name": "official_sources",
+          "schema": {
+            "columns": [
+              { "name": "source_id", "type": "varchar(255)", "primaryKey": true, "nullable": false },
+              { "name": "source_name", "type": "varchar(500)", "nullable": false },
+              { "name": "reference_index_url", "type": "varchar(1000)", "nullable": false },
+              { "name": "reference_type", "type": "varchar(100)", "nullable": true },
+              { "name": "access_method", "type": "varchar(100)", "nullable": true },
+              { "name": "hierarchy_support", "type": "boolean", "nullable": true, "default": false },
+              { "name": "provides", "type": "text", "nullable": true },
+              { "name": "topics_covered", "type": "text", "nullable": true },
+              { "name": "skill_focus", "type": "text", "nullable": true },
+              { "name": "notes", "type": "text", "nullable": true },
+              { "name": "is_extracted", "type": "boolean", "nullable": false, "default": false },
+              { "name": "last_checked", "type": "timestamp", "nullable": true },
+              { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" },
+              { "name": "updated_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
+            ]
+          }
+        },
+        {
+          "name": "competencies",
+          "schema": {
+            "columns": [
+              { "name": "competency_id", "type": "uuid", "primaryKey": true, "nullable": false, "default": "gen_random_uuid()" },
+              { "name": "competency_name", "type": "varchar(500)", "nullable": false },
+              { "name": "description", "type": "text", "nullable": true },
+              { "name": "parent_competency_id", "type": "uuid", "nullable": true },
+              { "name": "source", "type": "varchar(100)", "nullable": true, "default": "soc" },
+              { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" },
+              { "name": "updated_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
+            ],
+            "foreignKeys": [
+              {
+                "column": "parent_competency_id",
+                "references": { "table": "competencies", "column": "competency_id" },
+                "onDelete": "CASCADE"
+              }
+            ]
+          }
+        },
+        {
+          "name": "skills",
+          "schema": {
+            "columns": [
+              { "name": "skill_id", "type": "uuid", "primaryKey": true, "nullable": false, "default": "gen_random_uuid()" },
+              { "name": "skill_name", "type": "varchar(500)", "nullable": false, "unique": true },
+              { "name": "parent_skill_id", "type": "uuid", "nullable": true },
+              { "name": "description", "type": "text", "nullable": true },
+              { "name": "source", "type": "varchar(100)", "nullable": true, "default": "temp" },
+              { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" },
+              { "name": "updated_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
+            ],
+            "foreignKeys": [
+              {
+                "column": "parent_skill_id",
+                "references": { "table": "skills", "column": "skill_id" },
+                "onDelete": "CASCADE"
+              }
+            ]
+          }
+        },
+        {
+          "name": "users",
+          "schema": {
+            "columns": [
+              { "name": "user_id", "type": "uuid", "primaryKey": true, "nullable": false, "default": "gen_random_uuid()" },
+              { "name": "user_name", "type": "varchar(255)", "nullable": false },
+              { "name": "company_id", "type": "varchar(255)", "nullable": false },
+              { "name": "company_name", "type": "varchar(255)", "nullable": true },
+              { "name": "employee_type", "type": "varchar(100)", "nullable": true },
+              { "name": "path_career", "type": "varchar(500)", "nullable": true },
+              { "name": "raw_data", "type": "text", "nullable": true },
+              { "name": "relevance_score", "type": "numeric(5,2)", "nullable": true, "default": 0.00 },
+              { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" },
+              { "name": "updated_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
+            ],
+            "checks": [
+              {
+                "name": "chk_users_relevance_score",
+                "expression": "relevance_score >= 0.00 AND relevance_score <= 100.00"
+              }
+            ]
+          }
+        },
+        {
+          "name": "competency_skill",
+          "schema": {
+            "columns": [
+              { "name": "competency_id", "type": "uuid", "nullable": false },
+              { "name": "skill_id", "type": "uuid", "nullable": false },
+              { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
+            ],
+            "primaryKey": ["competency_id", "skill_id"],
+            "foreignKeys": [
+              {
+                "column": "competency_id",
+                "references": { "table": "competencies", "column": "competency_id" },
+                "onDelete": "CASCADE"
+              },
+              {
+                "column": "skill_id",
+                "references": { "table": "skills", "column": "skill_id" },
+                "onDelete": "CASCADE"
+              }
+            ]
+          }
+        },
+        {
+          "name": "competency_subcompetency",
+          "schema": {
+            "columns": [
+              { "name": "parent_competency_id", "type": "uuid", "nullable": false },
+              { "name": "child_competency_id", "type": "uuid", "nullable": false },
+              { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
+            ],
+            "primaryKey": ["parent_competency_id", "child_competency_id"],
+            "foreignKeys": [
+              {
+                "column": "parent_competency_id",
+                "references": { "table": "competencies", "column": "competency_id" },
+                "onDelete": "CASCADE"
+              },
+              {
+                "column": "child_competency_id",
+                "references": { "table": "competencies", "column": "competency_id" },
+                "onDelete": "CASCADE"
+              }
+            ]
+          }
+        },
+        {
+          "name": "skill_subskill",
+          "schema": {
+            "columns": [
+              { "name": "parent_skill_id", "type": "uuid", "nullable": false },
+              { "name": "child_skill_id", "type": "uuid", "nullable": false },
+              { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
+            ],
+            "primaryKey": ["parent_skill_id", "child_skill_id"],
+            "foreignKeys": [
+              {
+                "column": "parent_skill_id",
+                "references": { "table": "skills", "column": "skill_id" },
+                "onDelete": "CASCADE"
+              },
+              {
+                "column": "child_skill_id",
+                "references": { "table": "skills", "column": "skill_id" },
+                "onDelete": "CASCADE"
+              }
+            ]
+          }
+        },
+        {
+          "name": "userCompetency",
+          "schema": {
+            "columns": [
+              { "name": "user_id", "type": "uuid", "nullable": false },
+              { "name": "competency_id", "type": "uuid", "nullable": false },
+              { "name": "coverage_percentage", "type": "decimal(5,2)", "nullable": false, "default": 0.00 },
+              { "name": "proficiency_level", "type": "varchar(50)", "nullable": true },
+              { "name": "verifiedSkills", "type": "jsonb", "nullable": false, "default": "[]" },
+              { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" },
+              { "name": "updated_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
+            ],
+            "primaryKey": ["user_id", "competency_id"],
+            "foreignKeys": [
+              {
+                "column": "user_id",
+                "references": { "table": "users", "column": "user_id" },
+                "onDelete": "CASCADE"
+              },
+              {
+                "column": "competency_id",
+                "references": { "table": "competencies", "column": "competency_id" },
+                "onDelete": "CASCADE"
+              }
+            ],
+            "checks": [
+              {
+                "name": "chk_usercompetency_coverage",
+                "expression": "coverage_percentage >= 0.00 AND coverage_percentage <= 100.00"
+              }
+            ]
+          }
+        },
+        {
+          "name": "userSkill",
+          "schema": {
+            "columns": [
+              { "name": "user_id", "type": "uuid", "nullable": false },
+              { "name": "skill_id", "type": "uuid", "nullable": false },
+              { "name": "skill_name", "type": "varchar(500)", "nullable": false },
+              { "name": "verified", "type": "boolean", "nullable": false, "default": false },
+              { "name": "source", "type": "varchar(100)", "nullable": true },
+              { "name": "last_update", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" },
+              { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
+            ],
+            "primaryKey": ["user_id", "skill_id"],
+            "foreignKeys": [
+              {
+                "column": "user_id",
+                "references": { "table": "users", "column": "user_id" },
+                "onDelete": "CASCADE"
+              },
+              {
+                "column": "skill_id",
+                "references": { "table": "skills", "column": "skill_id" },
+                "onDelete": "CASCADE"
+              }
+            ]
+          }
+        }
+      ],
+      "migrations": [
+        {
+          "id": "000_initial_schema",
+          "description": "Initial schema with core taxonomy, user profile, and junction tables."
+        },
+        {
+          "id": "001_skill_rpc_functions",
+          "description": "RPC functions for MGS retrieval and skill depth (`get_mgs_for_skill`, `get_skill_depth`)."
+        }
+      ]
+    },
+    "api": {
+      "endpoints": [
+        {
+          "path": "/api/fill-content-metrics/",
+          "method": "POST",
+          "description": "Unified Data Exchange endpoint for all external microservices (directory-ms, assessment-ms, course-builder-ms, content-studio-ms, learner-ai-ms, analytics-ms, rag-ms).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "requester_service": {
+                "type": "string",
+                "enum": [
+                  "directory-ms",
+                  "assessment-ms",
+                  "course-builder-ms",
+                  "content-studio-ms",
+                  "learner-ai-ms",
+                  "analytics-ms",
+                  "rag-ms"
+                ]
+              },
+              "payload": {
+                "type": "object",
+                "description": "Service-specific payload as defined per microservice contract."
+              },
+              "response": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "enum": ["success", "error"] },
+                  "message": { "type": "string" },
+                  "data": { "type": "object" }
+                },
+                "required": ["status", "message", "data"]
+              }
+            },
+            "required": ["requester_service", "payload", "response"]
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "requester_service": { "type": "string" },
+              "payload": { "type": "object" },
+              "response": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "enum": ["success", "error"] },
+                  "message": { "type": "string" },
+                  "data": { "type": "object" }
+                },
+                "required": ["status", "message", "data"]
+              }
+            },
+            "required": ["requester_service", "payload", "response"]
+          }
+        },
+        {
+          "path": "/api/user/{user_id}/profile",
+          "method": "GET",
+          "description": "Get unified user profile and on-the-fly gap analysis for dashboard.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter user_id and Authorization header."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "basic_profile": { "type": "object" },
+              "competencies": { "type": "array", "items": { "type": "object" } },
+              "competency_trees": { "type": "object" },
+              "gap_analysis": { "type": "object" }
+            },
+            "required": ["basic_profile", "competencies"]
+          }
+        },
+        {
+          "path": "/api/user/{user_id}/profile/detailed",
+          "method": "GET",
+          "description": "Get detailed user profile including raw data, AI extraction, normalization, verification history.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter user_id and Authorization header."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "basic_profile": { "type": "object" },
+              "raw_data": { "type": "object" },
+              "ai_extraction": { "type": "object" },
+              "normalization": { "type": "object" },
+              "verification_history": { "type": "array", "items": { "type": "object" } },
+              "gap_analysis": { "type": "object" }
+            }
+          }
+        },
+        {
+          "path": "/api/user/{user_id}/profile/export",
+          "method": "POST",
+          "description": "Export user profile as JSON/PDF.",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "format": { "type": "string", "enum": ["json", "pdf"] },
+              "include_raw_data": { "type": "boolean" },
+              "include_verification_history": { "type": "boolean" }
+            },
+            "required": ["format"]
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "download_url": { "type": "string", "format": "uri" },
+              "expires_at": { "type": "string", "format": "date-time" }
+            },
+            "required": ["status", "download_url"]
+          }
+        },
+        {
+          "path": "/api/competencies",
+          "method": "GET",
+          "description": "List competencies with optional parent/search pagination filters.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Supports query params: parent_competency_id, page, limit, search."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "data": { "type": "array", "items": { "type": "object" } },
+              "pagination": { "type": "object" }
+            }
+          }
+        },
+        {
+          "path": "/api/competencies/{competency_id}",
+          "method": "GET",
+          "description": "Get competency by ID with children and linked skills.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter competency_id."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "competency_id": { "type": "string" },
+              "competency_name": { "type": "string" },
+              "description": { "type": ["string", "null"] },
+              "parent_competency_id": { "type": ["string", "null"] },
+              "child_competencies": { "type": "array", "items": { "type": "object" } },
+              "linked_skills": { "type": "array", "items": { "type": "object" } }
+            }
+          }
+        },
+        {
+          "path": "/api/competencies",
+          "method": "POST",
+          "description": "Create competency (trainer only).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "competency_id": { "type": "string" },
+              "competency_name": { "type": "string" },
+              "description": { "type": ["string", "null"] },
+              "parent_competency_id": { "type": ["string", "null"] }
+            },
+            "required": ["competency_name"]
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "competency_id": { "type": "string" },
+              "competency_name": { "type": "string" }
+            }
+          }
+        },
+        {
+          "path": "/api/competencies/{competency_id}",
+          "method": "PUT",
+          "description": "Update competency (trainer only).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "competency_name": { "type": "string" },
+              "description": { "type": ["string", "null"] },
+              "parent_competency_id": { "type": ["string", "null"] }
+            }
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/competencies/{competency_id}",
+          "method": "DELETE",
+          "description": "Delete competency (trainer only).",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter competency_id."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        {
+          "path": "/api/competencies/{competency_id}/skills",
+          "method": "POST",
+          "description": "Link skills to competency (trainer only).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "skill_ids": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "required": ["skill_ids"]
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/competencies/parents",
+          "method": "GET",
+          "description": "Get all parent (top-level) competencies.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body."
+          },
+          "responseSchema": { "type": "array", "items": { "type": "object" } }
+        },
+        {
+          "path": "/api/competencies/{competencyId}/hierarchy",
+          "method": "GET",
+          "description": "Get competency hierarchy tree.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter competencyId."
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/competencies/import",
+          "method": "POST",
+          "description": "Import competencies and skills from CSV (multipart/form-data, trainer only).",
+          "requestSchema": {
+            "type": "object",
+            "description": "multipart/form-data",
+            "properties": {
+              "file": {
+                "type": "string",
+                "format": "binary",
+                "description": "CSV file containing competencies and skills."
+              }
+            },
+            "required": ["file"]
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" },
+              "results": { "type": "object" }
+            }
+          }
+        },
+        {
+          "path": "/api/skills",
+          "method": "GET",
+          "description": "List skills with optional parent/level/search filters.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Supports query params: parent_skill_id, level, page, limit, search."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "data": { "type": "array", "items": { "type": "object" } },
+              "pagination": { "type": "object" }
+            }
+          }
+        },
+        {
+          "path": "/api/skills/{skill_id}",
+          "method": "GET",
+          "description": "Get skill by ID with children.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter skill_id."
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/skills/{skill_id}/tree",
+          "method": "GET",
+          "description": "Get full skill hierarchy tree starting from L1 skill.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter skill_id."
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/skills",
+          "method": "POST",
+          "description": "Create skill (trainer only).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "skill_id": { "type": "string" },
+              "skill_name": { "type": "string" },
+              "description": { "type": ["string", "null"] },
+              "parent_skill_id": { "type": ["string", "null"] }
+            },
+            "required": ["skill_name"]
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/skills/{skill_id}",
+          "method": "PUT",
+          "description": "Update skill (trainer only).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "skill_name": { "type": "string" },
+              "description": { "type": ["string", "null"] },
+              "parent_skill_id": { "type": ["string", "null"] }
+            }
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/skills/{skill_id}",
+          "method": "DELETE",
+          "description": "Delete skill (trainer only).",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter skill_id."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        {
+          "path": "/api/skills/roots",
+          "method": "GET",
+          "description": "Get root skills (L1).",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body."
+          },
+          "responseSchema": { "type": "array", "items": { "type": "object" } }
+        },
+        {
+          "path": "/api/skills/{skillId}/mgs",
+          "method": "GET",
+          "description": "Get MGS list for a skill.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter skillId."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "mgs_list": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skill_id": { "type": "string" },
+                    "skill_name": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "path": "/api/user-competency/{user_id}",
+          "method": "GET",
+          "description": "Get user competencies.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter user_id and optional query params."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "data": { "type": "array", "items": { "type": "object" } },
+              "pagination": { "type": "object" }
+            }
+          }
+        },
+        {
+          "path": "/api/user-competency/{user_id}/{competency_id}",
+          "method": "GET",
+          "description": "Get single user competency.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameters user_id, competency_id."
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/user-competency/{user_id}/{competency_id}",
+          "method": "PUT",
+          "description": "Create or update user competency (upsert).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "coverage_percentage": { "type": "number" },
+              "proficiency_level": { "type": ["string", "null"] },
+              "verified_skills": { "type": "array", "items": { "type": "object" } }
+            }
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/user-competency/{user_id}/{competency_id}",
+          "method": "DELETE",
+          "description": "Delete user competency.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameters."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        {
+          "path": "/api/user-competency/{user_id}/competency/{competency_id}/tree",
+          "method": "GET",
+          "description": "Get detailed competency tree and missing MGS for a user.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameters."
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/user-skill/{user_id}",
+          "method": "GET",
+          "description": "Get user skills with filters.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameter user_id and optional query params."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "data": { "type": "array", "items": { "type": "object" } },
+              "pagination": { "type": "object" }
+            }
+          }
+        },
+        {
+          "path": "/api/user-skill/{user_id}/{skill_id}",
+          "method": "GET",
+          "description": "Get user skill by ID.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameters."
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/user-skill/{user_id}/{skill_id}",
+          "method": "PUT",
+          "description": "Create or update user skill (upsert).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "skill_name": { "type": "string" },
+              "verified": { "type": "boolean" },
+              "source": { "type": "string" }
+            }
+          },
+          "responseSchema": { "type": "object" }
+        },
+        {
+          "path": "/api/user-skill/{user_id}/{skill_id}",
+          "method": "DELETE",
+          "description": "Delete user skill.",
+          "requestSchema": {
+            "type": "object",
+            "description": "No JSON body. Uses path parameters."
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        {
+          "path": "/api/assessment/baseline-exam-results",
+          "method": "POST",
+          "description": "Internal handler to receive baseline exam results (assessment-ms).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "user_id": { "type": "string", "format": "uuid" },
+              "exam_type": { "type": "string", "enum": ["baseline"] },
+              "exam_status": { "type": "string" },
+              "exam_results": {
+                "type": "object",
+                "properties": {
+                  "verified_skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "skill_id": { "type": "string" },
+                        "skill_name": { "type": "string" },
+                        "score": { "type": "number" },
+                        "status": { "type": "string" }
+                      },
+                      "required": ["skill_id", "status"]
+                    }
+                  }
+                },
+                "required": ["verified_skills"]
+              }
+            },
+            "required": ["user_id", "exam_type", "exam_results"]
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" },
+              "data": { "type": "object" }
+            }
+          }
+        },
+        {
+          "path": "/api/assessment/post-course-exam-results",
+          "method": "POST",
+          "description": "Internal handler to receive post-course exam results (assessment-ms).",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "user_id": { "type": "string", "format": "uuid" },
+              "exam_type": { "type": "string", "enum": ["post-course"] },
+              "course_name": { "type": "string" },
+              "exam_status": { "type": "string" },
+              "exam_results": {
+                "type": "object",
+                "properties": {
+                  "verified_skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "skill_id": { "type": "string" },
+                        "skill_name": { "type": "string" },
+                        "score": { "type": "number" },
+                        "status": { "type": "string" }
+                      },
+                      "required": ["skill_id", "status"]
+                    }
+                  }
+                },
+                "required": ["verified_skills"]
+              }
+            },
+            "required": ["user_id", "exam_type", "exam_results"]
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" },
+              "data": { "type": "object" }
+            }
+          }
+        },
+        {
+          "path": "/api/directory/initial-profile",
+          "method": "POST",
+          "description": "Outbound call from Skills Engine to Directory MS with initial profile.",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "user_id": { "type": "string" },
+              "relevanceScore": { "type": "number" },
+              "competencies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "competencyId": { "type": "string" },
+                    "level": { "type": "string" },
+                    "coverage": { "type": "number" },
+                    "skills": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            },
+            "required": ["user_id", "competencies"]
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        {
+          "path": "/api/directory/update-profile",
+          "method": "POST",
+          "description": "Outbound call from Skills Engine to Directory MS with updated profile.",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "user_id": { "type": "string" },
+              "user_name": { "type": "string" },
+              "company_id": { "type": "string" },
+              "competencies": { "type": "array", "items": { "type": "object" } },
+              "relevance_score": { "type": "number" },
+              "updated_at": { "type": "string", "format": "date-time" }
+            },
+            "required": ["user_id", "competencies"]
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        },
+        {
+          "path": "/api/assessment/create-baseline-exam",
+          "method": "POST",
+          "description": "Outbound call from Skills Engine to Assessment MS to create baseline exam.",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "user_id": { "type": "string" },
+              "user_name": { "type": "string" },
+              "company_id": { "type": "string" },
+              "competency_map": { "type": "object" }
+            },
+            "required": ["user_id", "competency_map"]
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" },
+              "exam_id": { "type": "string" }
+            }
+          }
+        },
+        {
+          "path": "/api/learner-ai/gap-analysis-results",
+          "method": "POST",
+          "description": "Outbound call from Skills Engine to Learner AI MS with gap analysis results.",
+          "requestSchema": {
+            "type": "object",
+            "properties": {
+              "user_id": { "type": "string" },
+              "user_name": { "type": "string" },
+              "company_id": { "type": "string" },
+              "course_name": { "type": ["string", "null"] },
+              "missing_mgs": { "type": "object" },
+              "exam_status": { "type": ["string", "null"] },
+              "company_name": { "type": "string" }
+            }
+          },
+          "responseSchema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      ]
+    },
+    "dependencies": [
+      "directory-ms",
+      "assessment-ms",
+      "course-builder-ms",
+      "content-studio-ms",
+      "learner-ai-ms",
+      "analytics-ms",
+      "rag-ms",
+      "google-gemini-api"
+    ],
+    "events": {
+      "publishes": [
+        "directory.initial_profile.created",
+        "directory.profile.updated",
+        "assessment.baseline_exam.requested",
+        "assessment.post_course_exam.requested",
+        "assessment.exam_results.processed",
+        "gap_analysis.completed",
+        "taxonomy.initialized",
+        "taxonomy.synchronized",
+        "trainer.csv_import.completed",
+        "trainer.csv_import.security_alert"
+      ],
+      "subscribes": [
+        "directory.user.created",
+        "assessment.baseline_exam.results",
+        "assessment.post_course_exam.results"
+      ]
+    }
+  }
+}
