@@ -15,13 +15,13 @@ const ragHandler = require('./rag/index');
 
 // Service to handler mapping
 const HANDLER_MAP = {
-  'directory-ms': directoryHandler,
-  'assessment-ms': assessmentHandler,
-  'course-builder-ms': courseBuilderHandler,
-  'content-studio-ms': contentStudioHandler,
-  'learner-ai-ms': learnerAIHandler,
-  'learning-analytics-ms': analyticsHandler,
-  'rag-ms': ragHandler
+  'directory': directoryHandler,
+  'assessment': assessmentHandler,
+  'course-builder': courseBuilderHandler,
+  'content-studio': contentStudioHandler,
+  'learner-ai': learnerAIHandler,
+  'learning-analytics': analyticsHandler,
+  'rag': ragHandler
 };
 
 class UnifiedEndpointHandler {

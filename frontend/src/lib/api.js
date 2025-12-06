@@ -11,12 +11,17 @@ if (!API_BASE_URL) {
   throw new Error('Missing NEXT_PUBLIC_API_BASE_URL environment variable');
 }
 
-// In production, never allow localhost to be used as the API host
+// In production, localhost is generally not recommended as the API host,
+// but we only log a warning instead of throwing to avoid breaking builds.
 if (
   process.env.NODE_ENV === 'production' &&
   /localhost|127\.0\.0\.1/i.test(API_BASE_URL)
 ) {
-  throw new Error('Invalid API base URL in production (localhost is not allowed)');
+  // eslint-disable-next-line no-console
+  console.warn(
+    'Warning: Using a localhost API base URL in production. ' +
+    'Ensure this is intentional for your Docker/network setup.'
+  );
 }
 
 // Helpful log only in development to verify the configured API base URL

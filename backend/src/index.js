@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const { registerService } = require('./registration/register');
 
 // Global error handlers for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -142,6 +143,11 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   1. DATABASE_URL in backend/.env`);
   console.log(`   2. Supabase project is active`);
   console.log(`   3. Run: node check-connection.js`);
+
+  // Non-blocking registration with Coordinator
+  registerService().catch((err) => {
+    console.error('Registration error (non-blocking):', err && err.message);
+  });
 
   // Kick off source discovery + web extraction asynchronously on each system load.
   /*   (async () => {
