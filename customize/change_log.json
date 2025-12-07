@@ -313,5 +313,15 @@
     "files_affected": [
       "backend/mockdata/assessment_ms_exam_results.json"
     ]
+  },
+  {
+    "timestamp": "2025-12-07T16:42:42.074Z",
+    "changed_by": "system",
+    "change_type": "api_fallback",
+    "description": "API fallback triggered for Assessment MS - POST /api/exams/baseline. Error: Error. Using mock data from assessment_ms_exam_results.json",
+    "status": "applied",
+    "files_affected": [
+      "backend/mockdata/assessment_ms_exam_results.json"
+    ]
   }
 ]

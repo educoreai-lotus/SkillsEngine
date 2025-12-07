@@ -377,13 +377,10 @@ class CompetencyRepository {
    */
   async getSubCompetencyLinks(parentCompetencyId) {
     // We fetch links from the junction table first, then resolve each child
-    // competency via a separate lookup. This avoids depending on the exact
-    // foreign key constraint name or PostgREST relationship alias, and works
-    // regardless of whether the table is named competency_subcompetency or
-    // competency_subCompetency at the SQL level, as long as Supabase exposes
-    // it under this name.
+    // competency via a separate lookup. Supabase table name in production is
+    // `competency_subcompetency` (all lowercase), so we use that here.
     const { data, error } = await this.getClient()
-      .from('competency_subCompetency')
+      .from('competency_subcompetency')
       .select('child_competency_id')
       .eq('parent_competency_id', parentCompetencyId);
 
@@ -415,7 +412,7 @@ class CompetencyRepository {
   async linkSubCompetency(parentCompetencyId, childCompetencyId) {
     // Check if already exists
     const { data: existing } = await this.getClient()
-      .from('competency_subCompetency')
+      .from('competency_subcompetency')
       .select('*')
       .eq('parent_competency_id', parentCompetencyId)
       .eq('child_competency_id', childCompetencyId)
@@ -424,7 +421,7 @@ class CompetencyRepository {
     if (existing) return true;
 
     const { error } = await this.getClient()
-      .from('competency_subCompetency')
+      .from('competency_subcompetency')
       .insert({ parent_competency_id: parentCompetencyId, child_competency_id: childCompetencyId });
 
     if (error) throw error;
@@ -439,7 +436,7 @@ class CompetencyRepository {
    */
   async unlinkSubCompetency(parentCompetencyId, childCompetencyId) {
     const { error } = await this.getClient()
-      .from('competency_subCompetency')
+      .from('competency_subcompetency')
       .delete()
       .eq('parent_competency_id', parentCompetencyId)
       .eq('child_competency_id', childCompetencyId);
@@ -450,7 +447,7 @@ class CompetencyRepository {
 
   /**
    * Get parent competencies for a child competency (traversing up the hierarchy)
-   * Uses competency_subCompetency table to find all parent competencies
+   * Uses competency_subcompetency table to find all parent competencies
    * @param {string} childCompetencyId - Child competency ID
    * @returns {Promise<Competency[]>} Array of parent competencies (all levels up)
    */
@@ -464,10 +461,10 @@ class CompetencyRepository {
       visited.add(currentCompetencyId);
 
       try {
-        // Find parent via competency_subCompetency table
+        // Find parent via competency_subcompetency table
         // Use .maybeSingle() instead of .single() to avoid errors when no parent exists
         const { data: parentLinks, error } = await this.getClient()
-          .from('competency_subCompetency')
+          .from('competency_subcompetency')
           .select('parent_competency_id')
           .eq('child_competency_id', currentCompetencyId)
           .limit(1)

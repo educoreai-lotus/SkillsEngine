@@ -153,16 +153,16 @@ class SkillRepository {
 
   /**
    * Find parent skill using either:
-   * - skill_subSkill junction table (L2 → L3 → L4 relations)
+   * - skill_subskill junction table (L2 → L3 → L4 relations)
    * - or legacy parent_skill_id column on skills table (fallback)
    * @param {string} skillId - Skill ID
    * @returns {Promise<Skill|null>}
    */
   async findParent(skillId) {
-    // 1) Prefer junction table skill_subSkill (parent_skill_id, child_skill_id)
+    // 1) Prefer junction table skill_subskill (parent_skill_id, child_skill_id)
     try {
       const { data, error } = await this.getClient()
-        .from('skill_subSkill')
+        .from('skill_subskill')
         .select('parent_skill_id')
         .eq('child_skill_id', skillId)
         .limit(1)
@@ -170,7 +170,7 @@ class SkillRepository {
 
       if (error) {
         // Log warning but continue to legacy fallback
-        console.warn('[SkillRepository.findParent] Error querying skill_subSkill', {
+        console.warn('[SkillRepository.findParent] Error querying skill_subskill', {
           skillId,
           error: error.message
         });
@@ -181,7 +181,7 @@ class SkillRepository {
         }
       }
     } catch (err) {
-      console.error('[SkillRepository.findParent] Unexpected error with skill_subSkill', {
+      console.error('[SkillRepository.findParent] Unexpected error with skill_subskill', {
         skillId,
         error: err.message
       });
@@ -319,11 +319,11 @@ class SkillRepository {
    */
   async isLeaf(skillId) {
     // We treat a skill as a leaf (MGS) when it has NO children.
-    // Children are defined primarily via the skill_subSkill junction table.
+    // Children are defined primarily via the skill_subskill junction table.
     try {
       // 1) Check junction table for any children
       const { count, error } = await this.getClient()
-        .from('skill_subSkill')
+        .from('skill_subskill')
         .select('child_skill_id', { count: 'exact', head: true })
         .eq('parent_skill_id', skillId);
 
@@ -333,7 +333,7 @@ class SkillRepository {
         return false;
       }
     } catch (err) {
-      console.error('[SkillRepository.isLeaf] Error checking skill_subSkill', {
+      console.error('[SkillRepository.isLeaf] Error checking skill_subskill', {
         skillId,
         error: err.message
       });
