@@ -21,8 +21,40 @@ class BaselineExamService {
 
     const competenciesWithMGS = [];
 
+    if (!userCompetencies || userCompetencies.length === 0) {
+      return competenciesWithMGS;
+    }
+
+    // First, determine which competencies are parents (have sub-competencies)
+    const parentCompetencyIds = new Set();
     for (const userComp of userCompetencies) {
       if (!userComp) continue;
+
+      try {
+        const children = await competencyRepository.getSubCompetencyLinks(
+          userComp.competency_id
+        );
+        if (children && children.length > 0) {
+          parentCompetencyIds.add(userComp.competency_id);
+        }
+      } catch (err) {
+        // If child lookup fails, log and continue; don't treat as parent
+        // eslint-disable-next-line no-console
+        console.warn('[BaselineExamService] Failed to load sub-competencies for', {
+          competency_id: userComp.competency_id,
+          error: err.message
+        });
+      }
+    }
+
+    // Now build MGS mapping only for leaf competencies (no children)
+    for (const userComp of userCompetencies) {
+      if (!userComp) continue;
+
+      // Skip parent competencies; only include leaf competencies in baseline exam
+      if (parentCompetencyIds.has(userComp.competency_id)) {
+        continue;
+      }
 
       // Get competency details
       const competency = await competencyRepository.findById(userComp.competency_id);
@@ -32,8 +64,6 @@ class BaselineExamService {
       const mgs = await competencyService.getRequiredMGS(userComp.competency_id);
 
       // If no MGS are defined for this competency, skip it.
-      // This effectively means "we can't find the MGS of it" so it
-      // should not be included in the baseline exam request.
       if (!mgs || mgs.length === 0) {
         continue;
       }
@@ -64,17 +94,22 @@ class BaselineExamService {
     if (competenciesWithMGS.length === 0) {
       throw new Error('No competencies found for user');
     }
-       // Debug: print the competency→MGS mapping being sent to Assessment MS
+    // Debug: print the competency→MGS mapping being sent to Assessment MS
     // eslint-disable-next-line no-console
-    console.log('[BaselineExamService] competenciesWithMGS for baseline exam:', {
-      userId,
-      userName,
-      competenciesWithMGS
-    },
-    null,
-    2);
+    console.log(
+      '[BaselineExamService] competenciesWithMGS for baseline exam:',
+      JSON.stringify(
+        {
+          userId,
+          userName,
+          competenciesWithMGS
+        },
+        null,
+        2
+      )
+    );
     // Send to Assessment MS
-   return await assessmentMSClient.requestBaselineExam(userId, userName, competenciesWithMGS);
+    return await assessmentMSClient.requestBaselineExam(userId, userName, competenciesWithMGS);
 
   }
 }

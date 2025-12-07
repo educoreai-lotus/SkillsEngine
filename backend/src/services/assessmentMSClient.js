@@ -36,7 +36,7 @@ async function requestBaselineExam(userId, userName, competenciesWithMGS) {
     const response = await assessmentClient.post('/api/exams/baseline', {
       user_id: userId,
       user_name: userName,
-      exam_type: 'baseline',
+      exam_type: 'baseline exam',
       competencies: competenciesWithMGS
     }, {
       Authorization: `Bearer ${process.env.ASSESSMENT_SERVICE_TOKEN || ''}`
