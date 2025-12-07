@@ -18,6 +18,9 @@ router.post('/:userId/ingest', userController.ingestFromRawData.bind(userControl
 // Build initial profile (writes user skills & competencies and sends payload)
 router.post('/:userId/initial-profile', userController.buildInitialProfile.bind(userController));
 
+// Manually trigger baseline exam request for a user (testing/ops)
+router.post('/:userId/request-baseline-exam', userController.requestBaselineExam.bind(userController));
+
 // One-shot onboarding: save basic profile + full pipeline
 router.post('/onboard', userController.onboardAndIngest.bind(userController));
 

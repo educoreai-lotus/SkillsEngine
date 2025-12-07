@@ -8,6 +8,7 @@ const userService = require('../services/userService');
 const extractionService = require('../services/extractionService');
 const normalizationService = require('../services/normalizationService');
 const competencyService = require('../services/competencyService');
+const baselineExamService = require('../services/baselineExamService');
 
 class UserController {
   /**
@@ -204,6 +205,42 @@ class UserController {
       res.json({ success: true, data: profile });
     } catch (error) {
       res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Manually trigger a baseline exam request for a user.
+   * This is mainly for testing/ops: it rebuilds the competency→MGS map
+   * from the user's existing competencies and sends it to Assessment MS.
+   *
+   * POST /api/user/:userId/request-baseline-exam
+   */
+  async requestBaselineExam(req, res) {
+    try {
+      const { userId } = req.params;
+
+      // Load user to get user_name (required by Assessment MS payload)
+      const profile = await userService.getUserProfile(userId);
+      const userName = profile?.user?.user_name;
+
+      if (!userName) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found or user_name missing'
+        });
+      }
+
+      await baselineExamService.requestBaselineExam(userId, userName);
+
+      res.json({
+        success: true,
+        message: 'Baseline exam request sent to Assessment MS'
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
     }
   }
 
