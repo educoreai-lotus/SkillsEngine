@@ -64,24 +64,17 @@ class BaselineExamService {
     if (competenciesWithMGS.length === 0) {
       throw new Error('No competencies found for user');
     }
-
-    // Debug: print the competency→MGS mapping being sent to Assessment MS
+       // Debug: print the competency→MGS mapping being sent to Assessment MS
     // eslint-disable-next-line no-console
     console.log('[BaselineExamService] competenciesWithMGS for baseline exam:', {
       userId,
       userName,
       competenciesWithMGS
     });
-
     // Send to Assessment MS
-   //return await assessmentMSClient.requestBaselineExam(userId, userName, competenciesWithMGS);
-    return{
-      success: true,
-      message: 'Baseline exam request sent to Assessment MS',
-      data: competenciesWithMGS
-    }
+   return await assessmentMSClient.requestBaselineExam(userId, userName, competenciesWithMGS);
+
   }
 }
 
 module.exports = new BaselineExamService();
-
