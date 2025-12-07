@@ -22,7 +22,7 @@ const assessmentClient = createAPIClient({
  * Expected structure for competenciesWithMGS:
  * [
  *   {
- *     competency_id: "comp_001",
+ *
  *     competency_name: "Software Development",
  *     mgs: [
  *       { skill_id: "skill_mgs_001", skill_name: "JavaScript Variables" },
@@ -33,11 +33,18 @@ const assessmentClient = createAPIClient({
  */
 async function requestBaselineExam(userId, userName, competenciesWithMGS) {
   try {
+    // Outbound payload to Assessment MS does not need internal competency_id.
+    // Strip IDs and send only competency_name + MGS list.
+    const outboundCompetencies = (competenciesWithMGS || []).map((comp) => ({
+      competency_name: comp.competency_name,
+      mgs: comp.mgs || []
+    }));
+
     const response = await assessmentClient.post('/api/exams/baseline', {
       user_id: userId,
       user_name: userName,
       exam_type: 'baseline exam',
-      competencies: competenciesWithMGS
+      competencies: outboundCompetencies
     }, {
       Authorization: `Bearer ${process.env.ASSESSMENT_SERVICE_TOKEN || ''}`
     });

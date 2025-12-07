@@ -91,36 +91,105 @@ class UserService {
     // Step 3: Fetch stored user competencies
     const userCompetencies = await userCompetencyRepository.findByUser(userId);
 
-    // Step 4: Fetch stored user skills (for backward compatibility with existing skill-competency mappings)
-    const userSkills = await userSkillRepository.findByUser(userId);
+    // Step 4-8: Build hierarchical competency payload.
+    // Directory now receives ONLY competencies (no skills), in a hierarchy:
+    // - Include high-level/core competencies
+    // - Include all related sub-competencies that the user owns
+    // - Hierarchy is based on competency_subcompetency (via getParentCompetencies)
+    const nodes = new Map(); // competency_id -> node {competencyId, competencyName, level, coverage, parentId, children: []}
 
-    // Step 5-8: Build profile payload
-    const competencies = [];
-    const competencyIds = new Set(userCompetencies.map(uc => uc.competency_id));
+    // Helper to ensure we have a node for a competency_id (with name loaded once)
+    const ensureNode = async (competencyId) => {
+      if (!competencyId) return null;
+      let node = nodes.get(competencyId);
+      if (node) {
+        return node;
+      }
 
-    for (const compId of competencyIds) {
-      const competency = await competencyRepository.findById(compId);
-      if (!competency) continue;
+      const competency = await competencyRepository.findById(competencyId);
+      if (!competency) {
+        return null;
+      }
 
-      // Get required skills for this competency
-      const requiredSkills = await competencyRepository.getLinkedSkills(compId);
-      const requiredSkillIds = new Set(requiredSkills.map(s => s.skill_id));
-
-      // Match user skills with required skills
-      const matchedSkills = userSkills
-        .filter(us => requiredSkillIds.has(us.skill_id))
-        .map(us => ({
-          skillId: us.skill_id,
-          status: us.verified ? 'verified' : 'unverified'
-        }));
-
-      competencies.push({
-        competencyId: compId,
+      node = {
+        competencyId: competency.competency_id,
+        competencyName: competency.competency_name,
         level: 'undefined',
         coverage: 0,
-        skills: matchedSkills
-      });
+        parentId: null,
+        children: []
+      };
+      nodes.set(competencyId, node);
+      return node;
+    };
+
+    // 4.1: Seed nodes with user-owned competencies (coverage/level from userCompetency)
+    for (const userComp of userCompetencies) {
+      if (!userComp) continue;
+
+      const node = await ensureNode(userComp.competency_id);
+      if (!node) continue;
+
+      node.level = userComp.proficiency_level || 'undefined';
+      node.coverage = userComp.coverage_percentage || 0;
+
+      // 4.2: Walk up the competency_subcompetency chain and attach parents
+      try {
+        const parents = await competencyRepository.getParentCompetencies(userComp.competency_id);
+
+        // parents[0] is the immediate parent, then its parent, etc.
+        let childId = userComp.competency_id;
+        for (const parent of parents) {
+          const parentNode = await ensureNode(parent.competency_id);
+          const childNode = await ensureNode(childId);
+
+          if (parentNode && childNode && !childNode.parentId) {
+            childNode.parentId = parentNode.competencyId;
+          }
+
+          childId = parent.competency_id;
+        }
+      } catch (err) {
+        console.warn(
+          '[UserService.buildInitialProfile] Failed to load parent competencies',
+          { competency_id: userComp.competency_id, error: err.message }
+        );
+      }
     }
+
+    // 4.3: Build children arrays based on parentId links
+    for (const node of nodes.values()) {
+      node.children = [];
+    }
+    for (const node of nodes.values()) {
+      if (node.parentId) {
+        const parentNode = nodes.get(node.parentId);
+        if (parentNode) {
+          parentNode.children.push(node);
+        }
+      }
+    }
+
+    // 4.4: Collect root competencies (no parentId) as top-level entries
+    const roots = Array.from(nodes.values()).filter(node => !node.parentId);
+
+    const serializeNode = (node) => {
+      const base = {
+        competencyId: node.competencyId,
+        competencyName: node.competencyName,
+        level: node.level,
+        coverage: node.coverage
+      };
+
+      const childNodes = (node.children || []).map(serializeNode);
+      if (childNodes.length > 0) {
+        base.children = childNodes;
+      }
+
+      return base;
+    };
+
+    const competencies = roots.map(serializeNode);
 
     // Step 11: Build final payload
     const payload = {
