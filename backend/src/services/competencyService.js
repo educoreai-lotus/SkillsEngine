@@ -508,7 +508,7 @@ class CompetencyService {
       }
     }
 
-    // Step 2: Create parent-child relationships in competency_subCompetency table
+    // Step 2: Create parent-child relationships in competency_subcompetency table
     for (const node of nodes) {
       if (!node.parentId) {
         // Root node, no parent relationship

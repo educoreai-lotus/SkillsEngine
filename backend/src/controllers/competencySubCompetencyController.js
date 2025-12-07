@@ -1,7 +1,7 @@
 /**
  * Competency Sub-Competency Controller
  *
- * Handles linking between parent and child competencies (competency_subCompetency table).
+ * Handles linking between parent and child competencies (competency_subcompetency table).
  */
 
 const competencyRepository = require('../repositories/competencyRepository');
