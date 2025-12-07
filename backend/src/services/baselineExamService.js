@@ -11,16 +11,13 @@ const assessmentMSClient = require('./assessmentMSClient');
 
 class BaselineExamService {
   /**
-   * Build competency-to-MGS mapping for a user
+   * Build competency-to-MGS mapping for a user across ALL competencies they own.
    * @param {string} userId - User ID
-   * @param {string} competencyId - Optional: specific competency ID (if null, uses all user competencies)
    * @returns {Promise<Array>} Array of competencies with their MGS
    */
-  async buildCompetencyMGSMapping(userId, competencyId = null) {
-    // Get user competencies (all or specific one)
-    const userCompetencies = competencyId
-      ? [await userCompetencyRepository.findByUserAndCompetency(userId, competencyId)]
-      : await userCompetencyRepository.findByUser(userId);
+  async buildCompetencyMGSMapping(userId) {
+    // Get all competencies the user currently owns
+    const userCompetencies = await userCompetencyRepository.findByUser(userId);
 
     const competenciesWithMGS = [];
 
@@ -33,6 +30,13 @@ class BaselineExamService {
 
       // Get all required MGS for this competency
       const mgs = await competencyService.getRequiredMGS(userComp.competency_id);
+
+      // If no MGS are defined for this competency, skip it.
+      // This effectively means "we can't find the MGS of it" so it
+      // should not be included in the baseline exam request.
+      if (!mgs || mgs.length === 0) {
+        continue;
+      }
 
       competenciesWithMGS.push({
         competency_id: userComp.competency_id,
@@ -48,21 +52,21 @@ class BaselineExamService {
   }
 
   /**
-   * Request baseline exam for user
+   * Request baseline exam for a user across ALL owned competencies.
    * @param {string} userId - User ID
-   * @param {string} competencyId - Optional: specific competency ID (if null, tests all user competencies)
+   * @param {string} userName - User name
    * @returns {Promise<Object>} Exam request response
    */
-  async requestBaselineExam(userId, competencyId = null) {
-    // Build competency-to-MGS mapping
-    const competenciesWithMGS = await this.buildCompetencyMGSMapping(userId, competencyId);
+  async requestBaselineExam(userId, userName) {
+    // Build competency-to-MGS mapping for all user competencies
+    const competenciesWithMGS = await this.buildCompetencyMGSMapping(userId);
 
     if (competenciesWithMGS.length === 0) {
       throw new Error('No competencies found for user');
     }
 
     // Send to Assessment MS
-    return await assessmentMSClient.requestBaselineExam(userId, competenciesWithMGS);
+    return await assessmentMSClient.requestBaselineExam(userId, userName, competenciesWithMGS);
   }
 }
 

@@ -15,13 +15,17 @@ const ragHandler = require('./rag/index');
 
 // Service to handler mapping
 const HANDLER_MAP = {
+  // Core service keys used by the backend internally
   'directory': directoryHandler,
   'assessment': assessmentHandler,
   'course-builder': courseBuilderHandler,
   'content-studio': contentStudioHandler,
   'learner-ai': learnerAIHandler,
   'learning-analytics': analyticsHandler,
-  'rag': ragHandler
+  'rag': ragHandler,
+
+  // Backwards-compatible aliases that match external MS names
+  'assessment-ms': assessmentHandler
 };
 
 class UnifiedEndpointHandler {

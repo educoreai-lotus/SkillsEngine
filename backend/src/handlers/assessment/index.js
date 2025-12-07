@@ -24,7 +24,34 @@ class AssessmentHandler {
         };
       }
 
-      const { user_id, exam_type, exam_results } = payload;
+      const { user_id, exam_type } = payload;
+
+      // Normalize exam results object:
+      // New shape (preferred):
+      //   payload = { user_id, exam_type, exam_status, course_name, skills: [...] }
+      // Legacy shapes:
+      //   - payload.results.{ skills: [...] }
+      //   - payload.exam_results.{ skills / verified_skills / verifiedSkills }
+      //   - payload.examResults.{ ... }
+      //
+      // We pass a single "exam_results" object into VerificationService that
+      // always has the exam metadata + skills array on it.
+      let exam_results = null;
+
+      if (payload && typeof payload === 'object') {
+        // Start with the whole payload so examResults.course_name, examResults.exam_status, etc. work.
+        exam_results = { ...payload };
+
+        // If nested legacy containers exist, merge them in (they may hold the skills array).
+        const nested =
+          payload.results ||
+          payload.exam_results ||
+          payload.examResults ||
+          null;
+        if (nested && typeof nested === 'object') {
+          exam_results = { ...exam_results, ...nested };
+        }
+      }
 
       if (!user_id || !exam_results) {
         return {

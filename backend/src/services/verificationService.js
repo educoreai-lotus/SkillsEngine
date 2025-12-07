@@ -10,23 +10,31 @@ const userSkillRepository = require('../repositories/userSkillRepository');
 const competencyService = require('./competencyService');
 const skillRepository = require('../repositories/skillRepository');
 const competencyRepository = require('../repositories/competencyRepository');
+const gapAnalysisService = require('./gapAnalysisService');
+const learnerAIMSClient = require('./learnerAIMSClient');
 
 class VerificationService {
   /**
    * Process baseline exam results (Feature 3.2)
    * @param {string} userId - User ID
    * @param {Object} examResults - Exam results from Assessment MS
-   * @returns {Promise<Object>} Updated profile
+   * @param {Object} [options] - Additional options (examType, examStatus, courseName)
+   * @returns {Promise<Object>} Updated profile + gap analysis metadata
    */
-  async processBaselineExamResults(userId, examResults) {
+  async processBaselineExamResults(userId, examResults, options = {}) {
+    const {
+      examType = 'baseline',
+      examStatus = null,
+      courseName = null
+    } = options;
     try {
       // Support multiple field names from Assessment MS for backward compatibility:
-      // - verified_skills (new, recommended)
-      // - skills (legacy)
-      // - verifiedSkills (camelCase variant)
+      // - skills (preferred)
+      // - verified_skills (legacy snake_case)
+      // - verifiedSkills (legacy camelCase)
       const verifiedSkillsInput =
-        examResults?.verified_skills ||
         examResults?.skills ||
+        examResults?.verified_skills ||
         examResults?.verifiedSkills ||
         [];
 
@@ -226,10 +234,25 @@ class VerificationService {
         }
       }
 
+      let gapAnalysis = null;
+      try {
+        gapAnalysis = await this.runGapAnalysis(userId, updatedCompetencies, {
+          examType,
+          examStatus,
+          courseName
+        });
+      } catch (err) {
+        console.error(
+          '[VerificationService.processBaselineExamResults] Error running gap analysis',
+          { userId, error: err.message }
+        );
+      }
+
       return {
         userId,
         updated_competencies: Array.from(updatedCompetencies),
-        verified_skills_count: verifiedSkillsInput.length
+        verified_skills_count: verifiedSkillsInput.length,
+        gap_analysis: gapAnalysis
       };
     } catch (error) {
       // Log error but return partial results
@@ -251,13 +274,19 @@ class VerificationService {
    * Process post-course exam results (Feature 3.3)
    * @param {string} userId - User ID
    * @param {Object} examResults - Exam results from Assessment MS
-   * @returns {Promise<Object>} Updated profile
+   * @returns {Promise<Object>} Updated profile + gap analysis metadata
    */
   async processPostCourseExamResults(userId, examResults) {
     // Post-course exam includes course_name, exam_type, exam_status
-    // verified_skills array only contains skills with status "pass" (failed skills are not included)
+    // skills array (or verified_skills) only contains skills with status "pass" (failed skills are not included)
     // The processing logic is the same as baseline, but we log the course info
-    const { course_name, exam_type, exam_status, verified_skills = [] } = examResults;
+    const { course_name, exam_type, exam_status } = examResults || {};
+    const verified_skills =
+      (examResults &&
+        (examResults.skills ||
+          examResults.verified_skills ||
+          examResults.verifiedSkills)) ||
+      [];
 
     // Log course information for tracking
     if (course_name) {
@@ -267,9 +296,112 @@ class VerificationService {
       );
     }
 
-    // Use the same processing logic as baseline
+    // Use the same core processing logic as baseline, but pass examType/examStatus
+    // so gap analysis can distinguish between broad vs narrow analysis:
+    // - Baseline exam       -> broad (full career path)
+    // - Post-course PASS    -> broad (full career path)
+    // - Post-course FAIL    -> narrow (course-specific competency/competencies)
     // Note: verified_skills should only contain skills with status "pass"
-    return await this.processBaselineExamResults(userId, examResults);
+    return await this.processBaselineExamResults(userId, examResults || {}, {
+      examType: 'post-course',
+      examStatus: exam_status,
+      courseName: course_name
+    });
+  }
+
+  /**
+   * Run gap analysis after exam results and send to Learner AI MS.
+   *
+   * - Baseline exam       -> Broad gap analysis (all user competencies)
+   * - Post-course PASS    -> Broad gap analysis (all user competencies)
+   * - Post-course FAIL    -> Narrow gap analysis (only updated competencies)
+   *
+   * @param {string} userId - User ID
+   * @param {Set<string>} updatedCompetencies - Set of competency IDs updated from this exam
+   * @param {Object} context - { examType, examStatus, courseName }
+   * @returns {Promise<Object>} Gap analysis metadata and results
+   */
+  async runGapAnalysis(userId, updatedCompetencies, context = {}) {
+    const {
+      examType = 'baseline',
+      examStatus = null,
+      courseName = null
+    } = context;
+
+    const normalizedExamType = typeof examType === 'string'
+      ? examType.toLowerCase().trim()
+      : 'baseline';
+    const normalizedExamStatus = typeof examStatus === 'string'
+      ? examStatus.toLowerCase().trim()
+      : null;
+
+    // Determine analysis type based on exam type + status
+    // Docs: step_3_feature_specifications.md (Feature 5)
+    // - Baseline Exam        -> Broad
+    // - Post-course PASS     -> Broad
+    // - Post-course FAIL     -> Narrow
+    let analysisType = 'broad';
+    if (normalizedExamType === 'post-course' && normalizedExamStatus === 'fail') {
+      analysisType = 'narrow';
+    }
+
+    let gaps = {};
+
+    try {
+      if (analysisType === 'broad') {
+        // Broad gap analysis across all user competencies
+        gaps = await gapAnalysisService.calculateAllGaps(userId);
+      } else {
+        // Narrow gap analysis scoped to competencies updated by this exam
+        const competencyIds = updatedCompetencies
+          ? Array.from(updatedCompetencies)
+          : [];
+
+        if (competencyIds.length === 0) {
+          // Fallback: if we don't know which competencies were updated,
+          // fall back to broad analysis so we still provide useful data.
+          gaps = await gapAnalysisService.calculateAllGaps(userId);
+        } else {
+          for (const competencyId of competencyIds) {
+            const perCompGaps = await gapAnalysisService.calculateGapAnalysis(
+              userId,
+              competencyId
+            );
+            gaps = {
+              ...gaps,
+              ...perCompGaps
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.error(
+        '[VerificationService.runGapAnalysis] Error calculating gap analysis',
+        { userId, examType: normalizedExamType, examStatus: normalizedExamStatus, error: error.message }
+      );
+      gaps = {};
+    }
+
+    // Best-effort: send gap analysis to Learner AI MS
+    try {
+      if (Object.keys(gaps).length > 0) {
+        await learnerAIMSClient.sendGapAnalysis(userId, gaps);
+      }
+    } catch (error) {
+      // Do not fail exam processing if Learner AI is unavailable
+      console.warn(
+        '[VerificationService.runGapAnalysis] Failed to send gap analysis to Learner AI MS',
+        { userId, error: error.message }
+      );
+    }
+
+    return {
+      analysis_type: analysisType,
+      exam_type: normalizedExamType,
+      exam_status: normalizedExamStatus,
+      course_name: courseName,
+      gaps
+    };
   }
 
   /**

@@ -10,6 +10,7 @@ const userCompetencyRepository = require('../repositories/userCompetencyReposito
 const userSkillRepository = require('../repositories/userSkillRepository');
 const competencyRepository = require('../repositories/competencyRepository');
 const skillRepository = require('../repositories/skillRepository');
+const baselineExamService = require('./baselineExamService');
 const User = require('../models/User');
 const UserCompetency = require('../models/UserCompetency');
 const UserSkill = require('../models/UserSkill');
@@ -33,6 +34,18 @@ class UserService {
    * @returns {Promise<Object>} Initial profile payload
    */
   async buildInitialProfile(userId, normalizedData) {
+    // Look up user to get metadata (e.g., user_name) for downstream services
+    let userForMetadata = null;
+    try {
+      userForMetadata = await userRepository.findById(userId);
+    } catch (err) {
+      // Non-fatal: continue without user metadata if lookup fails
+      console.warn(
+        '[UserService.buildInitialProfile] Failed to load user for metadata',
+        { userId, error: err.message }
+      );
+    }
+
     // Step 1: Look up taxonomy IDs for competencies (includes both traditional competencies and skills)
     const competencyMappings = [];
     for (const comp of normalizedData.competencies || []) {
@@ -123,6 +136,28 @@ class UserService {
     } catch (error) {
       // Fallback is handled by apiClient, but log if needed
       console.warn('Failed to send initial profile to Directory MS, using mock data:', error.message);
+    }
+
+    // After initial competency profile is built and sent to Directory MS,
+    // automatically trigger a baseline exam request in Assessment MS.
+    // This is fire-and-forget: failures are logged but do not block the response.
+    const userName = userForMetadata?.user_name || null;
+    if (userName) {
+      (async () => {
+        try {
+          await baselineExamService.requestBaselineExam(userId, userName);
+        } catch (err) {
+          console.warn(
+            '[UserService.buildInitialProfile] Failed to request baseline exam',
+            { userId, error: err.message }
+          );
+        }
+      })();
+    } else {
+      console.warn(
+        '[UserService.buildInitialProfile] Skipping baseline exam request (missing user_name)',
+        { userId }
+      );
     }
 
     return payload;

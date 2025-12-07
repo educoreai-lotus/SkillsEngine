@@ -213,11 +213,9 @@ curl -X POST \
        "payload": {
          "user_id": "550e8400-e29b-41d4-a716-446655440000",
          "exam_type": "baseline",
-         "exam_results": {
-           "verified_skills": [
-             {"skill_id": "skill_001", "score": 85, "passed": true}
-           ]
-         }
+         "skills": [
+           {"skill_id": "skill_001", "score": 85, "passed": true}
+         ]
        },
        "response": {"status": "success", "message": "", "data": {}}
      }' \

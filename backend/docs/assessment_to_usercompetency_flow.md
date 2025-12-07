@@ -366,7 +366,7 @@ When Assessment MS sends baseline exam results, the payload looks like:
   "exam_type": "baseline",
   "exam_status": "pass",
   "final_grade": 85,
-  "verified_skills": [
+  "skills": [
     {
       "skill_id": "skill_123",
       "skill_name": "React Hooks",
@@ -400,7 +400,7 @@ When Assessment MS sends post-course exam results (after user finishes a course)
   "course_name": "React Fundamentals Course",
   "exam_status": "pass",  // or "fail"
   "final_grade": 85,
-  "verified_skills": [
+  "skills": [
     {
       "skill_id": "skill_123",
       "skill_name": "React Hooks",
@@ -815,16 +815,14 @@ await verificationService.processBaselineExamResults("user-123", examResults);
   "user_id": "uuid",
   "exam_type": "baseline",
   "exam_status": "pass",
-  "exam_results": {
-    "verified_skills": [
-      {
-        "skill_id": "skill_id",
-        "skill_name": "Skill Name",
-        "score": 85,
-        "status": "pass"
-      }
-    ]
-  }
+  "skills": [
+    {
+      "skill_id": "skill_id",
+      "skill_name": "Skill Name",
+      "score": 85,
+      "status": "pass"
+    }
+  ]
 }
 ```
 
@@ -835,23 +833,21 @@ await verificationService.processBaselineExamResults("user-123", examResults);
   "exam_type": "post-course",
   "course_name": "React Fundamentals Course",
   "exam_status": "pass",  // or "fail"
-  "exam_results": {
-    "verified_skills": [
-      {
-        "skill_id": "skill_id",
-        "skill_name": "Skill Name",
-        "score": 85,
-        "status": "pass"
-      }
-    ]
-    // Note: Only skills with status "pass" are included in post-course exam results
-  }
+  "skills": [
+    {
+      "skill_id": "skill_id",
+      "skill_name": "Skill Name",
+      "score": 85,
+      "status": "pass"
+    }
+  ]
+  // Note: Only skills with status "pass" are included in post-course exam results
 }
 ```
 
 **Important:** 
 - Post-course exam includes `course_name` field to identify which course the exam is for
-- Post-course exam `verified_skills` array only contains skills with `status: "pass"` (failed skills are not included)
+- Post-course exam `skills` (or `verified_skills`) array only contains skills with `status: "pass"` (failed skills are not included)
 - Both exam types use the same processing logic to update `userCompetency` records
 
 **Response:**

@@ -81,7 +81,15 @@ class UserCompetencyController {
       // Normalize verifiedSkills so that only last-level (leaf) skills are stored
       // in the JSON and each entry has the minimal shape:
       // { skill_id, skill_name, verified }
-      const rawVerifiedSkills = req.body.verified_skills || req.body.verifiedSkills || [];
+      // Accept multiple field names for compatibility:
+      // - skills (preferred)
+      // - verified_skills (legacy snake_case)
+      // - verifiedSkills (legacy camelCase)
+      const rawVerifiedSkills =
+        req.body.skills ||
+        req.body.verified_skills ||
+        req.body.verifiedSkills ||
+        [];
 
       const normalizedVerifiedSkills = [];
       if (Array.isArray(rawVerifiedSkills)) {

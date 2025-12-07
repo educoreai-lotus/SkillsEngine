@@ -15,6 +15,7 @@ const assessmentClient = createAPIClient({
 /**
  * Request baseline exam for user
  * @param {string} userId - User ID
+ * @param {string} userName - User name
  * @param {Array} competenciesWithMGS - Array of competencies with their MGS
  * @returns {Promise<Object>} Exam request response
  * 
@@ -30,10 +31,11 @@ const assessmentClient = createAPIClient({
  *   }
  * ]
  */
-async function requestBaselineExam(userId, competenciesWithMGS) {
+async function requestBaselineExam(userId, userName, competenciesWithMGS) {
   try {
     const response = await assessmentClient.post('/api/exams/baseline', {
       user_id: userId,
+      user_name: userName,
       exam_type: 'baseline',
       competencies: competenciesWithMGS
     }, {
