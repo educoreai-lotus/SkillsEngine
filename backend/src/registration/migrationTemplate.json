@@ -882,10 +882,32 @@
             "properties": {
               "user_id": { "type": "string" },
               "user_name": { "type": "string" },
-              "company_id": { "type": "string" },
-              "competency_map": { "type": "object" }
+              "company_id": { "type": ["string", "null"] },
+              "exam_type": { "type": "string", "enum": ["baseline exam"] },
+              "competencies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "competency_id": { "type": ["string", "null"] },
+                    "competency_name": { "type": "string" },
+                    "mgs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "skill_id": { "type": "string" },
+                          "skill_name": { "type": "string" }
+                        },
+                        "required": ["skill_id", "skill_name"]
+                      }
+                    }
+                  },
+                  "required": ["competency_name", "mgs"]
+                }
+              }
             },
-            "required": ["user_id", "competency_map"]
+            "required": ["user_id", "user_name", "exam_type", "competencies"]
           },
           "responseSchema": {
             "type": "object",

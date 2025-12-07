@@ -323,5 +323,55 @@
     "files_affected": [
       "backend/mockdata/assessment_ms_exam_results.json"
     ]
+  },
+  {
+    "timestamp": "2025-12-07T17:03:56.828Z",
+    "changed_by": "system",
+    "change_type": "api_fallback",
+    "description": "API fallback triggered for Assessment MS - POST /api/exams/baseline. Error: Error. Using mock data from assessment_ms_exam_results.json",
+    "status": "applied",
+    "files_affected": [
+      "backend/mockdata/assessment_ms_exam_results.json"
+    ]
+  },
+  {
+    "timestamp": "2025-12-07T19:32:54.039Z",
+    "changed_by": "system",
+    "change_type": "api_fallback",
+    "description": "API fallback triggered for Directory MS - POST /api/users/initial-profile. Error: Error. Using mock data from directory_ms_response.json",
+    "status": "applied",
+    "files_affected": [
+      "backend/mockdata/directory_ms_response.json"
+    ]
+  },
+  {
+    "timestamp": "2025-12-07T19:33:23.077Z",
+    "changed_by": "system",
+    "change_type": "api_fallback",
+    "description": "API fallback triggered for Assessment MS - POST /api/exams/baseline. Error: Error. Using mock data from assessment_ms_exam_results.json",
+    "status": "applied",
+    "files_affected": [
+      "backend/mockdata/assessment_ms_exam_results.json"
+    ]
+  },
+  {
+    "timestamp": "2025-12-07T19:43:08.467Z",
+    "changed_by": "system",
+    "change_type": "api_fallback",
+    "description": "API fallback triggered for Directory MS - POST /api/users/initial-profile. Error: Error. Using mock data from directory_ms_response.json",
+    "status": "applied",
+    "files_affected": [
+      "backend/mockdata/directory_ms_response.json"
+    ]
+  },
+  {
+    "timestamp": "2025-12-07T19:43:19.779Z",
+    "changed_by": "system",
+    "change_type": "api_fallback",
+    "description": "API fallback triggered for Assessment MS - POST /api/exams/baseline. Error: Error. Using mock data from assessment_ms_exam_results.json",
+    "status": "applied",
+    "files_affected": [
+      "backend/mockdata/assessment_ms_exam_results.json"
+    ]
   }
 ]

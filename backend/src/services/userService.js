@@ -211,10 +211,12 @@ class UserService {
     // automatically trigger a baseline exam request in Assessment MS.
     // This is fire-and-forget: failures are logged but do not block the response.
     const userName = userForMetadata?.user_name || null;
+    const companyId = userForMetadata?.company_id || null;
+
     if (userName) {
       (async () => {
         try {
-          await baselineExamService.requestBaselineExam(userId, userName);
+          await baselineExamService.requestBaselineExam(userId, userName, companyId);
         } catch (err) {
           console.warn(
             '[UserService.buildInitialProfile] Failed to request baseline exam',

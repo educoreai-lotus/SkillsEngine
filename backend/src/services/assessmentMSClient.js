@@ -1,6 +1,6 @@
 /**
  * Assessment MS API Client
- * 
+ *
  * Handles communication with Assessment MS with fallback to mock data.
  */
 
@@ -17,12 +17,13 @@ const assessmentClient = createAPIClient({
  * @param {string} userId - User ID
  * @param {string} userName - User name
  * @param {Array} competenciesWithMGS - Array of competencies with their MGS
+ * @param {string|null} companyId - Company ID (optional)
  * @returns {Promise<Object>} Exam request response
- * 
+ *
  * Expected structure for competenciesWithMGS:
  * [
  *   {
- *
+ *     competency_id: "comp_001",
  *     competency_name: "Software Development",
  *     mgs: [
  *       { skill_id: "skill_mgs_001", skill_name: "JavaScript Variables" },
@@ -30,24 +31,49 @@ const assessmentClient = createAPIClient({
  *     ]
  *   }
  * ]
+ *
+ * Outbound contract (Skills Engine -> Assessment MS):
+ * {
+ *   "user_id": "<USER_ID>",
+ *   "user_name": "<USER_NAME>",
+ *   "company_id": "<COMPANY_ID or null>",
+ *   "exam_type": "baseline exam",
+ *   "competencies": [
+ *     {
+ *       "competency_id": "<COMPETENCY_ID or null>",
+ *       "competency_name": "Software Development",
+ *       "mgs": [
+ *         { "skill_id": "skill_mgs_001", "skill_name": "JavaScript Variables" },
+ *         { "skill_id": "skill_mgs_002", "skill_name": "React Hooks" }
+ *       ]
+ *     }
+ *   ]
+ * }
  */
-async function requestBaselineExam(userId, userName, competenciesWithMGS) {
+async function requestBaselineExam(userId, userName, competenciesWithMGS, companyId = null) {
   try {
-    // Outbound payload to Assessment MS does not need internal competency_id.
-    // Strip IDs and send only competency_name + MGS list.
-    const outboundCompetencies = (competenciesWithMGS || []).map((comp) => ({
+    const list = competenciesWithMGS || [];
+
+    // Array form: each competency carries its id, name, and MGS list.
+    const outboundCompetencies = list.map((comp) => ({
+      competency_id: comp.competency_id || null,
       competency_name: comp.competency_name,
       mgs: comp.mgs || []
     }));
 
-    const response = await assessmentClient.post('/api/exams/baseline', {
-      user_id: userId,
-      user_name: userName,
-      exam_type: 'baseline exam',
-      competencies: outboundCompetencies
-    }, {
-      Authorization: `Bearer ${process.env.ASSESSMENT_SERVICE_TOKEN || ''}`
-    });
+    const response = await assessmentClient.post(
+      '/api/exams/baseline',
+      {
+        user_id: userId,
+        user_name: userName,
+        company_id: companyId || null,
+        exam_type: 'baseline exam',
+        competencies: outboundCompetencies
+      },
+      {
+        Authorization: `Bearer ${process.env.ASSESSMENT_SERVICE_TOKEN || ''}`
+      }
+    );
 
     return response;
   } catch (error) {

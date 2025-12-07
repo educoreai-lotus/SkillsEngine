@@ -85,9 +85,10 @@ class BaselineExamService {
    * Request baseline exam for a user across ALL owned competencies.
    * @param {string} userId - User ID
    * @param {string} userName - User name
+   * @param {string|null} companyId - Company ID (optional, for outbound contract)
    * @returns {Promise<Object>} Exam request response
    */
-  async requestBaselineExam(userId, userName) {
+  async requestBaselineExam(userId, userName, companyId = null) {
     // Build competency-to-MGS mapping for all user competencies
     const competenciesWithMGS = await this.buildCompetencyMGSMapping(userId);
 
@@ -109,7 +110,12 @@ class BaselineExamService {
       )
     );
     // Send to Assessment MS
-    return await assessmentMSClient.requestBaselineExam(userId, userName, competenciesWithMGS);
+    return await assessmentMSClient.requestBaselineExam(
+      userId,
+      userName,
+      competenciesWithMGS,
+      companyId
+    );
 
   }
 }
