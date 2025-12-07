@@ -70,7 +70,9 @@ class BaselineExamService {
       userId,
       userName,
       competenciesWithMGS
-    });
+    },
+    null,
+    2);
     // Send to Assessment MS
    return await assessmentMSClient.requestBaselineExam(userId, userName, competenciesWithMGS);
 
