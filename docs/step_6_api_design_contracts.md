@@ -304,13 +304,14 @@ Every request must follow this mandatory structure:
   - `"learner-ai-ms"`
   - `"analytics-ms"`
   - `"rag-ms"`
-- `payload` (object, required): The input data sent by that microservice (can be empty `{}`)
-- `response` (object, required): A template defining how the caller wants the response fields to be named and structured
+- `payload` (object, required): The **input data** sent by that microservice (can be empty `{}`); all contextual inputs and filters MUST live here.
+- `response` (object, required): A **response template**. Its `data` object lists the **fields and structure that the caller is requesting Skills Engine to fill**. Handlers will only populate keys that appear under `response.data`.
 
 **Rules:**
 - Must not add, remove, or rename any fields
 - Must follow this structure exactly
 - All fields are required (even if empty)
+- All **requested output fields** from Skills Engine MUST be nested under `response.data` in the request body.
 
 ### 3.4 Request Routing Logic
 

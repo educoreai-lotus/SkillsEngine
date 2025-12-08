@@ -408,10 +408,51 @@ class CompetencyService {
    * @returns {Promise<Object>} Statistics about created/updated competencies
    */
   async buildHierarchyFromCareerPath(careerPath) {
-    console.log(`[CompetencyService] Building hierarchy for career path: ${careerPath}`);
+    // Normalize and validate input
+    const trimmed = typeof careerPath === 'string' ? careerPath.trim() : '';
+    if (!trimmed) {
+      console.log('[CompetencyService] Skipping hierarchy build: empty career path');
+      return {
+        skipped: true,
+        reason: 'empty_career_path',
+        competenciesCreated: 0,
+        competenciesExisting: 0,
+        relationshipsCreated: 0,
+        relationshipsExisting: 0
+      };
+    }
+
+    console.log(`[CompetencyService] Building hierarchy for career path: ${trimmed}`);
+
+    // Optimization / idempotency: if a top-level competency with this career path
+    // name already exists, we assume the hierarchy has been built before and
+    // skip calling the AI model again to avoid duplicates and extra cost.
+    try {
+      const existingRoot = await competencyRepository.findByName(trimmed);
+      if (existingRoot) {
+        console.log(
+          '[CompetencyService] Root competency already exists for career path; skipping AI hierarchy generation',
+          { careerPath: trimmed, competency_id: existingRoot.competency_id }
+        );
+        return {
+          skipped: true,
+          reason: 'root_competency_exists',
+          rootCompetencyId: existingRoot.competency_id,
+          competenciesCreated: 0,
+          competenciesExisting: 1,
+          relationshipsCreated: 0,
+          relationshipsExisting: 0
+        };
+      }
+    } catch (lookupError) {
+      console.warn(
+        '[CompetencyService] Error checking existing root competency, proceeding with AI generation',
+        { careerPath: trimmed, error: lookupError.message }
+      );
+    }
 
     // Step 1: Generate hierarchy tree from AI
-    const hierarchyTree = await aiService.generateCompetencyHierarchy(careerPath);
+    const hierarchyTree = await aiService.generateCompetencyHierarchy(trimmed);
     console.log('[CompetencyService] Generated hierarchy tree:', JSON.stringify(hierarchyTree, null, 2));
 
     // Step 2: Extract all nodes from tree

@@ -25,7 +25,13 @@ const HANDLER_MAP = {
   'rag': ragHandler,
 
   // Backwards-compatible aliases that match external MS names
-  'assessment-ms': assessmentHandler
+  'directory-ms': directoryHandler,
+  'assessment-ms': assessmentHandler,
+  'course-builder-ms': courseBuilderHandler,
+  'content-studio-ms': contentStudioHandler,
+  'learner-ai-ms': learnerAIHandler,
+  'analytics-ms': analyticsHandler,
+  'rag-ms': ragHandler
 };
 
 class UnifiedEndpointHandler {
