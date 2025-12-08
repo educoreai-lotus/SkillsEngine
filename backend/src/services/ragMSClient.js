@@ -1,34 +1,37 @@
 /**
- * RAG/Chatbot MS API Client
- * 
- * Handles communication with RAG MS with fallback to mock data.
+ * RAG/Chatbot MS API Client (via Coordinator)
+ *
+ * Handles communication with RAG MS indirectly by sending
+ * signed requests to the Coordinator, which then routes to RAG.
  */
 
-const { createAPIClient } = require('../utils/apiClient');
+const { getCoordinatorClient } = require('../infrastructure/coordinatorClient/coordinatorClient');
 
-const ragClient = createAPIClient({
-  baseURL: process.env.RAG_CHATBOT_URL || 'http://localhost:3007',
-  mockFile: 'rag_response.json',
-  apiName: 'RAG/Chatbot MS'
-});
+const coordinatorClient = getCoordinatorClient();
 
 /**
- * Search skills/competencies for RAG MS
+ * Search skills/competencies for RAG MS via Coordinator
  * @param {string} query - Search query
  * @param {string} type - Search type ('skill', 'competency', or null for both)
- * @returns {Promise<Object>} Search results
+ * @returns {Promise<Object>} Search results envelope from Coordinator
  */
 async function search(query, type = null) {
-  try {
-    const response = await ragClient.get(`/api/search?q=${encodeURIComponent(query)}&type=${type || ''}`, {
-      Authorization: `Bearer ${process.env.RAG_CHATBOT_TOKEN || ''}`
-    });
+  const envelope = {
+    requester_service: 'skills-engine',
+    payload: {
+      query,
+      type: type || null
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {}
+    }
+  };
 
-    return response;
-  } catch (error) {
-    // Fallback is handled by apiClient
-    throw error;
-  }
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/rag/search'
+  });
 }
 
 module.exports = {

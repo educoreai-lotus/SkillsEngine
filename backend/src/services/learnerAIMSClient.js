@@ -1,37 +1,42 @@
 /**
- * Learner AI MS API Client
- * 
- * Handles communication with Learner AI MS with fallback to mock data.
+ * Learner AI MS API Client (via Coordinator)
+ *
+ * Handles communication with Learner AI MS indirectly by sending
+ * signed requests to the Coordinator, which then routes to Learner AI.
  */
 
-const { createAPIClient } = require('../utils/apiClient');
+const { getCoordinatorClient } = require('../infrastructure/coordinatorClient/coordinatorClient');
 
-const learnerAIClient = createAPIClient({
-  baseURL: process.env.LEARNER_AI_URL || 'http://localhost:3005',
-  mockFile: 'learner_ai_response.json',
-  apiName: 'Learner AI MS'
-});
+const coordinatorClient = getCoordinatorClient();
 
 /**
- * Send gap analysis to Learner AI MS
+ * Send gap analysis to Learner AI MS via Coordinator
  * @param {string} userId - User ID
  * @param {Object} gapAnalysis - Gap analysis data
- * @returns {Promise<Object>} Response from Learner AI MS
+ * @returns {Promise<Object>} Response envelope from Coordinator
  */
 async function sendGapAnalysis(userId, gapAnalysis) {
-  try {
-    const response = await learnerAIClient.post('/api/gap-analysis', {
+  const envelope = {
+    requester_service: 'skills-engine',
+    payload: {
       user_id: userId,
-      gaps: gapAnalysis
-    }, {
-      Authorization: `Bearer ${process.env.LEARNER_AI_TOKEN || ''}`
-    });
+      user_name: gapAnalysis.user_name,
+      company_id: gapAnalysis.company_id,
+      course_name: gapAnalysis.course_name,
+      missing_mgs: gapAnalysis.missing_mgs,
+      exam_status: gapAnalysis.exam_status,
+      company_name: gapAnalysis.company_name
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {}
+    }
+  };
 
-    return response;
-  } catch (error) {
-    // Fallback is handled by apiClient
-    throw error;
-  }
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/learner-ai/gap-analysis'
+  });
 }
 
 module.exports = {

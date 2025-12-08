@@ -1,55 +1,60 @@
 /**
- * Directory MS API Client
- * 
- * Handles communication with Directory MS with fallback to mock data.
+ * Directory MS API Client (via Coordinator)
+ *
+ * Handles communication with Directory MS indirectly by sending
+ * unified-protocol style envelopes to the Coordinator.
  */
 
-const { createAPIClient } = require('../utils/apiClient');
+const { getCoordinatorClient } = require('../infrastructure/coordinatorClient/coordinatorClient');
 
-const directoryClient = createAPIClient({
-  baseURL: process.env.DIRECTORY_SERVICE_URL || 'http://localhost:3001',
-  mockFile: 'directory_ms_response.json',
-  apiName: 'Directory MS'
-});
+const coordinatorClient = getCoordinatorClient();
 
 /**
- * Send initial profile to Directory MS
+ * Send initial profile to Directory MS via Coordinator
  * @param {string} userId - User ID
  * @param {Object} profile - Initial profile payload
- * @returns {Promise<Object>} Response from Directory MS
+ * @returns {Promise<Object>} Response envelope from Coordinator
  */
 async function sendInitialProfile(userId, profile) {
-  try {
-    const response = await directoryClient.post('/api/users/initial-profile', {
-      userId,
+  const envelope = {
+    requester_service: 'skills-engine',
+    payload: {
+      user_id: userId,
       ...profile
-    }, {
-      Authorization: `Bearer ${process.env.DIRECTORY_SERVICE_TOKEN || ''}`
-    });
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {}
+    }
+  };
 
-    return response;
-  } catch (error) {
-    // Fallback is handled by apiClient
-    throw error;
-  }
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/directory/initial-profile'
+  });
 }
 
 /**
- * Get user data from Directory MS
+ * Get user data from Directory MS via Coordinator
  * @param {string} userId - User ID
- * @returns {Promise<Object>} User data
+ * @returns {Promise<Object>} Response envelope from Coordinator
  */
 async function getUserData(userId) {
-  try {
-    const response = await directoryClient.get(`/api/users/${userId}`, {
-      Authorization: `Bearer ${process.env.DIRECTORY_SERVICE_TOKEN || ''}`
-    });
+  const envelope = {
+    requester_service: 'skills-engine',
+    payload: {
+      user_id: userId
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {}
+    }
+  };
 
-    return response;
-  } catch (error) {
-    // Fallback is handled by apiClient
-    throw error;
-  }
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/directory/get-user-data'
+  });
 }
 
 module.exports = {

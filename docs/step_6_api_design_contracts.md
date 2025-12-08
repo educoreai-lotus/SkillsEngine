@@ -436,25 +436,33 @@ POST /api/fill-content-metrics/
 
 #### 4.1.2 Skills Engine Sends Initial Profile
 
-**Request (from Skills Engine to Directory MS):**
+**Request (from Skills Engine to Directory MS, via Coordinator using unified envelope):**
 ```json
 POST /api/directory/initial-profile
 {
-  "user_id": "string",
-  "relevanceScore": 0,
-  "competencies": [
-    {
-      "competencyId": "string",
-      "level": "undefined",
-      "coverage": 0,
-      "skills": [
-        {
-          "skillId": "string",
-          "status": "unverified"
-        }
-      ]
-    }
-  ]
+  "requester_service": "skills-engine",
+  "payload": {
+    "user_id": "string",
+    "relevanceScore": 0,
+    "competencies": [
+      {
+        "competencyId": "string",
+        "level": "undefined",
+        "coverage": 0,
+        "skills": [
+          {
+            "skillId": "string",
+            "status": "unverified"
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "status": "success | error",
+    "message": "string",
+    "data": {}
+  }
 }
 ```
 
@@ -473,29 +481,37 @@ POST /api/directory/initial-profile
 
 #### 4.1.3 Skills Engine Sends Updated Profile
 
-**Request (from Skills Engine to Directory MS):**
+**Request (from Skills Engine to Directory MS, via Coordinator using unified envelope):**
 ```json
 POST /api/directory/update-profile
 {
-  "user_id": "string",
-  "user_name": "string",
-  "company_id": "string",
-  "competencies": [
-    {
-      "competency_id": "string",
-      "competency_name": "string",
-      "proficiency_level": "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT" | "UNDEFINED",
-      "coverage": 0-100,
-      "l1_skills": [
-        {
-          "skill_id": "string",
-          "skill_name": "string"
-        }
-      ]
-    }
-  ],
-  "relevance_score": 0-100,
-  "updated_at": "timestamp"
+  "requester_service": "skills-engine",
+  "payload": {
+    "user_id": "string",
+    "user_name": "string",
+    "company_id": "string",
+    "competencies": [
+      {
+        "competency_id": "string",
+        "competency_name": "string",
+        "proficiency_level": "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT" | "UNDEFINED",
+        "coverage": 0-100,
+        "l1_skills": [
+          {
+            "skill_id": "string",
+            "skill_name": "string"
+          }
+        ]
+      }
+    ],
+    "relevance_score": 0-100,
+    "updated_at": "timestamp"
+  },
+  "response": {
+    "status": "success | error",
+    "message": "string",
+    "data": {}
+  }
 }
 ```
 
@@ -523,21 +539,31 @@ POST /api/directory/update-profile
 
 #### 4.2.1 Skills Engine Sends Baseline Exam Request
 
-**Request (from Skills Engine to Assessment MS):**
+**Request (from Skills Engine to Assessment MS, via Coordinator using unified envelope):**
 ```json
 POST /api/assessment/create-baseline-exam
 {
-  "user_id": "string",
-  "user_name": "string",
-  "company_id": "string",
-  "competency_map": {
-    "competency_id_1": [
-      {
-        "skill_id": "string",
-        "skill_name": "string"
-      }
-    ],
-    "competency_id_2": [...]
+  "requester_service": "skills-engine",
+  "payload": {
+    "user_id": "string",
+    "user_name": "string",
+    "company_id": "string",
+    "competency_map": {
+      "competency_id_1": [
+        {
+          "skill_id": "string",
+          "skill_name": "string"
+        }
+      ],
+      "competency_id_2": [...]
+    }
+  },
+  "response": {
+    "status": "success | error",
+    "message": "string",
+    "data": {
+      "exam_id": "string"
+    }
   }
 }
 ```
@@ -777,25 +803,33 @@ POST /api/fill-content-metrics/
 
 #### 4.5.1 Skills Engine Sends Gap Analysis Results
 
-**Request (from Skills Engine to Learner AI MS):**
+**Request (from Skills Engine to Learner AI MS, via Coordinator using unified envelope):**
 ```json
 POST /api/learner-ai/gap-analysis-results
 {
-  "user_id": "string",
-  "user_name": "string",
-  "company_id": "string",
-  "course_name": "string | null",
-  "missing_mgs": {
-    "competency_name_1": [
-      {
-        "skill_id": "string",
-        "skill_name": "string"
-      }
-    ],
-    "competency_name_2": [...]
+  "requester_service": "skills-engine",
+  "payload": {
+    "user_id": "string",
+    "user_name": "string",
+    "company_id": "string",
+    "course_name": "string | null",
+    "missing_mgs": {
+      "competency_name_1": [
+        {
+          "skill_id": "string",
+          "skill_name": "string"
+        }
+      ],
+      "competency_name_2": [...]
+    },
+    "exam_status": "pass" | "fail" | null,
+    "analysis_type": "broad" | "narrow"
   },
-  "exam_status": "pass" | "fail" | null,
-  "analysis_type": "broad" | "narrow"
+  "response": {
+    "status": "success | error",
+    "message": "string",
+    "data": {}
+  }
 }
 ```
 

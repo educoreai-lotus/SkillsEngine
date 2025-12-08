@@ -1,37 +1,37 @@
 /**
- * Learning Analytics MS API Client
- * 
- * Handles communication with Learning Analytics MS with fallback to mock data.
+ * Learning Analytics MS API Client (via Coordinator)
+ *
+ * Handles communication with Learning Analytics MS indirectly by sending
+ * signed requests to the Coordinator, which then routes to Analytics MS.
  */
 
-const { createAPIClient } = require('../utils/apiClient');
+const { getCoordinatorClient } = require('../infrastructure/coordinatorClient/coordinatorClient');
 
-const analyticsClient = createAPIClient({
-  baseURL: process.env.LEARNING_ANALYTICS_URL || 'http://localhost:3006',
-  mockFile: 'analytics_response.json',
-  apiName: 'Learning Analytics MS'
-});
+const coordinatorClient = getCoordinatorClient();
 
 /**
- * Send user profile data to Learning Analytics MS
+ * Send user profile data to Learning Analytics MS via Coordinator
  * @param {string} userId - User ID
  * @param {Object} profileData - Profile data
- * @returns {Promise<Object>} Response from Learning Analytics MS
+ * @returns {Promise<Object>} Response envelope from Coordinator
  */
 async function sendUserProfile(userId, profileData) {
-  try {
-    const response = await analyticsClient.post('/api/users/profile', {
+  const envelope = {
+    requester_service: 'skills-engine',
+    payload: {
       user_id: userId,
       ...profileData
-    }, {
-      Authorization: `Bearer ${process.env.LEARNING_ANALYTICS_TOKEN || ''}`
-    });
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {}
+    }
+  };
 
-    return response;
-  } catch (error) {
-    // Fallback is handled by apiClient
-    throw error;
-  }
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/analytics/user-profile'
+  });
 }
 
 module.exports = {

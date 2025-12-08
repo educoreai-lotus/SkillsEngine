@@ -1,33 +1,40 @@
 /**
- * Course Builder MS API Client
- * 
- * Handles communication with Course Builder MS with fallback to mock data.
+ * Course Builder MS API Client (via Coordinator)
+ *
+ * Handles communication with Course Builder MS indirectly by sending
+ * signed requests to the Coordinator, which then routes to Course Builder.
  */
 
-const { createAPIClient } = require('../utils/apiClient');
+const { getCoordinatorClient } = require('../infrastructure/coordinatorClient/coordinatorClient');
 
-const courseBuilderClient = createAPIClient({
-  baseURL: process.env.COURSE_BUILDER_URL || 'http://localhost:3004',
-  mockFile: 'course_builder_response.json',
-  apiName: 'Course Builder MS'
-});
+const coordinatorClient = getCoordinatorClient();
 
 /**
- * Get skills for competency
+ * Get skills for competency via Coordinator
  * @param {string} competencyName - Competency name
- * @returns {Promise<Object>} Skills data
+ * @returns {Promise<Object>} Skills data envelope from Coordinator
  */
 async function getSkillsForCompetency(competencyName) {
-  try {
-    const response = await courseBuilderClient.get(`/api/competencies/${competencyName}/skills`, {
-      Authorization: `Bearer ${process.env.COURSE_BUILDER_TOKEN || ''}`
-    });
+  const envelope = {
+    requester_service: 'skills-engine',
+    payload: {
+      competency_name: competencyName
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {
+        competency_id: null,
+        competency_name: '',
+        mgs_list: [],
+        discovered: false
+      }
+    }
+  };
 
-    return response;
-  } catch (error) {
-    // Fallback is handled by apiClient
-    throw error;
-  }
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/course-builder/competency-skills'
+  });
 }
 
 module.exports = {

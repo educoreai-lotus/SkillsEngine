@@ -1,37 +1,37 @@
 /**
- * Content Studio MS API Client
- * 
- * Handles communication with Content Studio MS with fallback to mock data.
+ * Content Studio MS API Client (via Coordinator)
+ *
+ * Handles communication with Content Studio MS indirectly by sending
+ * signed requests to the Coordinator, which then routes to Content Studio.
  */
 
-const { createAPIClient } = require('../utils/apiClient');
+const { getCoordinatorClient } = require('../infrastructure/coordinatorClient/coordinatorClient');
 
-const contentStudioClient = createAPIClient({
-  baseURL: process.env.CONTENT_STUDIO_URL || 'http://localhost:3003',
-  mockFile: 'content_studio_response.json',
-  apiName: 'Content Studio MS'
-});
+const coordinatorClient = getCoordinatorClient();
 
 /**
- * Send skills data to Content Studio MS
+ * Send skills data to Content Studio MS via Coordinator
  * @param {string} competencyId - Competency ID
  * @param {Array} skills - Skills array
- * @returns {Promise<Object>} Response from Content Studio MS
+ * @returns {Promise<Object>} Response envelope from Coordinator
  */
 async function sendSkillsData(competencyId, skills) {
-  try {
-    const response = await contentStudioClient.post('/api/competencies/skills', {
+  const envelope = {
+    requester_service: 'skills-engine',
+    payload: {
       competency_id: competencyId,
-      skills: skills
-    }, {
-      Authorization: `Bearer ${process.env.CONTENT_STUDIO_TOKEN || ''}`
-    });
+      skills
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {}
+    }
+  };
 
-    return response;
-  } catch (error) {
-    // Fallback is handled by apiClient
-    throw error;
-  }
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/content-studio/competency-skills'
+  });
 }
 
 module.exports = {

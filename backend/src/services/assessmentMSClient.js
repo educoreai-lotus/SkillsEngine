@@ -1,24 +1,21 @@
 /**
- * Assessment MS API Client
+ * Assessment MS API Client (via Coordinator)
  *
- * Handles communication with Assessment MS with fallback to mock data.
+ * Handles communication with Assessment MS indirectly by sending
+ * signed requests to the Coordinator, which then routes to Assessment MS.
  */
 
-const { createAPIClient } = require('../utils/apiClient');
+const { getCoordinatorClient } = require('../infrastructure/coordinatorClient/coordinatorClient');
 
-const assessmentClient = createAPIClient({
-  baseURL: process.env.ASSESSMENT_SERVICE_URL || 'http://localhost:3002',
-  mockFile: 'assessment_ms_exam_results.json',
-  apiName: 'Assessment MS'
-});
+const coordinatorClient = getCoordinatorClient();
 
 /**
- * Request baseline exam for user
+ * Request baseline exam for user via Coordinator
  * @param {string} userId - User ID
  * @param {string} userName - User name
  * @param {Array} competenciesWithMGS - Array of competencies with their MGS
  * @param {string|null} companyId - Company ID (optional)
- * @returns {Promise<Object>} Exam request response
+ * @returns {Promise<Object>} Exam request response envelope from Coordinator
  *
  * Expected structure for competenciesWithMGS:
  * [
@@ -31,73 +28,61 @@ const assessmentClient = createAPIClient({
  *     ]
  *   }
  * ]
- *
- * Outbound contract (Skills Engine -> Assessment MS):
- * {
- *   "user_id": "<USER_ID>",
- *   "user_name": "<USER_NAME>",
- *   "company_id": "<COMPANY_ID or null>",
- *   "exam_type": "baseline exam",
- *   "competencies": [
- *     {
- *       "competency_id": "<COMPETENCY_ID or null>",
- *       "competency_name": "Software Development",
- *       "mgs": [
- *         { "skill_id": "skill_mgs_001", "skill_name": "JavaScript Variables" },
- *         { "skill_id": "skill_mgs_002", "skill_name": "React Hooks" }
- *       ]
- *     }
- *   ]
- * }
  */
 async function requestBaselineExam(userId, userName, competenciesWithMGS, companyId = null) {
-  try {
-    const list = competenciesWithMGS || [];
+  const list = competenciesWithMGS || [];
 
-    // Array form: each competency carries its id, name, and MGS list.
-    const outboundCompetencies = list.map((comp) => ({
-      competency_id: comp.competency_id || null,
-      competency_name: comp.competency_name,
-      mgs: comp.mgs || []
-    }));
+  // Array form: each competency carries its id, name, and MGS list.
+  const outboundCompetencies = list.map((comp) => ({
+    competency_id: comp.competency_id || null,
+    competency_name: comp.competency_name,
+    mgs: comp.mgs || []
+  }));
 
-    const response = await assessmentClient.post(
-      '/api/exams/baseline',
-      {
-        user_id: userId,
-        user_name: userName,
-        company_id: companyId || null,
-        exam_type: 'baseline exam',
-        competencies: outboundCompetencies
-      },
-      {
-        Authorization: `Bearer ${process.env.ASSESSMENT_SERVICE_TOKEN || ''}`
+  const envelope = {
+    requester_service: 'skills-engine',
+    payload: {
+      user_id: userId,
+      user_name: userName,
+      company_id: companyId || null,
+      exam_type: 'baseline exam',
+      competencies: outboundCompetencies
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {
+        exam_id: null
       }
-    );
+    }
+  };
 
-    return response;
-  } catch (error) {
-    // Fallback is handled by apiClient
-    throw error;
-  }
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/assessment/baseline-exam'
+  });
 }
 
 /**
- * Get exam results from Assessment MS
+ * Get exam results from Assessment MS via Coordinator
  * @param {string} examId - Exam ID
- * @returns {Promise<Object>} Exam results
+ * @returns {Promise<Object>} Exam results envelope from Coordinator
  */
 async function getExamResults(examId) {
-  try {
-    const response = await assessmentClient.get(`/api/exams/${examId}/results`, {
-      Authorization: `Bearer ${process.env.ASSESSMENT_SERVICE_TOKEN || ''}`
-    });
+  const envelope = {
+    requester_service: 'skills-engine',
+    payload: {
+      exam_id: examId
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {}
+    }
+  };
 
-    return response;
-  } catch (error) {
-    // Fallback is handled by apiClient
-    throw error;
-  }
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/assessment/get-exam-results'
+  });
 }
 
 module.exports = {
