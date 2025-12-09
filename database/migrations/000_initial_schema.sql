@@ -405,7 +405,7 @@ CREATE INDEX IF NOT EXISTS idx_parent_skill ON skills(parent_skill_id);
 CREATE INDEX IF NOT EXISTS idx_skill_name ON skills(skill_name);
 
 -- Hash indexes for skills table
-CREATE INDEX IF NOT EXISTS idx_skill_id_hash ON skills((POLYNOMIAL_HASH(skill_id)));
+CREATE INDEX IF NOT EXISTS idx_skill_id_hash ON skills((POLYNOMIAL_HASH(skill_id::TEXT)));
 CREATE INDEX IF NOT EXISTS idx_skill_name_hash ON skills((POLYNOMIAL_HASH(skill_name)));
 
 -- Trigger for auto-updating updated_at
@@ -479,7 +479,7 @@ CREATE INDEX IF NOT EXISTS idx_competency_skill_skill ON competency_skill(skill_
 CREATE INDEX IF NOT EXISTS idx_competency_skill_competency ON competency_skill(competency_id);
 
 -- Hash index for competency_skill table
-CREATE INDEX IF NOT EXISTS idx_competency_id_hash ON competency_skill((POLYNOMIAL_HASH(competency_id)));
+CREATE INDEX IF NOT EXISTS idx_competency_id_hash ON competency_skill((POLYNOMIAL_HASH(competency_id::TEXT)));
 
 CREATE TABLE IF NOT EXISTS skill_subSkill (
     parent_skill_id UUID NOT NULL,
@@ -501,8 +501,8 @@ CREATE INDEX IF NOT EXISTS idx_skill_subskill_parent ON skill_subSkill(parent_sk
 CREATE INDEX IF NOT EXISTS idx_skill_subskill_child ON skill_subSkill(child_skill_id);
 
 -- Hash indexes for skill_subSkill table
-CREATE INDEX IF NOT EXISTS idx_parent_skill_id_hash ON skill_subSkill((POLYNOMIAL_HASH(parent_skill_id)));
-CREATE INDEX IF NOT EXISTS idx_child_skill_id_hash ON skill_subSkill((POLYNOMIAL_HASH(child_skill_id)));
+CREATE INDEX IF NOT EXISTS idx_parent_skill_id_hash ON skill_subSkill((POLYNOMIAL_HASH(parent_skill_id::TEXT)));
+CREATE INDEX IF NOT EXISTS idx_child_skill_id_hash ON skill_subSkill((POLYNOMIAL_HASH(child_skill_id::TEXT)));
 
 CREATE TABLE IF NOT EXISTS competency_subCompetency (
     parent_competency_id UUID NOT NULL,
@@ -547,7 +547,7 @@ CREATE INDEX IF NOT EXISTS idx_users_company_id ON users(company_id);
 CREATE INDEX IF NOT EXISTS idx_users_employee_type ON users(employee_type);
 
 -- Hash index for users table
-CREATE INDEX IF NOT EXISTS idx_user_id_hash ON users((POLYNOMIAL_HASH(user_id)));
+CREATE INDEX IF NOT EXISTS idx_user_id_hash ON users((POLYNOMIAL_HASH(user_id::TEXT)));
 
 -- Trigger for auto-updating updated_at
 CREATE OR REPLACE FUNCTION update_users_updated_at()
@@ -589,8 +589,8 @@ CREATE INDEX IF NOT EXISTS idx_usercompetency_user ON userCompetency(user_id);
 CREATE INDEX IF NOT EXISTS idx_usercompetency_competency ON userCompetency(competency_id);
 
 -- Hash indexes for userCompetency table
-CREATE INDEX IF NOT EXISTS idx_usercompetency_user_hash ON userCompetency((POLYNOMIAL_HASH(user_id)));
-CREATE INDEX IF NOT EXISTS idx_usercompetency_competency_hash ON userCompetency((POLYNOMIAL_HASH(competency_id)));
+CREATE INDEX IF NOT EXISTS idx_usercompetency_user_hash ON userCompetency((POLYNOMIAL_HASH(user_id::TEXT)));
+CREATE INDEX IF NOT EXISTS idx_usercompetency_competency_hash ON userCompetency((POLYNOMIAL_HASH(competency_id::TEXT)));
 
 -- GIN index for JSONB field for efficient JSON queries
 CREATE INDEX IF NOT EXISTS idx_usercompetency_verified_skills ON userCompetency USING GIN (verifiedSkills);
@@ -634,8 +634,8 @@ CREATE INDEX IF NOT EXISTS idx_userskill_skill ON userSkill(skill_id);
 
 
 -- Hash indexes for userSkill table
-CREATE INDEX IF NOT EXISTS idx_userskill_user_hash ON userSkill((POLYNOMIAL_HASH(user_id)));
-CREATE INDEX IF NOT EXISTS idx_userskill_skill_hash ON userSkill((POLYNOMIAL_HASH(skill_id)));
+CREATE INDEX IF NOT EXISTS idx_userskill_user_hash ON userSkill((POLYNOMIAL_HASH(user_id::TEXT)));
+CREATE INDEX IF NOT EXISTS idx_userskill_skill_hash ON userSkill((POLYNOMIAL_HASH(skill_id::TEXT)));
 
 -- ============================================================================
 -- 4. External Sources Table
