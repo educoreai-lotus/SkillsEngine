@@ -2,8 +2,7 @@ version: "3.9"
 
 services:
   backend:
-    build:
-      context: ./backend
+    image: skillsengine-backend:1.0.0 
     container_name: skills-engine-backend
     env_file:
       - ./backend/.env
@@ -12,10 +11,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+    image: skills-engine-frontend:1.0.0
     container_name: skills-engine-frontend
     depends_on:
       - backend
