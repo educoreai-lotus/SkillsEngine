@@ -159,14 +159,14 @@
           }
         },
         {
-          "name": "userCompetency",
+          "name": "usercompetency",
           "schema": {
             "columns": [
               { "name": "user_id", "type": "uuid", "nullable": false },
               { "name": "competency_id", "type": "uuid", "nullable": false },
-              { "name": "coverage_percentage", "type": "decimal(5,2)", "nullable": false, "default": 0.00 },
+              { "name": "coverage_percentage", "type": "numeric(5,2)", "nullable": false, "default": 0.00 },
               { "name": "proficiency_level", "type": "varchar(50)", "nullable": true },
-              { "name": "verifiedSkills", "type": "jsonb", "nullable": false, "default": "[]" },
+              { "name": "verifiedskills", "type": "jsonb", "nullable": false, "default": "[]" },
               { "name": "created_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" },
               { "name": "updated_at", "type": "timestamp", "nullable": false, "default": "CURRENT_TIMESTAMP" }
             ],
@@ -192,7 +192,7 @@
           }
         },
         {
-          "name": "userSkill",
+          "name": "userskill",
           "schema": {
             "columns": [
               { "name": "user_id", "type": "uuid", "nullable": false },
