@@ -170,3 +170,19 @@ The exact prompt implementation will live in code, but conceptually it contains 
   - optionally run first in a read-only mode / transaction.
 
 Detailed safety policies and validation rules will be defined in a separate implementation document or within the AI client module.
+
+---
+
+### 6. Field Name Mapping Between Microservices and Skills Engine
+
+External microservices are free to use their **own field names** in `response.data`. The AI Query Builder is responsible for bridging those names to Skills Engine’s **internal schema**:
+
+- The prompt includes:
+  - the external `response.data` shape (field names as seen by the caller),
+  - the internal schema from the migration file (tables, columns, relationships),
+  - optional mapping hints (e.g. "`userScore` corresponds to `relevance_score` on users").
+- The AI uses this context to:
+  - generate queries over **internal** field names and relationships,
+  - and then map the results back into the **external** structure of `response.data` when building the filled `data` object.
+
+This allows each microservice to keep its own naming conventions while Skills Engine maintains its own internal model, with the Query Builder acting as a smart translation layer between the two.

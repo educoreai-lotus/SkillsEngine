@@ -12,6 +12,7 @@ const contentStudioHandler = require('./content/index');
 const learnerAIHandler = require('./learner/index');
 const analyticsHandler = require('./analytics/index');
 const ragHandler = require('./rag/index');
+const aiQueryBuilderService = require('../services/aiQueryBuilderService');
 
 // Service to handler mapping
 const HANDLER_MAP = {
@@ -123,7 +124,10 @@ class UnifiedEndpointHandler {
       }
 
       // Route to handler
-      const result = await handler.process(payload, responseTemplate);
+      // Handlers can optionally use aiQueryBuilderService for read-side query planning
+      const result = await handler.process(payload, responseTemplate, {
+        aiQueryBuilder: aiQueryBuilderService
+      });
 
       // Validate result structure
       if (!result || typeof result !== 'object') {
