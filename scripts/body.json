@@ -1,0 +1,32 @@
+{
+    "requester_service": "skills-engine-service",
+    "payload": {
+      "user_id": "USER-123",
+      "user_name": "Alice Example",
+      "company_id": "COMP-001",
+      "exam_type": "baseline exam",
+      "competencies": [
+        {
+          "competency_id": "comp_001",
+          "competency_name": "Software Development",
+          "mgs": [
+            { "skill_id": "skill_mgs_001", "skill_name": "JavaScript Variables" },
+            { "skill_id": "skill_mgs_002", "skill_name": "React Hooks" }
+          ]
+        }
+      ]
+    },
+    "response": {
+      "status": "success",
+      "message": "",
+      "data": {
+        "exam_type":"",
+        "exam_status": "",
+        "final_grade": 0,
+        "user_id": "",
+        "user_name": "",
+        "skills": [ ]
+      }
+      
+    }
+  }

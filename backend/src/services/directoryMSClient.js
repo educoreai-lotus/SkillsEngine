@@ -1,6 +1,6 @@
 /**
  * Directory MS API Client (via Coordinator)
- *
+ * 
  * Handles communication with Directory MS indirectly by sending
  * unified-protocol style envelopes to the Coordinator.
  */

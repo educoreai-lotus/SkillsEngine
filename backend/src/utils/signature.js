@@ -85,11 +85,14 @@ function normalizePublicKeyToPem(key) {
 }
 
 /**
- * Generate ECDSA P-256 signature
+ * Generate ECDSA P-256 signature (DER-encoded, base64)
+ * This implementation matches the documentation examples that use:
+ *   sign = crypto.createSign('SHA256'); sign.sign(privateKey, 'base64');
+ *
  * @param {string} serviceName - Service name
  * @param {string} privateKeyInput - Private key (raw base64 or PEM)
  * @param {Object} payload - Payload object to sign
- * @returns {string} Base64-encoded signature
+ * @returns {string} Base64-encoded signature (DER format)
  */
 function generateSignature(serviceName, privateKeyInput, payload) {
   if (!privateKeyInput || typeof privateKeyInput !== 'string') {
@@ -107,20 +110,13 @@ function generateSignature(serviceName, privateKeyInput, payload) {
     // Build message for signing
     const message = buildMessage(serviceName, payload);
 
-    // Create private key object from PEM string
-    const privateKey = crypto.createPrivateKey({
-      key: privateKeyPem,
-      format: 'pem'
-    });
+    // Use Node's streaming Sign API with default DER encoding,
+    // as shown in the coordinator security documentation.
+    const sign = crypto.createSign('SHA256');
+    sign.update(message);
+    sign.end();
 
-    // Sign the message using ECDSA P-256
-    const signature = crypto.sign('sha256', Buffer.from(message, 'utf8'), {
-      key: privateKey,
-      dsaEncoding: 'ieee-p1363' // Coordinator expects IEEE P1363 encoding
-    });
-
-    // Return Base64-encoded signature
-    return signature.toString('base64');
+    return sign.sign(privateKeyPem, 'base64');
   } catch (error) {
     logger.error('Signature generation failed', error);
     throw new Error(`Signature generation failed: ${error.message}`);
@@ -128,7 +124,10 @@ function generateSignature(serviceName, privateKeyInput, payload) {
 }
 
 /**
- * Verify ECDSA P-256 signature (optional)
+ * Verify ECDSA P-256 signature (DER-encoded, base64)
+ * Matches the documentation style:
+ *   verify = crypto.createVerify('SHA256'); verify.verify(publicKey, signature, 'base64');
+ *
  * @param {string} serviceName - Service name
  * @param {string} publicKeyInput - Public key (raw base64 or PEM)
  * @param {Object} payload - Payload object that was signed
@@ -143,21 +142,12 @@ function verifySignature(serviceName, publicKeyInput, payload, signature) {
   try {
     const publicKeyPem = normalizePublicKeyToPem(publicKeyInput);
     const message = buildMessage(serviceName, payload);
-    const publicKey = crypto.createPublicKey({
-      key: publicKeyPem,
-      format: 'pem'
-    });
 
-    const signatureBuffer = Buffer.from(signature, 'base64');
-    return crypto.verify(
-      'sha256',
-      Buffer.from(message, 'utf8'),
-      {
-        key: publicKey,
-        dsaEncoding: 'ieee-p1363'
-      },
-      signatureBuffer
-    );
+    const verify = crypto.createVerify('SHA256');
+    verify.update(message);
+    verify.end();
+
+    return verify.verify(publicKeyPem, signature, 'base64');
   } catch (error) {
     logger.warn('Signature verification failed', { error: error.message });
     return false;

@@ -442,21 +442,21 @@ POST /api/directory/initial-profile
 {
   "requester_service": "skills-engine",
   "payload": {
-    "user_id": "string",
-    "relevanceScore": 0,
-    "competencies": [
-      {
-        "competencyId": "string",
-        "level": "undefined",
-        "coverage": 0,
-        "skills": [
-          {
-            "skillId": "string",
-            "status": "unverified"
-          }
-        ]
-      }
-    ]
+  "user_id": "string",
+  "relevanceScore": 0,
+  "competencies": [
+    {
+      "competencyId": "string",
+      "level": "undefined",
+      "coverage": 0,
+      "skills": [
+        {
+          "skillId": "string",
+          "status": "unverified"
+        }
+      ]
+    }
+  ]
   },
   "response": {
     "status": "success | error",
@@ -487,25 +487,25 @@ POST /api/directory/update-profile
 {
   "requester_service": "skills-engine",
   "payload": {
-    "user_id": "string",
-    "user_name": "string",
-    "company_id": "string",
-    "competencies": [
-      {
-        "competency_id": "string",
-        "competency_name": "string",
-        "proficiency_level": "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT" | "UNDEFINED",
-        "coverage": 0-100,
-        "l1_skills": [
-          {
-            "skill_id": "string",
-            "skill_name": "string"
-          }
-        ]
-      }
-    ],
-    "relevance_score": 0-100,
-    "updated_at": "timestamp"
+  "user_id": "string",
+  "user_name": "string",
+  "company_id": "string",
+  "competencies": [
+    {
+      "competency_id": "string",
+      "competency_name": "string",
+      "proficiency_level": "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT" | "UNDEFINED",
+      "coverage": 0-100,
+      "l1_skills": [
+        {
+          "skill_id": "string",
+          "skill_name": "string"
+        }
+      ]
+    }
+  ],
+  "relevance_score": 0-100,
+  "updated_at": "timestamp"
   },
   "response": {
     "status": "success | error",
@@ -545,17 +545,17 @@ POST /api/assessment/create-baseline-exam
 {
   "requester_service": "skills-engine",
   "payload": {
-    "user_id": "string",
-    "user_name": "string",
-    "company_id": "string",
-    "competency_map": {
-      "competency_id_1": [
-        {
-          "skill_id": "string",
-          "skill_name": "string"
-        }
-      ],
-      "competency_id_2": [...]
+  "user_id": "string",
+  "user_name": "string",
+  "company_id": "string",
+  "competency_map": {
+    "competency_id_1": [
+      {
+        "skill_id": "string",
+        "skill_name": "string"
+      }
+    ],
+    "competency_id_2": [...]
     }
   },
   "response": {
@@ -809,21 +809,21 @@ POST /api/learner-ai/gap-analysis-results
 {
   "requester_service": "skills-engine",
   "payload": {
-    "user_id": "string",
-    "user_name": "string",
-    "company_id": "string",
-    "course_name": "string | null",
-    "missing_mgs": {
-      "competency_name_1": [
-        {
-          "skill_id": "string",
-          "skill_name": "string"
-        }
-      ],
-      "competency_name_2": [...]
-    },
-    "exam_status": "pass" | "fail" | null,
-    "analysis_type": "broad" | "narrow"
+  "user_id": "string",
+  "user_name": "string",
+  "company_id": "string",
+  "course_name": "string | null",
+  "missing_mgs": {
+    "competency_name_1": [
+      {
+        "skill_id": "string",
+        "skill_name": "string"
+      }
+    ],
+    "competency_name_2": [...]
+  },
+  "exam_status": "pass" | "fail" | null,
+  "analysis_type": "broad" | "narrow"
   },
   "response": {
     "status": "success | error",
