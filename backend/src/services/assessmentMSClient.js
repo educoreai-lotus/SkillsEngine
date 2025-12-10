@@ -30,19 +30,19 @@ const coordinatorClient = getCoordinatorClient();
  * ]
  */
 async function requestBaselineExam(userId, userName, competenciesWithMGS, companyId = null) {
-    const list = competenciesWithMGS || [];
+  const list = competenciesWithMGS || [];
 
-    // Array form: each competency carries its id, name, and MGS list.
-    const outboundCompetencies = list.map((comp) => ({
-      competency_id: comp.competency_id || null,
-      competency_name: comp.competency_name,
-      mgs: comp.mgs || []
-    }));
+  // Array form: each competency carries its id, name, and MGS list.
+  const outboundCompetencies = list.map((comp) => ({
+    competency_id: comp.competency_id || null,
+    competency_name: comp.competency_name,
+    mgs: comp.mgs || []
+  }));
 
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
-      action: 'Send list of skills per competency for baseline exam',
+      action: 'Create baseline exam for user',
       user_id: userId,
       user_name: userName,
       company_id: companyId || null,

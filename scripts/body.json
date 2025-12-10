@@ -1,7 +1,7 @@
 {
     "requester_service": "skills-engine-service",
     "payload": {
-      "action": "Send list of skills per competency for baseline exam",
+      "action": "Create baseline exam for user",
       "user_id": "USER-123",
       "user_name": "Alice Example",
       "company_id": "COMP-001",
