@@ -22,7 +22,7 @@ const logger = new Logger('CoordinatorMigrationOnce');
 async function main() {
     const coordinatorUrl = process.env.COORDINATOR_URL;
     const privateKey =
-        process.env.COORDINATOR_PRIVATE_KEY || process.env.SKILLS_ENGINE_PRIVATE_KEY;
+        process.env.COORDINATOR_PRIVATE_KEY || process.env.SKILLS_ENGINE_PRIVATE_KEY || null;
     const serviceId = process.argv[2];
 
     if (!serviceId) {
@@ -31,11 +31,6 @@ async function main() {
     if (!coordinatorUrl) {
         throw new Error('COORDINATOR_URL environment variable is required');
     }
-    if (!privateKey) {
-        throw new Error(
-            'COORDINATOR_PRIVATE_KEY (or SKILLS_ENGINE_PRIVATE_KEY) environment variable is required'
-        );
-    }
 
     const cleanCoordinatorUrl = coordinatorUrl.replace(/\/$/, '');
     const url = `${cleanCoordinatorUrl}/register/${serviceId}/migration`;
@@ -43,17 +38,34 @@ async function main() {
     // Body is exactly the migration file wrapper: { migrationFile: { ... } }
     const body = migrationTemplate;
 
-    // Sign the full body exactly like in registration
-    const signature = generateSignature(SERVICE_NAME, privateKey, body);
+    // Try to sign the body if a private key is configured; otherwise send unsigned.
+    let signature = null;
+    if (privateKey) {
+        try {
+            signature = generateSignature(SERVICE_NAME, privateKey, body);
+        } catch (err) {
+            logger.warn('Failed to generate ECDSA signature, proceeding without signature', {
+                error: err.message
+            });
+        }
+    } else {
+        logger.warn(
+            'No COORDINATOR_PRIVATE_KEY / SKILLS_ENGINE_PRIVATE_KEY configured; sending migration without signature'
+        );
+    }
 
     logger.info('Sending migration to Coordinator', { url, serviceId });
 
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+    if (signature) {
+        headers['X-Service-Name'] = SERVICE_NAME;
+        headers['X-Signature'] = signature;
+    }
+
     const response = await axios.post(url, body, {
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Service-Name': SERVICE_NAME,
-            'X-Signature': signature
-        },
+        headers,
         timeout: 30000
     });
 

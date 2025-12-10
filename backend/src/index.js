@@ -145,9 +145,11 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   3. Run: node check-connection.js`);
 
   // Non-blocking registration with Coordinator
-  registerService().catch((err) => {
-    console.error('Registration error (non-blocking):', err && err.message);
-  });
+  if (process.env.ENABLE_COORDINATOR_REGISTRATION === 'true') {
+    registerService().catch((err) => {
+      console.error('Registration error (non-blocking):', err && err.message);
+    });
+  }
 
   // Kick off source discovery + web extraction asynchronously on each system load.
   /*   (async () => {
