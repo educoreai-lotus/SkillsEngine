@@ -19,6 +19,7 @@ async function sendInitialProfile(userId, profile) {
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
+      action: 'Send initial competency profile to Directory MS',
       user_id: userId,
       ...profile
     },
@@ -43,6 +44,7 @@ async function getUserData(userId) {
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
+      action: 'Get user data from Directory MS',
       user_id: userId
     },
     response: {

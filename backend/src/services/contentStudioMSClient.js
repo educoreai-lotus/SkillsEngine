@@ -19,6 +19,7 @@ async function sendSkillsData(competencyId, skills) {
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
+      action: 'Send skills data for competency to Content Studio MS',
       competency_id: competencyId,
       skills
     },

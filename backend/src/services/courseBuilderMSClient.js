@@ -18,6 +18,7 @@ async function getSkillsForCompetency(competencyName) {
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
+      action: 'Get MGS/skills list for a given competency for Course Builder MS',
       competency_name: competencyName
     },
     response: {

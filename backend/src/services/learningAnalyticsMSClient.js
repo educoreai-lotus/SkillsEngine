@@ -19,6 +19,7 @@ async function sendUserProfile(userId, profileData) {
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
+      action: 'Send user profile data to Learning Analytics MS',
       user_id: userId,
       ...profileData
     },

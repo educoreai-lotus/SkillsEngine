@@ -19,6 +19,7 @@ async function search(query, type = null) {
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
+      action: 'Search skills and competencies for RAG/Chatbot MS',
       query,
       type: type || null
     },

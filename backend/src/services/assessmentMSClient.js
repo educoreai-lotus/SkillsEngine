@@ -42,12 +42,13 @@ async function requestBaselineExam(userId, userName, competenciesWithMGS, compan
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
-        user_id: userId,
-        user_name: userName,
-        company_id: companyId || null,
-        exam_type: 'baseline exam',
-        competencies: outboundCompetencies
-      },
+      action: 'Send list of skills per competency for baseline exam',
+      user_id: userId,
+      user_name: userName,
+      company_id: companyId || null,
+      exam_type: 'baseline exam',
+      competencies: outboundCompetencies
+    },
     response: {
       status: 'success',
       message: '',
@@ -71,6 +72,7 @@ async function getExamResults(examId) {
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
+      action: 'Get exam results for assessment exam',
       exam_id: examId
     },
     response: {
