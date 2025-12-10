@@ -63,9 +63,9 @@ class SourceDiscoveryService {
         reference_index_url: entry.reference_index_url,
         reference_type: entry.reference_type,
         hierarchy_support: hierarchySupportBool,
-        access_method:entry.access_method,
+        access_method: entry.access_method,
         provides: entry.provides,
-        topics_covered: entry.topics_covered,
+        coveredTopic: entry.coveredTopic,
         skill_focus: entry.skill_focus,
         last_checked: new Date().toISOString(),
       });

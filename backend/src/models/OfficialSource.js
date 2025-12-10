@@ -16,7 +16,7 @@ class OfficialSource {
       ? data.hierarchy_support
       : false;
     this.provides = data.provides || null;
-    this.topics_covered = data.topics_covered || null;
+    this.coveredTopic = data.coveredTopic || null;
     this.skill_focus = data.skill_focus || null;
     this.notes = data.notes || null;
     this.last_checked = data.last_checked || null;
@@ -77,7 +77,7 @@ class OfficialSource {
       access_method: this.access_method,
       hierarchy_support: this.hierarchy_support,
       provides: this.provides,
-      topics_covered: this.topics_covered,
+      coveredTopic: this.coveredTopic,
       skill_focus: this.skill_focus,
       notes: this.notes,
       last_checked: this.last_checked,

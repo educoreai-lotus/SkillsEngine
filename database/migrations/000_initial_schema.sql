@@ -74,7 +74,7 @@ CREATE TABLE public.official_sources (
     access_method VARCHAR(100) NULL,
     hierarchy_support BOOLEAN NULL DEFAULT FALSE,
     provides TEXT NULL,
-    topics_covered TEXT NULL,
+    coveredTopic TEXT NULL,
     skill_focus TEXT NULL,
     notes TEXT NULL,
     is_extracted BOOLEAN NOT NULL DEFAULT FALSE,

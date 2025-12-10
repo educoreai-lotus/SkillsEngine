@@ -66,7 +66,7 @@ Return ONLY a **valid JSON array** structured as:
     "access_method": "API | Scraping only",
     "hierarchy_support": "Yes | Partial | No",
     "provides": "skill | both",             // include only sources that provide skills or both
-    "topics_covered": "string",
+    "coveredTopic": "string",
     "skill_focus": "string",
     "notes": "string"                       // parent-child relationships, module links, etc.
   }

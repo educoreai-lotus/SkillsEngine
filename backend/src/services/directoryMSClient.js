@@ -17,7 +17,7 @@ const coordinatorClient = getCoordinatorClient();
  */
 async function sendInitialProfile(userId, profile) {
   const envelope = {
-    requester_service: 'skills-engine',
+    requester_service: 'skills-engine-service',
     payload: {
       action: 'Send initial competency profile to Directory MS',
       user_id: userId,
@@ -32,6 +32,33 @@ async function sendInitialProfile(userId, profile) {
 
   return coordinatorClient.post(envelope, {
     endpoint: '/api/events/directory/initial-profile'
+  });
+}
+
+/**
+ * Send updated profile to Directory MS via Coordinator
+ * (Called after exam results processing to sync updated competencies)
+ * @param {string} userId - User ID
+ * @param {Object} profile - Updated profile payload with user competencies
+ * @returns {Promise<Object>} Response envelope from Coordinator
+ */
+async function sendUpdatedProfile(userId, profile) {
+  const envelope = {
+    requester_service: 'skills-engine-service',
+    payload: {
+      action: 'Update user profile',
+      user_id: userId,
+      ...profile
+    },
+    response: {
+      status: 'success',
+      message: '',
+      data: {}
+    }
+  };
+
+  return coordinatorClient.post(envelope, {
+    endpoint: '/api/events/directory/updated-profile'
   });
 }
 
@@ -61,6 +88,7 @@ async function getUserData(userId) {
 
 module.exports = {
   sendInitialProfile,
+  sendUpdatedProfile,
   getUserData
 };
 

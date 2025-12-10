@@ -12,6 +12,7 @@ const skillRepository = require('../repositories/skillRepository');
 const competencyRepository = require('../repositories/competencyRepository');
 const gapAnalysisService = require('./gapAnalysisService');
 const learnerAIMSClient = require('./learnerAIMSClient');
+const directoryMSClient = require('./directoryMSClient');
 
 class VerificationService {
   /**
@@ -244,6 +245,22 @@ class VerificationService {
       } catch (err) {
         console.error(
           '[VerificationService.processBaselineExamResults] Error running gap analysis',
+          { userId, error: err.message }
+        );
+      }
+
+      // Send updated profile to Directory MS after processing exam results
+      try {
+        const updatedProfile = await this.buildUpdatedProfilePayload(userId);
+        await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
+        console.log(
+          '[VerificationService.processBaselineExamResults] Successfully sent updated profile to Directory MS',
+          { userId, examType, competenciesUpdated: updatedCompetencies.size }
+        );
+      } catch (err) {
+        // Don't fail exam processing if Directory MS update fails
+        console.warn(
+          '[VerificationService.processBaselineExamResults] Failed to send updated profile to Directory MS',
           { userId, error: err.message }
         );
       }
@@ -529,6 +546,100 @@ class VerificationService {
         '[VerificationService.updateParentCompetencies] Error updating parent competencies',
         { userId, childCompetencyId, error: error.message }
       );
+    }
+  }
+
+  /**
+   * Build updated profile payload for Directory MS
+   * Builds a hierarchical competency profile with current coverage and proficiency levels
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} Profile payload for Directory MS
+   */
+  async buildUpdatedProfilePayload(userId) {
+    try {
+      // Get all user competencies
+      const userCompetencies = await userCompetencyRepository.findByUser(userId);
+
+      if (!userCompetencies || userCompetencies.length === 0) {
+        return {
+          userId: userId,
+          relevanceScore: 0,
+          competencies: []
+        };
+      }
+
+      // Build competency hierarchy
+      const nodes = new Map();
+
+      for (const userComp of userCompetencies) {
+        const competency = await competencyRepository.findById(userComp.competency_id);
+        if (!competency) continue;
+
+        // Get parent relationships
+        const parentLinks = await competencyRepository.getParentCompetencies(userComp.competency_id);
+        const parentId = parentLinks.length > 0 ? parentLinks[0].competency_id : null;
+
+        const node = {
+          competencyId: userComp.competency_id,
+          competencyName: competency.competency_name,
+          level: userComp.proficiency_level || 'undefined',
+          coverage: userComp.coverage_percentage || 0,
+          parentId: parentId,
+          children: []
+        };
+
+        nodes.set(userComp.competency_id, node);
+      }
+
+      // Build parent-child relationships
+      for (const [id, node] of nodes.entries()) {
+        if (node.parentId && nodes.has(node.parentId)) {
+          const parent = nodes.get(node.parentId);
+          parent.children.push(node);
+        }
+      }
+
+      // Get root nodes (no parent)
+      const roots = Array.from(nodes.values()).filter(node => !node.parentId);
+
+      // Serialize node hierarchy (recursive)
+      const serializeNode = (node) => {
+        const base = {
+          competencyId: node.competencyId,
+          competencyName: node.competencyName,
+          level: node.level,
+          coverage: node.coverage
+        };
+
+        const childNodes = (node.children || []).map(serializeNode);
+        if (childNodes.length > 0) {
+          base.children = childNodes;
+        }
+
+        return base;
+      };
+
+      const competencies = roots.map(serializeNode);
+
+      // Build final payload
+      const payload = {
+        userId: userId,
+        relevanceScore: 0,
+        competencies: competencies
+      };
+
+      return payload;
+    } catch (error) {
+      console.error(
+        '[VerificationService.buildUpdatedProfilePayload] Error building profile payload',
+        { userId, error: error.message }
+      );
+      // Return minimal payload on error
+      return {
+        userId: userId,
+        relevanceScore: 0,
+        competencies: []
+      };
     }
   }
 }

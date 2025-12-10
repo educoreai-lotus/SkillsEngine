@@ -44,7 +44,7 @@ class OfficialSourceRepository {
         access_method: source.access_method,
         hierarchy_support: source.hierarchy_support,
         provides: source.provides,
-        topics_covered: source.topics_covered,
+        coveredTopic: source.coveredTopic,
         skill_focus: source.skill_focus,
         notes: source.notes,
         last_checked: source.last_checked,
