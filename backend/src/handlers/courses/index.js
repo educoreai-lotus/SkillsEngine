@@ -18,11 +18,7 @@ class CourseBuilderHandler {
       const { competency_name, user_id } = payload;
 
       if (!competency_name) {
-        return {
-          status: 'error',
-          message: 'competency_name is required',
-          data: {}
-        };
+        return { message: 'competency_name is required' };
       }
 
       // Look up competency and get skills
@@ -32,29 +28,18 @@ class CourseBuilderHandler {
         // Trigger external discovery
         const discovered = await skillDiscoveryService.discoverExternal(competency_name);
         return {
-          status: 'success',
-          message: 'Competency discovered externally',
-          data: {
-            ...responseTemplate?.data,
-            ...discovered
-          }
+          ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+          ...discovered
         };
       }
 
+      // On success, return only the business result shape (merged with template).
       return {
-        status: 'success',
-        message: 'Skills retrieved successfully',
-        data: {
-          ...responseTemplate?.data,
-          ...result
-        }
+        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        ...result
       };
     } catch (error) {
-      return {
-        status: 'error',
-        message: error.message,
-        data: {}
-      };
+      return { message: error.message };
     }
   }
 }

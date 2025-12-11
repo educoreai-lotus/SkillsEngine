@@ -18,7 +18,8 @@ class ContentStudioHandler {
   async process(payload, responseTemplate) {
     try {
       // Use AI Query Builder to generate queries dynamically
-      const responseTemplateData = responseTemplate?.data || {};
+      const responseTemplateData =
+        (responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {};
 
       console.log('[ContentStudioHandler] Using AI Query Builder to generate queries', {
         payload,
@@ -35,11 +36,8 @@ class ContentStudioHandler {
       // Execute queries and populate data
       const executedData = await this.executeQueries(queries, data, payload);
 
-      return {
-        status: 'success',
-        message: 'Data retrieved successfully using AI query builder',
-        data: executedData
-      };
+      // On success, return only the business result shape (executed data).
+      return executedData;
     } catch (error) {
       console.error('[ContentStudioHandler] Error processing request:', {
         error: error.message,
@@ -147,21 +145,13 @@ class ContentStudioHandler {
         : await competencyService.getRequiredMGSByName(competency_name);
 
       return {
-        status: 'success',
-        message: 'Skills retrieved successfully (fallback)',
-        data: {
-          ...responseTemplate?.data,
-          competency_id: competency_id || null,
-          competency_name: competency_name || null,
-          skills: skills
-        }
+        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        competency_id: competency_id || null,
+        competency_name: competency_name || null,
+        skills
       };
     } catch (error) {
-      return {
-        status: 'error',
-        message: error.message,
-        data: {}
-      };
+      return { message: error.message };
     }
   }
 }

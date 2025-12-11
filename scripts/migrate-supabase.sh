@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # Script to run database migrations on Supabase

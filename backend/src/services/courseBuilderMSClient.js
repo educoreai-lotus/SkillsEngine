@@ -22,9 +22,7 @@ async function getSkillsForCompetency(competencyName) {
       competency_name: competencyName
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {
+      answer: {
         competency_id: null,
         competency_name: '',
         mgs_list: [],

@@ -50,11 +50,7 @@ async function requestBaselineExam(userId, userName, competenciesWithMGS, compan
       competencies: outboundCompetencies
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {
-        exam_id: null
-      }
+      answer: {}
     }
   };
 
@@ -76,9 +72,7 @@ async function getExamResults(examId) {
       exam_id: examId
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {}
+      answer: {}
     }
   };
 

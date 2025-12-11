@@ -22,12 +22,8 @@ class AnalyticsHandler {
         // Get user profile data
         const profile = await userService.getFullUserProfile(user_id);
         return {
-          status: 'success',
-          message: 'User profile data retrieved',
-          data: {
-            ...responseTemplate?.data,
-            ...profile
-          }
+          ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+          ...profile
         };
       }
 
@@ -35,26 +31,14 @@ class AnalyticsHandler {
         // Get company-wide analytics
         // TODO: Implement company-wide aggregation
         return {
-          status: 'success',
-          message: 'Company analytics retrieved',
-          data: {
-            ...responseTemplate?.data,
-            company_id
-          }
+          ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+          company_id
         };
       }
 
-      return {
-        status: 'error',
-        message: 'user_id or company_id is required',
-        data: {}
-      };
+      return { message: 'user_id or company_id is required' };
     } catch (error) {
-      return {
-        status: 'error',
-        message: error.message,
-        data: {}
-      };
+      return { message: error.message };
     }
   }
 }

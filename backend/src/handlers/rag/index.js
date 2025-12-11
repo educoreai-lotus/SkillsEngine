@@ -19,11 +19,7 @@ class RAGHandler {
       const { query, type } = payload;
 
       if (!query) {
-        return {
-          status: 'error',
-          message: 'query is required',
-          data: {}
-        };
+        return { message: 'query is required' };
       }
 
       let results = [];
@@ -38,21 +34,14 @@ class RAGHandler {
         results.push(...competencies.map(c => ({ type: 'competency', ...c.toJSON() })));
       }
 
+      // On success, return only the business result shape; no status/message wrapper.
       return {
-        status: 'success',
-        message: 'Search completed',
-        data: {
-          ...responseTemplate?.data,
-          query,
-          results: results
-        }
+        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        query,
+        results
       };
     } catch (error) {
-      return {
-        status: 'error',
-        message: error.message,
-        data: {}
-      };
+      return { message: error.message };
     }
   }
 }

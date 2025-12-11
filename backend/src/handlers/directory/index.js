@@ -13,12 +13,8 @@ class DirectoryHandler {
    */
   async process(payload, responseTemplate) {
     // TODO: Implement Directory MS specific logic
-    // For now, return success
-    return {
-      status: 'success',
-      message: 'Directory MS request processed',
-      data: responseTemplate?.data || {}
-    };
+    // For now, just echo the requested answer template (business result only)
+    return (responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {};
   }
 }
 

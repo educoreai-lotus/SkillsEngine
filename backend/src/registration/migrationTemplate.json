@@ -1,7 +1,7 @@
 {
   "migrationFile": {
     "version": "1.0.0",
-    "description": "Skills Engine service: skills/competencies taxonomy, user profiles, and unified content metrics endpoint.",
+    "description": "Skills Engine service that stores and manages skills and competency taxonomies, builds user competency profiles from assessments, and supports gap analysis across users and roles.",
     "database": {
       "tables": [
         {

@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   backend:
-    image: skillsengine-backend:1.0.0 
+    image: roaab3/skillsengine-backend:1.0.0
     container_name: skills-engine-backend
     env_file:
       - ./backend/.env
@@ -11,7 +11,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: skills-engine-frontend:1.0.0
+    image: roaab3/skills-engine-frontend:1.0.0
     container_name: skills-engine-frontend
     depends_on:
       - backend

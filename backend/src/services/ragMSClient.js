@@ -24,9 +24,7 @@ async function search(query, type = null) {
       type: type || null
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {}
+      answer: {}
     }
   };
 

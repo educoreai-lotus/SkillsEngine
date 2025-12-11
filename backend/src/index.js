@@ -40,7 +40,8 @@ console.log(`⚠️  CORS: Allowing all origins (FRONTEND_URL=${FRONTEND_URL || 
 app.use(cors(corsOptions));
 
 // Body parser with size limits and error handling
-app.use(express.json({
+// NOTE: We skip JSON parsing for the unified endpoint and handle it manually there.
+const jsonParser = express.json({
   limit: '10mb', // Limit request body size
   verify: (req, res, buf, encoding) => {
     // Check if request was aborted
@@ -48,7 +49,15 @@ app.use(express.json({
       throw new Error('Request aborted');
     }
   }
-}));
+});
+
+app.use((req, res, next) => {
+  // Leave /api/fill-content-metrics/ body unparsed (handled as raw text in its route)
+  if (req.path === '/api/fill-content-metrics/' && req.method === 'POST') {
+    return next();
+  }
+  return jsonParser(req, res, next);
+});
 
 // Handle JSON parsing errors
 app.use((err, req, res, next) => {
@@ -124,7 +133,16 @@ app.use('/api/competency-discovery', competencyDiscoveryRoutes);
 app.use('/api/web-extraction', webExtractionRoutes);
 
 // Unified Data Exchange Protocol endpoint
-app.post('/api/fill-content-metrics/', unifiedEndpointHandler.handle.bind(unifiedEndpointHandler));
+// This endpoint receives the entire body as a stringified JSON and is parsed manually.
+const unifiedTextBodyParser = express.text({
+  type: '*/*',
+  limit: '10mb'
+});
+app.post(
+  '/api/fill-content-metrics/',
+  unifiedTextBodyParser,
+  unifiedEndpointHandler.handle.bind(unifiedEndpointHandler)
+);
 
 // Error handling middleware
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');

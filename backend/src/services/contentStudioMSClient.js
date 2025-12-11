@@ -24,9 +24,7 @@ async function sendSkillsData(competencyId, skills) {
       skills
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {}
+      answer: {}
     }
   };
 

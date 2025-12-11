@@ -24,9 +24,7 @@ async function sendInitialProfile(userId, profile) {
       ...profile
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {}
+      answer: {}
     }
   };
 
@@ -51,9 +49,7 @@ async function sendUpdatedProfile(userId, profile) {
       ...profile
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {}
+      answer: {}
     }
   };
 
@@ -75,9 +71,7 @@ async function getUserData(userId) {
       user_id: userId
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {}
+      answer: {}
     }
   };
 

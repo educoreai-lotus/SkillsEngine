@@ -17,11 +17,7 @@ class AssessmentHandler {
     try {
       // Validate payload structure
       if (!payload || typeof payload !== 'object') {
-        return {
-          status: 'error',
-          message: 'Invalid payload structure',
-          data: {}
-        };
+        return { message: 'Invalid payload structure' };
       }
 
       const { user_id, exam_type } = payload;
@@ -54,20 +50,12 @@ class AssessmentHandler {
       }
 
       if (!user_id || !exam_results) {
-        return {
-          status: 'error',
-          message: 'user_id and exam_results are required',
-          data: {}
-        };
+        return { message: 'user_id and exam_results are required' };
       }
 
       // Validate exam_results is an object
       if (typeof exam_results !== 'object' || exam_results === null) {
-        return {
-          status: 'error',
-          message: 'exam_results must be an object',
-          data: {}
-        };
+        return { message: 'exam_results must be an object' };
       }
 
       // Process exam results
@@ -77,11 +65,7 @@ class AssessmentHandler {
       } else if (exam_type === 'post-course') {
         result = await verificationService.processPostCourseExamResults(user_id, exam_results);
       } else {
-        return {
-          status: 'error',
-          message: 'Invalid exam_type. Must be "baseline" or "post-course"',
-          data: {}
-        };
+        return { message: 'Invalid exam_type. Must be "baseline" or "post-course"' };
       }
 
       // Validate result structure
@@ -90,20 +74,13 @@ class AssessmentHandler {
           '[AssessmentHandler] Verification service returned invalid result',
           { user_id, exam_type, resultType: typeof result }
         );
-        return {
-          status: 'error',
-          message: 'Failed to process exam results',
-          data: {}
-        };
+        return { message: 'Failed to process exam results' };
       }
 
+      // On success, return only the business result shape (merged with template).
       return {
-        status: 'success',
-        message: 'Exam results processed successfully',
-        data: {
-          ...responseTemplate?.data,
-          ...result
-        }
+        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        ...result
       };
     } catch (error) {
       // Log error for debugging
@@ -114,9 +91,7 @@ class AssessmentHandler {
       });
 
       return {
-        status: 'error',
-        message: error.message || 'Internal server error',
-        data: {}
+        message: error.message || 'Internal server error'
       };
     }
   }

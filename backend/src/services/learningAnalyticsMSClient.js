@@ -24,9 +24,7 @@ async function sendUserProfile(userId, profileData) {
       ...profileData
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {}
+      answer: {}
     }
   };
 

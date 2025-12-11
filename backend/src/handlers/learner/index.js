@@ -19,11 +19,7 @@ class LearnerAIHandler {
       const { user_id, competency_id, competency_name } = payload;
 
       if (!user_id) {
-        return {
-          status: 'error',
-          message: 'user_id is required',
-          data: {}
-        };
+        return { message: 'user_id is required' };
       }
 
       // If only competency_name is provided, resolve it to an ID for gap analysis
@@ -52,23 +48,15 @@ class LearnerAIHandler {
       }
 
       return {
-        status: 'success',
-        message: 'Gap analysis calculated',
-        data: {
-          ...responseTemplate?.data,
-          user_id,
-          competency_id: resolvedCompetencyId || null,
-          competency_name: competency_name || null,
-          gaps: gaps,
-          related_skills: relatedSkills
-        }
+        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        user_id,
+        competency_id: resolvedCompetencyId || null,
+        competency_name: competency_name || null,
+        gaps,
+        related_skills: relatedSkills
       };
     } catch (error) {
-      return {
-        status: 'error',
-        message: error.message,
-        data: {}
-      };
+      return { message: error.message };
     }
   }
 }

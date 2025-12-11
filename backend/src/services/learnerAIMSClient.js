@@ -29,9 +29,7 @@ async function sendGapAnalysis(userId, gapAnalysis) {
       company_name: gapAnalysis.company_name
     },
     response: {
-      status: 'success',
-      message: '',
-      data: {}
+      answer: {}
     }
   };
 

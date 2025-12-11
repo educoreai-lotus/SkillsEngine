@@ -37,139 +37,115 @@ const HANDLER_MAP = {
 
 class UnifiedEndpointHandler {
   /**
-   * Route request to appropriate handler
+   * Route request to appropriate handler.
+   *
+   * This endpoint expects the raw HTTP body to be a JSON-stringified object:
+   * {
+   *   "requester_service": "string",
+   *   "payload": { ... },
+   *   "response": { "answer": "" }
+   * }
+   *
+   * The handler fills response.answer and we always return the full object
+   * as a stringified JSON in the HTTP response.
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    */
   async handle(req, res) {
-    // Check if request was aborted
-    if (req.aborted) {
-      console.warn('[UnifiedEndpointHandler] Request aborted before processing');
-      return;
-    }
-
-    // Set up request timeout (30 seconds)
-    const timeout = setTimeout(() => {
-      if (!res.headersSent) {
-        res.status(504).json({
-          response: {
-            status: 'error',
-            message: 'Request timeout',
-            data: {}
-          }
-        });
-      }
-    }, 30000);
-
     try {
-      // Check if request was aborted during body parsing
-      if (req.aborted) {
-        clearTimeout(timeout);
-        return;
+      // Step 1: Read raw body (stringified JSON)
+      let rawBody = req.body;
+      if (typeof rawBody !== 'string') {
+        rawBody = rawBody ? String(rawBody) : '';
       }
 
-      // Validate request body exists
-      if (!req.body || typeof req.body !== 'object') {
-        clearTimeout(timeout);
-        return res.status(400).json({
+      // Step 2: Parse using JSON.parse
+      let envelope;
+      try {
+        envelope = JSON.parse(rawBody);
+      } catch (parseError) {
+        const errorEnvelope = {
+          requester_service: null,
+          payload: null,
           response: {
-            status: 'error',
-            message: 'Request body is required',
-            data: {}
+            answer: `Failed to parse JSON body: ${parseError.message}`
           }
-        });
+        };
+        return res
+          .status(400)
+          .type('application/json')
+          .send(JSON.stringify(errorEnvelope));
       }
 
-      const { requester_service, payload, response: responseTemplate } = req.body;
+      if (!envelope || typeof envelope !== 'object') {
+        const errorEnvelope = {
+          requester_service: null,
+          payload: null,
+          response: {
+            answer: 'Request body must be a JSON object'
+          }
+        };
+        return res
+          .status(400)
+          .type('application/json')
+          .send(JSON.stringify(errorEnvelope));
+      }
 
-      // Validate request structure
+      const { requester_service, payload, response } = envelope;
+      const responseTemplate = response || { answer: '' };
+
+      // Ensure response object exists and preserve structure
+      envelope.response = envelope.response || { answer: '' };
+
       if (!requester_service) {
-        clearTimeout(timeout);
-        return res.status(400).json({
-          response: {
-            status: 'error',
-            message: 'requester_service is required',
-            data: {}
-          }
-        });
+        envelope.response.answer = 'requester_service is required';
+        return res
+          .status(400)
+          .type('application/json')
+          .send(JSON.stringify(envelope));
       }
 
-      // Get handler for this service
+      // Step 3: Route based on requester_service
       const handler = HANDLER_MAP[requester_service];
       if (!handler) {
-        clearTimeout(timeout);
-        return res.status(400).json({
-          response: {
-            status: 'error',
-            message: `Unknown requester_service: ${requester_service}`,
-            data: {}
-          }
-        });
+        envelope.response.answer = `Unknown requester_service: ${requester_service}`;
+        return res
+          .status(400)
+          .type('application/json')
+          .send(JSON.stringify(envelope));
       }
 
-      // Validate handler has process method
       if (typeof handler.process !== 'function') {
-        clearTimeout(timeout);
         console.error(
           '[UnifiedEndpointHandler] Handler missing process method',
           { requester_service, handlerType: typeof handler }
         );
-        return res.status(500).json({
-          response: {
-            status: 'error',
-            message: 'Handler configuration error',
-            data: {}
-          }
-        });
+        envelope.response.answer = 'Handler configuration error';
+        return res
+          .status(500)
+          .type('application/json')
+          .send(JSON.stringify(envelope));
       }
 
-      // Route to handler
-      // Handlers can optionally use aiQueryBuilderService for read-side query planning
+      // Step 4: Call handler
       const result = await handler.process(payload, responseTemplate, {
         aiQueryBuilder: aiQueryBuilderService
       });
 
-      // Validate result structure
-      if (!result || typeof result !== 'object') {
-        clearTimeout(timeout);
-        console.error(
-          '[UnifiedEndpointHandler] Handler returned invalid result',
-          { requester_service, resultType: typeof result }
-        );
-        return res.status(500).json({
-          response: {
-            status: 'error',
-            message: 'Handler returned invalid response',
-            data: {}
-          }
-        });
+      // Step 5: Store result in response.answer
+      // answer is always a stringified JSON or plain string representation
+      if (typeof result === 'string') {
+        envelope.response.answer = result;
+      } else {
+        envelope.response.answer = JSON.stringify(result || {});
       }
 
-      // Clear timeout on success
-      clearTimeout(timeout);
-
-      // Check if request was aborted before sending response
-      if (req.aborted) {
-        console.warn('[UnifiedEndpointHandler] Request aborted before sending response');
-        return;
-      }
-
-      // Return in unified format
-      return res.json({
-        requester_service,
-        payload,
-        response: result
-      });
+      // Step 6: Return full object as stringified JSON
+      return res
+        .status(200)
+        .type('application/json')
+        .send(JSON.stringify(envelope));
     } catch (error) {
-      // Clear timeout on error
-      clearTimeout(timeout);
-
-      // Handle aborted requests gracefully
-      if (error.message === 'request aborted' || error.message?.includes('aborted') || req.aborted) {
-        console.warn('[UnifiedEndpointHandler] Request aborted during processing');
-        return; // Don't send response if request was aborted
-      }
-
       // Log error for debugging
       console.error('[UnifiedEndpointHandler] Error processing request:', {
         error: error.message,
@@ -178,15 +154,18 @@ class UnifiedEndpointHandler {
         method: req.method
       });
 
-      // Ensure response is sent (only if not aborted)
-      if (!res.headersSent && !req.aborted) {
-        return res.status(500).json({
+      if (!res.headersSent) {
+        const errorEnvelope = {
+          requester_service: null,
+          payload: null,
           response: {
-            status: 'error',
-            message: error.message || 'Internal server error',
-            data: {}
+            answer: error.message || 'Internal server error'
           }
-        });
+        };
+        return res
+          .status(500)
+          .type('application/json')
+          .send(JSON.stringify(errorEnvelope));
       }
     }
   }
