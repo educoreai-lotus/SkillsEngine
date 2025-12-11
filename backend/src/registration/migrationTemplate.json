@@ -47,7 +47,7 @@
             "access_method": "string",
             "hierarchy_support": "boolean",
             "provides": "string",
-            "coveredTopic": "string",
+            "coveredtopic": "string",
             "skill_focus": "string",
             "notes": "string",
             "is_extracted": "boolean",

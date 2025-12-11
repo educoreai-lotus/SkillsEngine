@@ -16,7 +16,7 @@ class OfficialSource {
       ? data.hierarchy_support
       : false;
     this.provides = data.provides || null;
-    this.coveredTopic = data.coveredTopic || null;
+    this.coveredTopic = data.coveredtopic || null;
     this.skill_focus = data.skill_focus || null;
     this.notes = data.notes || null;
     this.last_checked = data.last_checked || null;

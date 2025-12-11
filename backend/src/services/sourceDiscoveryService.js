@@ -65,7 +65,7 @@ class SourceDiscoveryService {
         hierarchy_support: hierarchySupportBool,
         access_method: entry.access_method,
         provides: entry.provides,
-        coveredTopic: entry.coveredTopic,
+        coveredtopic: entry.coveredtopic,
         skill_focus: entry.skill_focus,
         last_checked: new Date().toISOString(),
       });

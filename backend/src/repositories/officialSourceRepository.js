@@ -36,23 +36,27 @@ class OfficialSourceRepository {
 
     const { data, error } = await this.getClient()
       .from('official_sources')
-      .upsert({
-        source_id: source.source_id,
-        source_name: source.source_name,
-        reference_index_url: source.reference_index_url,
-        reference_type: source.reference_type,
-        access_method: source.access_method,
-        hierarchy_support: source.hierarchy_support,
-        provides: source.provides,
-        coveredTopic: source.coveredTopic,
-        skill_focus: source.skill_focus,
-        notes: source.notes,
-        last_checked: source.last_checked,
-        is_extracted: source.is_extracted,
-        updated_at: new Date().toISOString()
-      }, {
+      .upsert(
+        {
+          source_id: source.source_id,
+          source_name: source.source_name,
+          reference_index_url: source.reference_index_url,
+          reference_type: source.reference_type,
+          access_method: source.access_method,
+          hierarchy_support: source.hierarchy_support,
+          provides: source.provides,
+          // DB column is "coveredtopic" (lowercased by Postgres); map from model's coveredTopic
+          coveredtopic: source.coveredtopic,
+          skill_focus: source.skill_focus,
+          notes: source.notes,
+          last_checked: source.last_checked,
+          is_extracted: source.is_extracted,
+          updated_at: new Date().toISOString()
+        },
+        {
         onConflict: 'source_id'
-      })
+        }
+      )
       .select()
       .single();
 
