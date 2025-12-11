@@ -172,7 +172,7 @@ app.listen(PORT, '0.0.0.0', () => {
   // Kick off source discovery + web extraction asynchronously on each system load.
    (async () => {
       try {
-        console.log('🔎 [startup] Running initial source discovery in background...');
+        console.log('🔎 [startup] Running initial source discovery in background');
         const result = await sourceDiscoveryService.discoverAndStoreSources();
         console.log('✅ [startup] Source discovery completed:', {
           inserted: result.inserted,
