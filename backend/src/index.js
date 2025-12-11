@@ -174,6 +174,7 @@ app.listen(PORT, '0.0.0.0', () => {
       try {
         console.log('🔎 [startup] Running initial source discovery in background');
         const result = await sourceDiscoveryService.discoverAndStoreSources();
+        console.log('test if it works');
         console.log('✅ [startup] Source discovery completed:', {
           inserted: result.inserted,
           skipped: result.skipped,
