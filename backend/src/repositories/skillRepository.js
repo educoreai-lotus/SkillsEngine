@@ -38,9 +38,16 @@ class SkillRepository {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
+    // Enforce lowercase + trimmed skill_name at persistence time so that
+    // DB content stays consistent regardless of upstream casing.
+    const normalizedName =
+      typeof model.skill_name === 'string'
+        ? model.skill_name.toLowerCase().trim()
+        : model.skill_name;
+
     // Let the database generate the UUID for skill_id if not provided.
     const insertData = {
-      skill_name: model.skill_name,
+      skill_name: normalizedName,
       parent_skill_id: model.parent_skill_id,
       description: model.description,
       source: model.source
@@ -86,10 +93,15 @@ class SkillRepository {
    * @returns {Promise<Skill|null>}
    */
   async findByName(skillName) {
+    const name =
+      typeof skillName === 'string'
+        ? skillName.toLowerCase().trim()
+        : skillName;
+
     const { data, error } = await this.getClient()
       .from('skills')
       .select('*')
-      .ilike('skill_name', skillName.trim())
+      .ilike('skill_name', name)
       .single();
 
     if (error) {

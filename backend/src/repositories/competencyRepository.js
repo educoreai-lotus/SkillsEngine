@@ -38,9 +38,16 @@ class CompetencyRepository {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
+    // Enforce lowercase + trimmed competency_name at persistence time so that
+    // DB content stays consistent regardless of upstream casing.
+    const normalizedName =
+      typeof model.competency_name === 'string'
+        ? model.competency_name.toLowerCase().trim()
+        : model.competency_name;
+
     // Let the database generate the UUID for competency_id if not provided.
     const insertData = {
-      competency_name: model.competency_name,
+      competency_name: normalizedName,
       description: model.description,
       parent_competency_id: model.parent_competency_id,
       source: model.source
@@ -86,10 +93,15 @@ class CompetencyRepository {
    * @returns {Promise<Competency|null>}
    */
   async findByName(competencyName) {
+    const name =
+      typeof competencyName === 'string'
+        ? competencyName.toLowerCase().trim()
+        : competencyName;
+
     const { data, error } = await this.getClient()
       .from('competencies')
       .select('*')
-      .ilike('competency_name', competencyName.trim())
+      .ilike('competency_name', name)
       .single();
 
     if (error) {
