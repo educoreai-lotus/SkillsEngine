@@ -40,7 +40,7 @@ class NormalizationService {
       normalizedCompetencies = normalized.competencies.map((comp) =>
         typeof comp === 'string' ? { normalized_name: comp } : comp
       );
-      
+
       // For backward compatibility: if skills array exists, merge it into competencies
       if (normalized.skills && Array.isArray(normalized.skills)) {
         const normalizedSkills = normalized.skills.map((skill) =>
@@ -51,6 +51,19 @@ class NormalizationService {
     } else {
       throw new Error('Normalized data must be an array or contain competencies array');
     }
+
+    // Enforce lowercase + trimmed normalized_name regardless of AI behavior,
+    // so DB contents and taxonomy lookups are consistent with the prompt spec.
+    normalizedCompetencies = normalizedCompetencies.map((comp) => {
+      const name =
+        typeof comp.normalized_name === 'string'
+          ? comp.normalized_name
+          : '';
+      return {
+        ...comp,
+        normalized_name: name.toLowerCase().trim()
+      };
+    });
 
     // Map to taxonomy IDs (all items are competencies now)
     const mappedCompetencies = await this.mapToTaxonomyIds(

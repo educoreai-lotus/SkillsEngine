@@ -54,7 +54,7 @@ class OfficialSourceRepository {
           updated_at: new Date().toISOString()
         },
         {
-        onConflict: 'source_id'
+          onConflict: 'source_id'
         }
       )
       .select()

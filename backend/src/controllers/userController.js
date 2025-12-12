@@ -67,17 +67,10 @@ class UserController {
         console.log('[UserController] No path_career provided, skipping hierarchy generation');
       }
 
-      // Step 2: extract from raw data
-      const extracted = await extractionService.extractFromUserData(userId, rawData);
+      // Step 2-4: run full ingestion pipeline (extract → normalize → build initial profile)
+      const profile = await this.runIngestionPipeline(userId, rawData);
 
-      // Step 3: normalize + deduplicate
-      const normalizedRaw = await normalizationService.normalize(extracted);
-      const normalized = normalizationService.deduplicate(normalizedRaw);
-
-      // Step 4: build initial profile (writes usercompetency & userskill, sends to Directory MS)
-      const profile = await userService.buildInitialProfile(userId, normalized);
-
-      // Directory only needs the initial profile payload here
+      // Directory only needs the initial profile payload here (201 for create/update)
       res.status(201).json({
         success: true,
         data: profile
@@ -99,6 +92,30 @@ class UserController {
     }
   ]
 }*/
+
+  /**
+   * Shared ingestion pipeline:
+   *  - extract competencies & skills from raw data
+   *  - normalize + deduplicate
+   *  - build initial profile (writes usercompetency & userskill, sends to Directory MS)
+   *
+   * @param {string|number} userId
+   * @param {object} rawData
+   * @returns {Promise<object>} initial profile
+   */
+  async runIngestionPipeline(userId, rawData) {
+    // Step 1: extract competencies & skills from raw data
+    const extracted = await extractionService.extractFromUserData(userId, rawData);
+
+    // Step 2: normalize + map to taxonomy
+    const normalizedRaw = await normalizationService.normalize(extracted);
+    const normalized = normalizationService.deduplicate(normalizedRaw);
+
+    // Step 3: build initial profile (writes usercompetency & userskill, sends to Directory MS)
+    const profile = await userService.buildInitialProfile(userId, normalized);
+
+    return profile;
+  }
 
   /**
    * Extract skills and competencies from raw data
@@ -165,15 +182,8 @@ class UserController {
         return res.status(400).json({ success: false, error: 'rawData is required (either in body or user.raw_data)' });
       }
 
-      // Step 1: extract competencies & skills from raw data
-      const extracted = await extractionService.extractFromUserData(userId, rawData);
-
-      // Step 2: normalize + map to taxonomy
-      const normalizedRaw = await normalizationService.normalize(extracted);
-      const normalized = normalizationService.deduplicate(normalizedRaw);
-
-      // Step 3: build initial profile (writes usercompetency & userskill, sends to Directory MS)
-      const profile = await userService.buildInitialProfile(userId, normalized);
+      // Run shared ingestion pipeline (extract → normalize → build initial profile)
+      const profile = await this.runIngestionPipeline(userId, rawData);
 
       res.json({
         success: true,
