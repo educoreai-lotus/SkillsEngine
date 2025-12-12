@@ -63,7 +63,9 @@ class UserService {
               competency_name: comp.normalized_name,
               description: comp.description || null,
               parent_competency_id: null,
-              source: comp.source || 'ai'
+              // Mark competencies created from user raw data ingestion
+              // so we can distinguish them from manually curated taxonomy.
+              source: comp.source || 'profile_raw_data'
             })
           );
           competencyId = newComp.competency_id;
