@@ -44,7 +44,7 @@ class WebExtractionService {
 
     const stats = {
       competencies: 0,
-      skills: 0,
+      skills: 0
     };
 
     if (!extraction || !Array.isArray(extraction.sources)) {
@@ -69,12 +69,32 @@ class WebExtractionService {
         continue;
       }
 
+      // Derive a compact source identifier to persist on competencies/skills.
+      // Prefer an explicit source_id (from official_sources) when present; otherwise
+      // fall back to a truncated URL label.
+      const rawUrl =
+        source && typeof source.source_url === 'string'
+          ? source.source_url.trim()
+          : '';
+      const explicitSourceId =
+        source && typeof source.source_id === 'string'
+          ? source.source_id.trim()
+          : '';
+      const sourceIdentifier =
+        explicitSourceId ||
+        (rawUrl && rawUrl.length > 0 ? rawUrl.slice(0, 100) : 'web_extraction');
+
       console.log(
         '[WebExtractionService.persistExtraction] Processing source competency tree',
         { sourceUrl: source.source_url, competencyName: source.data.Competency.name }
       );
 
-      await this._processCompetencyNode(source.data.Competency, null, stats);
+      await this._processCompetencyNode(
+        source.data.Competency,
+        null,
+        stats,
+        sourceIdentifier
+      );
     }
 
     console.log(
@@ -91,9 +111,10 @@ class WebExtractionService {
    * @param {Object} node - { name, Subcompetencies?, Skills? }
    * @param {string|null} parentCompetencyId
    * @param {Object} stats
+   * @param {string} sourceIdentifier - Short identifier of the source (e.g., official source_id or URL label)
    * @returns {Promise<string>} competency_id
    */
-  async _processCompetencyNode(node, parentCompetencyId, stats) {
+  async _processCompetencyNode(node, parentCompetencyId, stats, sourceIdentifier) {
     const name = (node && node.name && typeof node.name === 'string')
       ? node.name.trim()
       : null;
@@ -106,6 +127,7 @@ class WebExtractionService {
       competency_name: name,
       description: node.description || null,
       parent_competency_id: parentCompetencyId,
+      source: sourceIdentifier || 'web_extraction'
     });
 
     const competency = await competencyRepository.create(competencyModel);
@@ -115,7 +137,12 @@ class WebExtractionService {
     // Handle skills attached to this competency/sub-competency
     if (Array.isArray(node.Skills)) {
       for (const skillNode of node.Skills) {
-        const rootSkillId = await this._processSkillNode(skillNode, null, stats);
+        const rootSkillId = await this._processSkillNode(
+          skillNode,
+          null,
+          stats,
+          sourceIdentifier
+        );
         if (rootSkillId) {
           // Link this root skill to the competency (L1 skill for this competency)
           await competencyRepository.linkSkill(competencyId, rootSkillId);
@@ -126,7 +153,7 @@ class WebExtractionService {
     // Recurse into sub-competencies
     if (Array.isArray(node.Subcompetencies)) {
       for (const subNode of node.Subcompetencies) {
-        await this._processCompetencyNode(subNode, competencyId, stats);
+        await this._processCompetencyNode(subNode, competencyId, stats, sourceIdentifier);
       }
     }
 
@@ -139,9 +166,10 @@ class WebExtractionService {
    * @param {Object|string} node - skill-like node or plain name
    * @param {string|null} parentSkillId
    * @param {Object} stats
+   * @param {string} sourceIdentifier - Short identifier of the source (e.g., official source_id or URL label)
    * @returns {Promise<string>} skill_id
    */
-  async _processSkillNode(node, parentSkillId, stats) {
+  async _processSkillNode(node, parentSkillId, stats, sourceIdentifier) {
     let name;
     let description = null;
 
@@ -161,6 +189,7 @@ class WebExtractionService {
       skill_name: name,
       parent_skill_id: parentSkillId,
       description,
+      source: sourceIdentifier || 'web_extraction'
     });
 
     const skill = await skillRepository.create(skillModel);
@@ -174,7 +203,7 @@ class WebExtractionService {
     for (const key of childCollections) {
       if (Array.isArray(obj[key])) {
         for (const child of obj[key]) {
-          await this._processSkillNode(child, skillId, stats);
+          await this._processSkillNode(child, skillId, stats, sourceIdentifier);
         }
       }
     }
@@ -200,9 +229,26 @@ class WebExtractionService {
 
       const rawExtraction = await aiService.extractFromWeb(url);
 
-      // Basic validation of extraction structure
-      if (!rawExtraction || !Array.isArray(rawExtraction.sources) || rawExtraction.sources.length === 0) {
+      // Basic validation of extraction structure (shape-level)
+      if (
+        !rawExtraction ||
+        !Array.isArray(rawExtraction.sources) ||
+        rawExtraction.sources.length === 0
+      ) {
         console.warn('[WebExtractionService.extractFromUrls] Skipping URL with no valid sources', { url });
+        continue;
+      }
+
+      // Semantic validation step BEFORE normalization (AI-based)
+      const validation = await aiService.validateWebExtractionResult(rawExtraction);
+      if (!validation || validation.valid !== true) {
+        console.warn(
+          '[WebExtractionService.extractFromUrls] Validation failed, skipping normalization and persistence',
+          {
+            url,
+            reason: validation && validation.reason ? validation.reason : 'Unknown validation failure'
+          }
+        );
         continue;
       }
 
@@ -264,11 +310,38 @@ class WebExtractionService {
 
       const rawExtraction = await aiService.extractFromWeb(url);
 
-      if (!rawExtraction || !Array.isArray(rawExtraction.sources) || rawExtraction.sources.length === 0) {
+      if (
+        !rawExtraction ||
+        !Array.isArray(rawExtraction.sources) ||
+        rawExtraction.sources.length === 0
+      ) {
         console.warn('[WebExtractionService.extractFromOfficialSources] Skipping URL with no valid sources', {
           source_id: entry.source_id,
           url,
         });
+        continue;
+      }
+
+      // Attach official source_id to each extracted source so that downstream
+      // persistence can record where competencies/skills came from.
+      if (Array.isArray(rawExtraction.sources)) {
+        rawExtraction.sources = rawExtraction.sources.map((s) => ({
+          ...s,
+          source_id: entry.source_id
+        }));
+      }
+
+      // Semantic validation step BEFORE normalization (AI-based)
+      const validation = await aiService.validateWebExtractionResult(rawExtraction);
+      if (!validation || validation.valid !== true) {
+        console.warn(
+          '[WebExtractionService.extractFromOfficialSources] Validation failed, skipping normalization and persistence',
+          {
+            source_id: entry.source_id,
+            url,
+            reason: validation && validation.reason ? validation.reason : 'Unknown validation failure'
+          }
+        );
         continue;
       }
 

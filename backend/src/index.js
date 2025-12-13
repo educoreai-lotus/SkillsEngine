@@ -181,17 +181,18 @@ app.listen(PORT, '0.0.0.0', () => {
           totalDiscovered: result.totalDiscovered,
         });
   
-       console.log('🌐 [startup] Running initial web extraction for discovered sources in background...');
+        console.log('🌐 [startup] Running initial web extraction for discovered sources in background...');
         const extractionResult = await webExtractionService.extractFromOfficialSources();
         console.log('✅ [startup] Web extraction completed:', {
           competenciesInserted: extractionResult.stats?.competencies ?? 0,
           skillsInserted: extractionResult.stats?.skills ?? 0,
           sourceCount: extractionResult.sources?.length ?? 0,
-        });  */
+        });  
       } catch (err) {
         console.error('⚠️  [startup] Initialization pipeline failed (discovery or extraction):', err.message || err);
       }
     })(); 
+    */
 });
 
 module.exports = app;

@@ -5,7 +5,6 @@
 --     - skillRepository.findMGS
 --     - skillRepository.getDepth
 -- ============================================================================
-
 CREATE OR REPLACE FUNCTION public.get_mgs_for_skill(root_skill_id UUID)
 RETURNS TABLE (
   skill_id UUID,
@@ -19,8 +18,10 @@ RETURNS TABLE (
 LANGUAGE sql
 STABLE
 AS $$
-WITH RECURSIVE skill_tree AS (
-  -- Start from the root skill
+WITH RECURSIVE
+-- 1) Traverse from the root skill down through BOTH hierarchy mechanisms
+skill_tree AS (
+  -- base: start at the root skill
   SELECT
     s.skill_id,
     s.skill_name,
@@ -34,20 +35,69 @@ WITH RECURSIVE skill_tree AS (
 
   UNION ALL
 
-  -- Walk down the hierarchy using the skill_subskill junction table
+  -- recursive: children via either parent_skill_id or skill_subskill
   SELECT
-    child.skill_id,
-    child.skill_name,
-    child.parent_skill_id,
-    child.description,
-    child.created_at,
-    child.updated_at,
-    child.source
-  FROM skill_subskill ss
-  INNER JOIN skills child ON child.skill_id = ss.child_skill_id
-  INNER JOIN skill_tree st ON ss.parent_skill_id = st.skill_id
+    c.skill_id,
+    c.skill_name,
+    c.parent_skill_id,
+    c.description,
+    c.created_at,
+    c.updated_at,
+    c.source
+  FROM skill_tree st
+  JOIN (
+    -- children via legacy parent_skill_id
+    SELECT
+      s2.skill_id,
+      s2.skill_name,
+      s2.parent_skill_id,
+      s2.description,
+      s2.created_at,
+      s2.updated_at,
+      s2.source,
+      s2.parent_skill_id AS parent_link
+    FROM skills s2
+    WHERE s2.parent_skill_id IS NOT NULL
+
+    UNION ALL
+
+    -- children via skill_subskill junction
+    SELECT
+      c2.skill_id,
+      c2.skill_name,
+      c2.parent_skill_id,
+      c2.description,
+      c2.created_at,
+      c2.updated_at,
+      c2.source,
+      ss.parent_skill_id AS parent_link
+    FROM skill_subskill ss
+    JOIN skills c2
+      ON c2.skill_id = ss.child_skill_id
+  ) c
+    ON c.parent_link = st.skill_id
+),
+
+-- 2) All edges (parents → children) from both mechanisms
+edges AS (
+  SELECT
+    parent_skill_id,
+    skill_id AS child_skill_id
+  FROM skills
+  WHERE parent_skill_id IS NOT NULL
+
+  UNION ALL
+
+  SELECT
+    parent_skill_id,
+    child_skill_id
+  FROM skill_subskill
 )
-SELECT
+
+-- 3) Leaf (MGS) skills:
+--    - must have at least one parent (appear as child in edges)
+--    - must have no children (no outgoing edge in edges)
+SELECT DISTINCT
   st.skill_id,
   st.skill_name,
   st.parent_skill_id,
@@ -56,14 +106,16 @@ SELECT
   st.updated_at,
   st.source
 FROM skill_tree st
-WHERE NOT EXISTS (
-  -- A leaf (MGS) is any skill in the tree that has no children
-  -- in the skill_subskill junction table.
-  SELECT 1
-  FROM skill_subskill ss2
-  WHERE ss2.parent_skill_id = st.skill_id
-);
+LEFT JOIN edges e_child
+  ON e_child.parent_skill_id = st.skill_id
+LEFT JOIN edges e_parent
+  ON e_parent.child_skill_id = st.skill_id
+WHERE e_child.child_skill_id IS NULL
+  AND e_parent.parent_skill_id IS NOT NULL;
 $$;
+
+
+
 
 
 -- 2) get_skill_depth
@@ -75,7 +127,6 @@ LANGUAGE sql
 STABLE
 AS $$
 WITH RECURSIVE ancestors AS (
-  -- Start from the skill itself
   SELECT
     s.skill_id,
     s.parent_skill_id,
@@ -85,13 +136,13 @@ WITH RECURSIVE ancestors AS (
 
   UNION ALL
 
-  -- Walk up the hierarchy following parent_skill_id
   SELECT
     p.skill_id,
     p.parent_skill_id,
-    a.depth + 1 AS depth
+    a.depth + 1
   FROM skills p
-  INNER JOIN ancestors a ON a.parent_skill_id = p.skill_id
+  JOIN ancestors a
+    ON a.parent_skill_id = p.skill_id
 )
 SELECT MAX(depth) FROM ancestors;
 $$;

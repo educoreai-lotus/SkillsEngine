@@ -260,6 +260,54 @@ class AIService {
   }
 
   /**
+   * Validate web extraction result BEFORE normalization (Feature 9.2)
+   *
+   * Uses a dedicated prompt that returns a JSON object with at least:
+   * { valid: boolean, reason: string }
+   *
+   * If Gemini fails or does not return a proper { valid } boolean, this
+   * method will treat the result as invalid (valid: false) and include
+   * a reason for logging/diagnostics.
+   *
+   * @param {Object} extraction - Raw extraction object from extractFromWeb
+   * @returns {Promise<{valid: boolean, [key: string]: any}>}
+   */
+  async validateWebExtractionResult(extraction) {
+    const promptPath = 'docs/prompts/web_extraction_validation_prompt.txt';
+    let prompt = await this.loadPrompt(promptPath);
+
+    prompt = prompt.replace('{{input_object}}', JSON.stringify(extraction, null, 2));
+
+    try {
+      const result = await this.callGeminiJSON(prompt, { modelType: 'flash' });
+
+      if (!result || typeof result.valid !== 'boolean') {
+        console.warn(
+          '[AIService.validateWebExtractionResult] Missing or non-boolean "valid" field; treating as invalid',
+          { resultPreview: JSON.stringify(result).slice(0, 200) }
+        );
+        return {
+          valid: false,
+          reason: 'Validation response missing a boolean "valid" field',
+          rawResult: result || null
+        };
+      }
+
+      return result;
+    } catch (error) {
+      console.warn(
+        '[AIService.validateWebExtractionResult] Gemini validation failed, treating extraction as invalid:',
+        error.message
+      );
+
+      return {
+        valid: false,
+        reason: `Gemini validation failed: ${error.message}`
+      };
+    }
+  }
+
+  /**
    * Generate competency hierarchy from career path (Feature: Career Path Competency Hierarchy)
    * @param {string} careerPath - Career path name (e.g., "Backend Development")
    * @returns {Promise<Object>} Hierarchical tree structure

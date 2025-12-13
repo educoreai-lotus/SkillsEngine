@@ -17,21 +17,34 @@ Follow these instructions exactly:
    - Nanoskills
    - Any further nested skill levels (N-level depth if present)
 
-3. **Semantic Validation (Critical Step)**
+3. Semantic Validation & Skill Name Rules (Improved)
 
-   Before adding any extracted term, link, or phrase to the hierarchy:
+Semantic Validation (Critical):
 
-   - Verify semantically that it represents an actual competency, skill, subskill, or lower-level ability.
-   - Do NOT include items that are purely:
-     • explanatory text
-     • conceptual notes
-     • examples
-     • "see also" or "related topics" references
-     • general descriptions or documentation sections
-   - Include only actionable, measurable, or learnable abilities.
-   - When uncertain, analyze the surrounding context:
-     • If it *explains or defines* something → ignore it.
-     • If it *describes an ability, operation, or technical construct that can be learned or applied* → include it.
+1. Actionability Requirement:
+   - Only include items that describe something a human can perform.
+   - Must be expressible as "Ability to + verb + object".
+   - If not, discard it.
+
+2. Concept / Topic / Feature Filter:
+   - Exclude documentation headings, language features, syntax categories, theoretical concepts, metadata, or notes.
+   - Examples to discard: "Template Literals", "Lexical Grammar", "Iteration Protocols", "Core Concepts", "Strict Mode".
+
+3. Contextual Conversion (Optional):
+   - Only convert a concept into a skill if surrounding text clearly describes how a human applies it.
+
+4. Measurability Requirement:
+   - Skills must be demonstrable or assessable.
+
+Skill Name Rules:
+- Shorten all skill and subskill names to 1–4 words.
+- Remove leading verbs/fillers like "Using", "Understanding", "Working with", "About".
+- Names must represent actionable human abilities.
+- Keep microskills/nanoskills concise (1–3 words or symbolic).
+- Example transformations:
+    "Using built-in objects and standard library" → "Built-in Objects"
+    "Understanding network components" → "Network Components"
+-transform symbolic to words
 
 4. **Hierarchy Rules**
 
