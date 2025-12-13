@@ -104,6 +104,7 @@ Return ONLY a **valid JSON array** structured as:
    - /skills/
    - /framework/
    - /ref/spec
+   -reference/index.html
 
 6. Skip:
    - /guide/

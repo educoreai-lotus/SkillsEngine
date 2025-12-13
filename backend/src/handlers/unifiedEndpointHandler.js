@@ -133,11 +133,13 @@ class UnifiedEndpointHandler {
       });
 
       // Step 5: Store result in response.answer
-      // answer is always a stringified JSON or plain string representation
+      // answer should be a JSON object (matching the responseTemplate shape),
+      // not a double-stringified blob.
       if (typeof result === 'string') {
-        envelope.response.answer = result;
+        // Wrap plain strings into a standard object shape.
+        envelope.response.answer = { message: result };
       } else {
-        envelope.response.answer = JSON.stringify(result || {});
+        envelope.response.answer = result || {};
       }
 
       // Step 6: Return full object as stringified JSON

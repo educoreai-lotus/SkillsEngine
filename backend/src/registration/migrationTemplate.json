@@ -128,18 +128,14 @@
               "response": {
                 "type": "object",
                 "properties": {
-                  "status": { "type": "string" },
-                  "message": { "type": "string" },
-                  "data": { "type": "object" }
+                  "answer": { "type": "object" }
                 }
               }
             }
           },
           "responseSchema": {
             "properties": {
-              "status": { "type": "string" },
-              "message": { "type": "string" },
-              "data": { "type": "object" }
+              "answer": { "type": "object" }
             }
           }
         }
@@ -174,12 +170,16 @@
         "taxonomy.initialized",
         "taxonomy.synchronized",
         "trainer.csv_import.completed",
-        "trainer.csv_import.security_alert"
+          "trainer.csv_import.security_alert",
+          "content_studio.competency.response",
+          "learner_ai.competency.response"
       ],
       "subscribes": [
         "directory.user.created",
         "assessment.baseline_exam.results",
-        "assessment.post_course_exam.results"
+          "assessment.post_course_exam.results",
+          "content_studio.competency.request",
+          "learner_ai.competency.request"
       ]
     }
   }

@@ -4,7 +4,7 @@
  * Uses Gemini (via aiService) to translate:
  *   - payload
  *   - responseTemplate.data
- *   - migration schema
+ *   - SCHEMA (database structure)
  * into a set of read-only queries (SQL / ORM / etc.).
  *
  * NOTE: This service is responsible only for PLANNING (building queries)
@@ -12,13 +12,29 @@
  * by a separate data access layer.
  */
 
+const fs = require('fs');
+const path = require('path');
 const aiService = require('./aiService');
-const migrationTemplate = require('../registration/migrationTemplate.json');
 
 class AIQueryBuilderService {
   constructor() {
-    // Cache full migration schema; callers can override per-call if needed.
-    this.defaultSchema = migrationTemplate;
+    // Cache full migration SQL schema; callers can override per-call if needed.
+    const schemaPath = path.join(
+      __dirname,
+      '../../database/migrations/000_initial_schema.sql'
+    );
+
+    try {
+      this.defaultSchema = fs.readFileSync(schemaPath, 'utf-8');
+    } catch (err) {
+      // If loading the SQL schema fails, fall back to an empty string so that
+      // the service can still run (Gemini will just see no SCHEMA).
+      console.warn(
+        '[AIQueryBuilderService] Failed to load SQL schema from 000_initial_schema.sql',
+        { error: err.message }
+      );
+      this.defaultSchema = '';
+    }
   }
 
   /**
@@ -27,7 +43,7 @@ class AIQueryBuilderService {
    * @param {Object} params
    * @param {Object} params.payload - Unified endpoint payload
    * @param {Object} params.responseTemplateData - responseTemplate.data from the unified request
-   * @param {Object} params.schema - Schema/migration model to use
+   * @param {string|Object} params.schema - Database schema to use (SQL text or JSON model)
    * @returns {string} prompt text
    */
   buildPrompt({ payload, responseTemplateData, schema }) {
@@ -35,7 +51,11 @@ class AIQueryBuilderService {
     const safeTemplate = responseTemplateData || {};
     const safeSchema = schema || this.defaultSchema;
 
-    const schemaJson = JSON.stringify(safeSchema, null, 2);
+    // Allow either raw SQL text or a JSON schema object.
+    const schemaText =
+      typeof safeSchema === 'string'
+        ? safeSchema
+        : JSON.stringify(safeSchema, null, 2);
     const payloadJson = JSON.stringify(safePayload, null, 2);
     const templateJson = JSON.stringify(safeTemplate, null, 2);
 
@@ -64,13 +84,27 @@ class AIQueryBuilderService {
       '- Decide which entities, joins, and filters are needed to compute all requested fields in RESPONSE_TEMPLATE_DATA.',
       '- Generate the minimal set of READ-ONLY queries (no INSERT, UPDATE, DELETE) that can be executed to obtain this data.',
       '- Respect tenant boundaries (e.g., company_id) and any relevant filters from PAYLOAD.',
-      '- Use ONLY entities and fields that exist in SCHEMA.',
+      '- Use ONLY entities, views, and functions that exist in SCHEMA.',
+      '',
+      'Domain rules for Skills Engine (VERY IMPORTANT):',
+      '- Treat any of these payload fields as competency identifiers: \"competency_name\", \"competency_target_name\", \"topic\", \"topic_name\".',
+      '- Do NOT invent a new entity for topics; map them to the existing competencies entity in SCHEMA.',
+      '- When RESPONSE_TEMPLATE_DATA contains a field named exactly \"skills\" or whose name includes \"skills\" for a competency/topic, you MUST return only leaf skills (MGS) for that competency:',
+      '  - A leaf/MGS skill is a skill that has NO children in the skills hierarchy.',
+      '  - Use the existing schema relations (for example: competencies → competency_skill → skills, skill_subskill, or any RPCs provided in SCHEMA) to find leaf skills.',
+      '  - Do NOT return parent or intermediate skills when the caller is asking for a competency\'s skills.',
+      '- Prefer a small number of precise queries over many broad ones. Avoid SELECT *; select only the columns needed to populate RESPONSE_TEMPLATE_DATA.',
+      '',
+      'About the \"target\" field in each query:',
+      '- \"target\" MUST describe exactly which part of response.data this query will populate.',
+      '- It can be a simple JSON pointer like \"/skills\" or \"/competency\", or a short description like \"skills array for this competency\".',
+      '- If multiple queries contribute to the same part of the response, give them the same target value.',
       '',
       'Return ONLY a JSON object matching the OUTPUT_CONTRACT shown below.',
       'Do not include explanations, comments, or markdown code fences.',
       '',
-      'SCHEMA:',
-      schemaJson,
+      'SCHEMA (database migration / structure):',
+      schemaText,
       '',
       'PAYLOAD:',
       payloadJson,

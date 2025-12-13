@@ -34,7 +34,7 @@ WITH RECURSIVE skill_tree AS (
 
   UNION ALL
 
-  -- Walk down the hierarchy using the skill_subSkill junction table
+  -- Walk down the hierarchy using the skill_subskill junction table
   SELECT
     child.skill_id,
     child.skill_name,
@@ -43,15 +43,26 @@ WITH RECURSIVE skill_tree AS (
     child.created_at,
     child.updated_at,
     child.source
-  FROM skill_subSkill ss
+  FROM skill_subskill ss
   INNER JOIN skills child ON child.skill_id = ss.child_skill_id
   INNER JOIN skill_tree st ON ss.parent_skill_id = st.skill_id
 )
--- Leaf nodes = skills in the tree that have no children in skill_subSkill
-SELECT st.*
+SELECT
+  st.skill_id,
+  st.skill_name,
+  st.parent_skill_id,
+  st.description,
+  st.created_at,
+  st.updated_at,
+  st.source
 FROM skill_tree st
-LEFT JOIN skill_subSkill ss2 ON ss2.parent_skill_id = st.skill_id
-WHERE ss2.child_skill_id IS NULL;
+WHERE NOT EXISTS (
+  -- A leaf (MGS) is any skill in the tree that has no children
+  -- in the skill_subskill junction table.
+  SELECT 1
+  FROM skill_subskill ss2
+  WHERE ss2.parent_skill_id = st.skill_id
+);
 $$;
 
 
