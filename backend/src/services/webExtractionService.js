@@ -202,12 +202,12 @@ class WebExtractionService {
         skillId = existing.skill_id;
 
         // TEMP DEBUG LOG: reused existing skill instead of creating a new one
-      /*   console.log('[WebExtractionService._processSkillNode] reusing existing skill', {
-          name,
-          skillId,
-          parentSkillId,
-          sourceIdentifier
-        }); */
+        /*   console.log('[WebExtractionService._processSkillNode] reusing existing skill', {
+            name,
+            skillId,
+            parentSkillId,
+            sourceIdentifier
+          }); */
       }
     } catch (err) {
       console.warn(

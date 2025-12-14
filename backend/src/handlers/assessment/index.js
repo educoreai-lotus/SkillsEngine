@@ -20,6 +20,12 @@ class AssessmentHandler {
         return { message: 'Invalid payload structure' };
       }
 
+      // Log full incoming assessment request body for debugging
+      console.log(
+        '[AssessmentHandler] Incoming Assessment MS request - full payload:',
+        JSON.stringify(payload, null, 2)
+      );
+
       const { user_id, exam_type } = payload;
 
       // Normalize exam results object:

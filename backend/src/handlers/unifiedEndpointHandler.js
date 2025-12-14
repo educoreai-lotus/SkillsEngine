@@ -97,6 +97,26 @@ class UnifiedEndpointHandler {
       // Ensure response object exists and preserve structure
       envelope.response = envelope.response || { answer: '' };
 
+      // Log full incoming unified request for debugging/traceability
+      try {
+        console.log(
+          '[UnifiedEndpointHandler] Incoming unified request',
+          JSON.stringify(
+            {
+              requester_service,
+              payload,
+              response: envelope.response
+            },
+            null,
+            2
+          )
+        );
+      } catch (logErr) {
+        console.warn('[UnifiedEndpointHandler] Failed to log incoming request', {
+          error: logErr.message
+        });
+      }
+
       if (!requester_service) {
         envelope.response.answer = 'requester_service is required';
         return res
