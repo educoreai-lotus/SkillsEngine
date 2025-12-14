@@ -208,6 +208,43 @@ class SkillRepository {
   }
 
   /**
+   * Link a sub-skill to a parent skill using the skill_subskill junction table.
+   * This is used to represent relationships such as:
+   *   - Skill → Subskill
+   *   - Subskill → Microskill
+   *   - Microskill → Nanoskill
+   *
+   * @param {string} parentSkillId
+   * @param {string} childSkillId
+   * @returns {Promise<boolean>}
+   */
+  async linkSubSkill(parentSkillId, childSkillId) {
+    // Check if link already exists to keep the junction table idempotent.
+    const { data: existing, error: existingError } = await this.getClient()
+      .from('skill_subskill')
+      .select('*')
+      .eq('parent_skill_id', parentSkillId)
+      .eq('child_skill_id', childSkillId)
+      .maybeSingle();
+
+    if (existingError && existingError.code !== 'PGRST116') {
+      // If it's not the "no rows" error, surface it.
+      throw existingError;
+    }
+
+    if (existing) {
+      return true;
+    }
+
+    const { error } = await this.getClient()
+      .from('skill_subskill')
+      .insert({ parent_skill_id: parentSkillId, child_skill_id: childSkillId });
+
+    if (error) throw error;
+    return true;
+  }
+
+  /**
    * Update a skill
    * @param {string} skillId - Skill ID
    * @param {Object} updates - Fields to update

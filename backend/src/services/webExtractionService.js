@@ -122,6 +122,13 @@ class WebExtractionService {
       return null;
     }
 
+    // TEMP DEBUG LOG: trace competency creation & hierarchy
+    /* console.log('[WebExtractionService._processCompetencyNode] creating competency', {
+      name,
+      parentCompetencyId,
+      sourceIdentifier
+    }); */
+
     const competencyModel = new Competency({
       competency_id: crypto.randomUUID(),
       competency_name: name,
@@ -184,17 +191,68 @@ class WebExtractionService {
       return null;
     }
 
-    const skillModel = new Skill({
-      skill_id: crypto.randomUUID(),
-      skill_name: name,
-      parent_skill_id: parentSkillId,
-      description,
-      source: sourceIdentifier || 'web_extraction'
-    });
+    let skillId = null;
 
-    const skill = await skillRepository.create(skillModel);
-    stats.skills += 1;
-    const skillId = skill.skill_id;
+    // Attempt to reuse an existing skill with the same (normalized) name to avoid
+    // violating the unique_skill_name constraint. This allows re-running extraction
+    // without creating duplicate skill rows.
+    try {
+      const existing = await skillRepository.findByName(name);
+      if (existing) {
+        skillId = existing.skill_id;
+
+        // TEMP DEBUG LOG: reused existing skill instead of creating a new one
+      /*   console.log('[WebExtractionService._processSkillNode] reusing existing skill', {
+          name,
+          skillId,
+          parentSkillId,
+          sourceIdentifier
+        }); */
+      }
+    } catch (err) {
+      console.warn(
+        '[WebExtractionService._processSkillNode] findByName failed, will create new skill',
+        {
+          name,
+          error: err.message
+        }
+      );
+    }
+
+    if (!skillId) {
+      // TEMP DEBUG LOG: trace skill creation & hierarchy
+      /* console.log('[WebExtractionService._processSkillNode] creating skill', {
+        name,
+        parentSkillId,
+        sourceIdentifier
+      }); */
+
+      const skillModel = new Skill({
+        skill_id: crypto.randomUUID(),
+        skill_name: name,
+        parent_skill_id: parentSkillId,
+        description,
+        source: sourceIdentifier || 'web_extraction'
+      });
+
+      const skill = await skillRepository.create(skillModel);
+      stats.skills += 1;
+      skillId = skill.skill_id;
+    }
+
+    // Whenever we have a parentSkillId, create or confirm the junction link in
+    // skill_subskill so that the hierarchy is fully represented there as well.
+    if (parentSkillId) {
+      try {
+        await skillRepository.linkSubSkill(parentSkillId, skillId);
+      } catch (err) {
+        console.warn('[WebExtractionService._processSkillNode] Failed to link sub-skill', {
+          parentSkillId,
+          childSkillId: skillId,
+          error: err.message
+        });
+      }
+    }
 
     // Normalize node object for deeper traversal
     const obj = typeof node === 'string' ? {} : node || {};

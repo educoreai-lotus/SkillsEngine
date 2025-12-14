@@ -99,7 +99,11 @@ Copy code
                   "Microskills": [
                     {
                       "name": "Variables",
-                      "Nanoskills": ["Declaration", "Scope", "Hoisting"]
+                      "Nanoskills": [
+                        { "name": "Declaration" },
+                        { "name": "Scope" },
+                        { "name": "Hoisting" }
+                      ]
                     }
                   ]
                 }
@@ -123,7 +127,10 @@ Copy code
                   "Microskills": [
                     {
                       "name": "Encapsulation",
-                      "Nanoskills": ["Access modifiers", "Properties"]
+                      "Nanoskills": [
+                        { "name": "Access modifiers" },
+                        { "name": "Properties" }
+                      ]
                     }
                   ]
                 }

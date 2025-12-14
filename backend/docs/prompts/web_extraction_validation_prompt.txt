@@ -81,8 +81,7 @@ D. Semantic Validation Rules
 
 For every name at every level:
 
-1. If name length < 3 → flag: too_short_name.
-2. If it contains non-actionable indicators:
+1. If it contains non-actionable indicators:
       "overview", 
       "introduction",
       "what is",
@@ -90,9 +89,9 @@ For every name at every level:
       "see also",
       "related"
    → flag: non_actionable.
-3. If the name looks like a long sentence (> 12 words) → flag: likely_description.
-4. If it contains explanatory punctuation like ":" or "(" that suggests a description → flag: likely_description.
-5. If meaning is unclear → flag: uncertain.
+2. If the name looks like a long sentence (> 12 words) → flag: likely_description.
+3. If it contains explanatory punctuation like ":" or "(" that suggests a description → flag: likely_description.
+4. If meaning is unclear → flag: uncertain.
 
 These flags DO NOT cause deletion — only annotation.
 
