@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const { registerService } = require('./registration/register');
+const cron = require('node-cron');
 
 // Global error handlers for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -168,32 +169,38 @@ app.listen(PORT, '0.0.0.0', () => {
       console.error('Registration error (non-blocking):', err && err.message);
     });
   }
-/*
-  // Kick off source discovery + web extraction asynchronously on each system load.
-   (async () => {
+
+  // Schedule weekly background job for source discovery + web extraction.
+  // Runs every Monday at 03:00 UTC.
+  cron.schedule(
+    '0 3 * * 1',
+    async () => {
+      
       try {
-        console.log('🔎 [startup] Running initial source discovery in background');
+        console.log('🔎 [weekly] Running source discovery in background');
         const result = await sourceDiscoveryService.discoverAndStoreSources();
-        console.log('test if it works');
-        console.log('✅ [startup] Source discovery completed:', {
+        console.log('✅ [weekly] Source discovery completed:', {
           inserted: result.inserted,
           skipped: result.skipped,
           totalDiscovered: result.totalDiscovered,
         });
-  
-        console.log('🌐 [startup] Running initial web extraction for discovered sources in background...');
+
+        console.log('🌐 [weekly] Running web extraction for discovered sources in background...');
         const extractionResult = await webExtractionService.extractFromOfficialSources();
-        console.log('✅ [startup] Web extraction completed:', {
+        console.log('✅ [weekly] Web extraction completed:', {
           competenciesInserted: extractionResult.stats?.competencies ?? 0,
           skillsInserted: extractionResult.stats?.skills ?? 0,
           sourceCount: extractionResult.sources?.length ?? 0,
-        });  
-        
+        });
       } catch (err) {
-        console.error('⚠️  [startup] Initialization pipeline failed (discovery or extraction):', err.message || err);
+        console.error('⚠️  [weekly] Initialization pipeline failed (discovery or extraction):', err.message || err);
       }
-    })(); 
- */
+    },
+    {
+      timezone: 'UTC',
+    }
+  );
+
 });
 
 module.exports = app;

@@ -129,7 +129,7 @@ class UserController {
       if (!rawData) {
         return res.status(400).json({ success: false, error: 'rawData is required' });
       }
-            //------ Add new thing -----------
+      //------ Add new thing -----------
       // Normalize rawData so extractionService always receives a string.
       // Accept both:
       // - string: "plain text profile / resume / etc."
