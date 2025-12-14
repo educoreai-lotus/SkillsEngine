@@ -13,7 +13,7 @@ use of the same MDN, AWS, Azure, IBM, etc., unless needed for hierarchy complete
 
 🎯 GOAL
 
-1. Identify **40–50 official sources**, including lesser-known but still authoritative vendors,
+1. Identify **10 official sources**, including lesser-known but still authoritative vendors,
    foundations, standards organizations, and certification frameworks that describe:
    - hierarchical skills, or
    - skills + competencies with parent-child structure.
@@ -104,7 +104,7 @@ Return ONLY a **valid JSON array** structured as:
    - /skills/
    - /framework/
    - /ref/spec
-   -reference/index.html
+   -/reference/index.html
 
 6. Skip:
    - /guide/
