@@ -19,7 +19,7 @@ async function sendGapAnalysis(userId, gapAnalysis) {
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
-      action: 'Send gap analysis results to Learner AI MS',
+      action: 'Send gap analysis results',
       user_id: userId,
       user_name: gapAnalysis.user_name,
       company_id: gapAnalysis.company_id,

@@ -168,7 +168,7 @@ app.listen(PORT, '0.0.0.0', () => {
       console.error('Registration error (non-blocking):', err && err.message);
     });
   }
-
+/*
   // Kick off source discovery + web extraction asynchronously on each system load.
    (async () => {
       try {
@@ -180,7 +180,7 @@ app.listen(PORT, '0.0.0.0', () => {
           skipped: result.skipped,
           totalDiscovered: result.totalDiscovered,
         });
-  /*
+  
         console.log('🌐 [startup] Running initial web extraction for discovered sources in background...');
         const extractionResult = await webExtractionService.extractFromOfficialSources();
         console.log('✅ [startup] Web extraction completed:', {
@@ -188,12 +188,12 @@ app.listen(PORT, '0.0.0.0', () => {
           skillsInserted: extractionResult.stats?.skills ?? 0,
           sourceCount: extractionResult.sources?.length ?? 0,
         });  
-        */
+        
       } catch (err) {
         console.error('⚠️  [startup] Initialization pipeline failed (discovery or extraction):', err.message || err);
       }
     })(); 
- 
+ */
 });
 
 module.exports = app;

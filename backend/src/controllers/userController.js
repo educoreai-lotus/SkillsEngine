@@ -124,10 +124,25 @@ class UserController {
   async extractFromRawData(req, res) {
     try {
       const { userId } = req.params;
-      const { rawData } = req.body;
+      let { rawData } = req.body;
 
       if (!rawData) {
         return res.status(400).json({ success: false, error: 'rawData is required' });
+      }
+            //------ Add new thing -----------
+      // Normalize rawData so extractionService always receives a string.
+      // Accept both:
+      // - string: "plain text profile / resume / etc."
+      // - object/array: { linkedin: {...}, github: {...} } → JSON string
+      if (typeof rawData !== 'string') {
+        try {
+          rawData = JSON.stringify(rawData, null, 2);
+        } catch (e) {
+          return res.status(400).json({
+            success: false,
+            error: 'rawData must be a string or JSON-serializable object'
+          });
+        }
       }
 
       // Extract competencies & skills from raw data only

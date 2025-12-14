@@ -88,17 +88,20 @@ class ContentStudioHandler {
       }
     }
 
-    // If no queries were executed successfully, populate with basic data
+    // If no queries were executed successfully, populate with basic data.
+    // Content Studio only sends competency_name (no competency_id).
     if (Object.keys(result).length === 0 || !result.skills) {
-      const { competency_id, competency_name } = payload;
+      const { competency_name } = payload || {};
 
-      // Fallback: get skills using competencyService
-      const skills = competency_id
-        ? await competencyService.getRequiredMGS(competency_id)
-        : await competencyService.getRequiredMGSByName(competency_name);
+      const hasName = typeof competency_name === 'string' && competency_name.trim().length > 0;
+      if (!hasName) {
+        throw new Error('competency_name must be a non-empty string');
+      }
 
-      result.competency_id = competency_id || null;
-      result.competency_name = competency_name || null;
+      // Fallback: get skills using competencyService by competency name only
+      const skills = await competencyService.getRequiredMGSByName(competency_name);
+
+      result.competency_name = competency_name;
       result.skills = skills;
     }
 
@@ -137,17 +140,19 @@ class ContentStudioHandler {
    */
   async processFallback(payload, responseTemplate) {
     try {
-      const { competency_id, competency_name } = payload;
+      const { competency_name } = payload || {};
 
-      // Get all related skills (MGS) for this competency
-      const skills = competency_id
-        ? await competencyService.getRequiredMGS(competency_id)
-        : await competencyService.getRequiredMGSByName(competency_name);
+      const hasName = typeof competency_name === 'string' && competency_name.trim().length > 0;
+      if (!hasName) {
+        throw new Error('competency_name must be a non-empty string');
+      }
+
+      // Get all related skills (MGS) for this competency by name
+      const skills = await competencyService.getRequiredMGSByName(competency_name);
 
       return {
         ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
-        competency_id: competency_id || null,
-        competency_name: competency_name || null,
+        competency_name,
         skills
       };
     } catch (error) {

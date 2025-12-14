@@ -17,7 +17,7 @@ class ExtractionService {
    * Extract competencies from raw user data
    * Note: Skills are now treated as competencies - all extracted items go into competencies array
    * @param {string} userId - User ID
-   * @param {string} rawData - Raw data (resume, LinkedIn, GitHub, etc.)
+   * @param {string|Object} rawData - Raw data (resume, LinkedIn, GitHub, etc.) as text or JSON-like object
    * @returns {Promise<Object>} Extracted data with competencies array only
    */
   async extractFromUserData(userId, rawData) {
@@ -25,6 +25,22 @@ class ExtractionService {
     const user = await userRepository.findById(userId);
     if (!user) {
       throw new Error(`User with ID ${userId} not found`);
+    }
+
+    if (rawData === undefined || rawData === null) {
+      throw new Error('rawData is required for extraction');
+    }
+
+    // Normalize rawData so downstream functions always work with a string.
+    // Accept:
+    // - string: used as-is
+    // - object/array: JSON.stringify for AI prompt / chunking
+    if (typeof rawData !== 'string') {
+      try {
+        rawData = JSON.stringify(rawData, null, 2);
+      } catch (e) {
+        throw new Error('rawData must be a string or JSON-serializable object');
+      }
     }
 
     // Chunk large data if needed (Gemini has token limits)
@@ -86,6 +102,20 @@ class ExtractionService {
    * @returns {string[]} Array of chunks
    */
   chunkData(data, maxChunkSize = 50000) {
+    if (data === undefined || data === null) {
+      throw new Error('chunkData requires non-null data input');
+    }
+
+    // Ensure we are always working with a string, even if a caller passed
+    // an object/array directly.
+    if (typeof data !== 'string') {
+      try {
+        data = JSON.stringify(data, null, 2);
+      } catch (e) {
+        throw new Error('chunkData expected a string or JSON-serializable object');
+      }
+    }
+
     if (!data || data.length <= maxChunkSize) {
       return [data];
     }
