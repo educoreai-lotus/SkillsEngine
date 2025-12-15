@@ -56,25 +56,39 @@ class UserCareerPathRepository {
   async findByUser(userId) {
     const { data, error } = await this.getClient()
       .from('user_career_path')
-      .select(`
-        user_id,
-        competency_id,
-        created_at,
-        competencies (
-          competency_id,
-          competency_name,
-          description
-        )
-      `)
+      .select('user_id, competency_id, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return (data || []).map(row => ({
-      ...new UserCareerPath(row).toJSON(),
-      competency_name: row.competencies?.competency_name || null,
-      competency_description: row.competencies?.description || null
-    }));
+
+    // Fetch competency details separately for each career path
+    const results = [];
+    for (const row of data || []) {
+      let competencyName = null;
+      let competencyDescription = null;
+
+      if (row.competency_id) {
+        const { data: comp } = await this.getClient()
+          .from('competencies')
+          .select('competency_name, description')
+          .eq('competency_id', row.competency_id)
+          .single();
+
+        if (comp) {
+          competencyName = comp.competency_name;
+          competencyDescription = comp.description;
+        }
+      }
+
+      results.push({
+        ...new UserCareerPath(row).toJSON(),
+        competency_name: competencyName,
+        competency_description: competencyDescription
+      });
+    }
+
+    return results;
   }
 
   /**
@@ -85,16 +99,7 @@ class UserCareerPathRepository {
   async findLatestByUser(userId) {
     const { data, error } = await this.getClient()
       .from('user_career_path')
-      .select(`
-        user_id,
-        competency_id,
-        created_at,
-        competencies (
-          competency_id,
-          competency_name,
-          description
-        )
-      `)
+      .select('user_id, competency_id, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -105,10 +110,27 @@ class UserCareerPathRepository {
       throw error;
     }
 
+    // Fetch competency details separately
+    let competencyName = null;
+    let competencyDescription = null;
+
+    if (data.competency_id) {
+      const { data: comp } = await this.getClient()
+        .from('competencies')
+        .select('competency_name, description')
+        .eq('competency_id', data.competency_id)
+        .single();
+
+      if (comp) {
+        competencyName = comp.competency_name;
+        competencyDescription = comp.description;
+      }
+    }
+
     return {
       ...new UserCareerPath(data).toJSON(),
-      competency_name: data.competencies?.competency_name || null,
-      competency_description: data.competencies?.description || null
+      competency_name: competencyName,
+      competency_description: competencyDescription
     };
   }
 

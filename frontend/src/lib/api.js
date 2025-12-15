@@ -99,6 +99,15 @@ export const api = {
     return response.data;
   },
 
+  searchCompetencies: async (query, options = {}) => {
+    const params = new URLSearchParams();
+    params.append('q', query);
+    if (options.limit) params.append('limit', options.limit);
+    if (options.offset) params.append('offset', options.offset);
+    const response = await apiClient.get(`/api/competencies/search?${params.toString()}`);
+    return response.data;
+  },
+
   // Skills
   getSkills: async () => {
     const response = await apiClient.get('/api/skills/roots');
