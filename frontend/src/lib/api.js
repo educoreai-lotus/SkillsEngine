@@ -180,6 +180,35 @@ export const api = {
     const response = await apiClient.delete(`/api/user-competency/${userId}/${competencyId}`);
     return response.data;
   },
+
+  // User Career Path
+  getCurrentCareerPath: async (userId) => {
+    const response = await apiClient.get(`/api/user-career-path/${userId}`);
+    return response.data;
+  },
+
+  getAllCareerPaths: async (userId) => {
+    const response = await apiClient.get(`/api/user-career-path/${userId}/all`);
+    return response.data;
+  },
+
+  addCareerPath: async (userId, competencyId) => {
+    const response = await apiClient.post('/api/user-career-path', {
+      user_id: userId,
+      competency_id: competencyId,
+    });
+    return response.data;
+  },
+
+  deleteCareerPath: async (userId, competencyId) => {
+    const response = await apiClient.delete(`/api/user-career-path/${userId}/${competencyId}`);
+    return response.data;
+  },
+
+  deleteAllCareerPaths: async (userId) => {
+    const response = await apiClient.delete(`/api/user-career-path/${userId}`);
+    return response.data;
+  },
 };
 
 export default api;
