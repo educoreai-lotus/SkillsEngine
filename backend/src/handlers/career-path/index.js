@@ -9,10 +9,12 @@
  * - add_career_path: Add a career path for a user
  * - remove_career_path: Remove a career path for a user
  * - search_competencies: Search competencies by name substring
+ * - calculate_gap: Calculate gap analysis for user's career paths
  */
 
 const userCareerPathRepository = require('../../repositories/userCareerPathRepository');
 const competencyService = require('../../services/competencyService');
+const gapAnalysisService = require('../../services/gapAnalysisService');
 
 class CareerPathHandler {
   /**
@@ -44,6 +46,9 @@ class CareerPathHandler {
 
         case 'search_competencies':
           return this.searchCompetencies(query, limit, offset);
+
+        case 'calculate_gap':
+          return this.calculateGap(user_id);
 
         default:
           return { success: false, error: `Unknown action: ${action}` };
@@ -154,6 +159,19 @@ class CareerPathHandler {
       success: true,
       data: results
     };
+  }
+
+  /**
+   * Calculate gap analysis for user's career paths
+   * Shows how far the user is from reaching their career path goals
+   */
+  async calculateGap(userId) {
+    if (!userId) {
+      return { success: false, error: 'user_id is required' };
+    }
+
+    const gapAnalysis = await gapAnalysisService.calculateCareerPathGap(userId);
+    return gapAnalysis;
   }
 }
 

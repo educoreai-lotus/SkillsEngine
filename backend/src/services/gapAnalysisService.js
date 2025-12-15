@@ -6,6 +6,7 @@
  */
 
 const userCompetencyRepository = require('../repositories/userCompetencyRepository');
+const userCareerPathRepository = require('../repositories/userCareerPathRepository');
 const competencyService = require('./competencyService');
 const skillRepository = require('../repositories/skillRepository');
 
@@ -103,6 +104,128 @@ class GapAnalysisService {
    */
   async calculateAllGaps(userId) {
     return await this.calculateGapAnalysis(userId);
+  }
+
+  /**
+   * Calculate career path gap analysis
+   * Compares user's verified skills against their career path competencies
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} Career path gap analysis with missing skills per competency
+   */
+  async calculateCareerPathGap(userId) {
+    if (!userId) {
+      throw new Error('user_id is required');
+    }
+
+    // Get user's career paths
+    const careerPaths = await userCareerPathRepository.findByUser(userId);
+
+    if (!careerPaths || careerPaths.length === 0) {
+      return {
+        success: true,
+        user_id: userId,
+        career_paths: [],
+        total_required_skills: 0,
+        total_verified_skills: 0,
+        total_missing_skills: 0,
+        overall_progress_percentage: 0,
+        gaps: {}
+      };
+    }
+
+    // Get all user competencies to find verified skills
+    const userCompetencies = await userCompetencyRepository.findByUser(userId);
+
+    // Build a set of all verified skill IDs from user competencies
+    const allVerifiedSkillIds = new Set();
+    for (const userComp of userCompetencies) {
+      const verifiedSkills = userComp.verifiedSkills || [];
+      for (const skill of verifiedSkills) {
+        if (skill.verified !== false) {
+          allVerifiedSkillIds.add(skill.skill_id);
+        }
+      }
+    }
+
+    const gaps = {};
+    let totalRequiredSkills = 0;
+    let totalMissingSkills = 0;
+
+    // For each career path competency, calculate the gap
+    for (const careerPath of careerPaths) {
+      const competencyId = careerPath.competency_id;
+      const competencyName = careerPath.competency_name || 'Unknown';
+
+      try {
+        // Get required MGS for this competency
+        const requiredMGS = await competencyService.getRequiredMGS(competencyId);
+
+        // Find missing skills (required but not verified)
+        const missingSkills = requiredMGS.filter(
+          mgs => !allVerifiedSkillIds.has(mgs.skill_id)
+        );
+
+        // Find verified skills for this competency
+        const verifiedSkills = requiredMGS.filter(
+          mgs => allVerifiedSkillIds.has(mgs.skill_id)
+        );
+
+        const requiredCount = requiredMGS.length;
+        const verifiedCount = verifiedSkills.length;
+        const missingCount = missingSkills.length;
+        const progressPercentage = requiredCount > 0
+          ? Math.round((verifiedCount / requiredCount) * 100 * 100) / 100
+          : 0;
+
+        totalRequiredSkills += requiredCount;
+        totalMissingSkills += missingCount;
+
+        gaps[competencyId] = {
+          competency_id: competencyId,
+          competency_name: competencyName,
+          required_skills_count: requiredCount,
+          verified_skills_count: verifiedCount,
+          missing_skills_count: missingCount,
+          progress_percentage: progressPercentage,
+          missing_skills: missingSkills.map(skill => ({
+            skill_id: skill.skill_id,
+            skill_name: skill.skill_name,
+            description: skill.description || null
+          })),
+          verified_skills: verifiedSkills.map(skill => ({
+            skill_id: skill.skill_id,
+            skill_name: skill.skill_name
+          }))
+        };
+      } catch (error) {
+        console.error(`[GapAnalysisService] Error calculating gap for competency ${competencyId}:`, error.message);
+        gaps[competencyId] = {
+          competency_id: competencyId,
+          competency_name: competencyName,
+          error: error.message
+        };
+      }
+    }
+
+    const totalVerifiedSkills = totalRequiredSkills - totalMissingSkills;
+    const overallProgress = totalRequiredSkills > 0
+      ? Math.round((totalVerifiedSkills / totalRequiredSkills) * 100 * 100) / 100
+      : 0;
+
+    return {
+      success: true,
+      user_id: userId,
+      career_paths: careerPaths.map(cp => ({
+        competency_id: cp.competency_id,
+        competency_name: cp.competency_name,
+        created_at: cp.created_at
+      })),
+      total_required_skills: totalRequiredSkills,
+      total_verified_skills: totalVerifiedSkills,
+      total_missing_skills: totalMissingSkills,
+      overall_progress_percentage: overallProgress,
+      gaps: gaps
+    };
   }
 }
 
