@@ -202,11 +202,18 @@ class UserService {
 
     // Step 12: Send to Directory MS (with fallback to mock data)
     const directoryMSClient = require('./directoryMSClient');
-    try {
-      await directoryMSClient.sendInitialProfile(userId, payload);
-    } catch (error) {
-      // Fallback is handled by apiClient, but log if needed
-      console.warn('Failed to send initial profile to Directory MS, using mock data:', error.message);
+    
+    // Only attempt if Coordinator is enabled
+    if (process.env.COORDINATOR_URL && process.env.ENABLE_COORDINATOR_INTEGRATION !== 'false') {
+      try {
+        await directoryMSClient.sendInitialProfile(userId, payload);
+        console.log('[UserService.buildInitialProfile] Successfully sent initial profile to Directory MS');
+      } catch (error) {
+        // Fallback is handled by apiClient, but log if needed
+        console.warn('[UserService.buildInitialProfile] Failed to send initial profile to Directory MS:', error.message);
+      }
+    } else {
+      console.log('[UserService.buildInitialProfile] Coordinator integration disabled, skipping Directory MS sync');
     }
 
     // After initial competency profile is built and sent to Directory MS,
@@ -215,22 +222,28 @@ class UserService {
     const userName = userForMetadata?.user_name || null;
     const companyId = userForMetadata?.company_id || null;
 
-    if (userName) {
-      (async () => {
-        try {
-          await baselineExamService.requestBaselineExam(userId, userName, companyId);
-        } catch (err) {
-          console.warn(
-            '[UserService.buildInitialProfile] Failed to request baseline exam',
-            { userId, error: err.message }
-          );
-        }
-      })();
+    // Only attempt if Coordinator is enabled
+    if (process.env.COORDINATOR_URL && process.env.ENABLE_COORDINATOR_INTEGRATION !== 'false') {
+      if (userName) {
+        (async () => {
+          try {
+            await baselineExamService.requestBaselineExam(userId, userName, companyId);
+            console.log('[UserService.buildInitialProfile] Successfully requested baseline exam from Assessment MS');
+          } catch (err) {
+            console.warn(
+              '[UserService.buildInitialProfile] Failed to request baseline exam',
+              { userId, error: err.message }
+            );
+          }
+        })();
+      } else {
+        console.warn(
+          '[UserService.buildInitialProfile] Skipping baseline exam request (missing user_name)',
+          { userId }
+        );
+      }
     } else {
-      console.warn(
-        '[UserService.buildInitialProfile] Skipping baseline exam request (missing user_name)',
-        { userId }
-      );
+      console.log('[UserService.buildInitialProfile] Coordinator integration disabled, skipping baseline exam request');
     }
 
     return payload;

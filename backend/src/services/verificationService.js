@@ -250,18 +250,26 @@ class VerificationService {
       }
 
       // Send updated profile to Directory MS after processing exam results
-      try {
-        const updatedProfile = await this.buildUpdatedProfilePayload(userId);
-        await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
+      // Only attempt if Coordinator is enabled
+      if (process.env.COORDINATOR_URL && process.env.ENABLE_COORDINATOR_INTEGRATION !== 'false') {
+        try {
+          const updatedProfile = await this.buildUpdatedProfilePayload(userId);
+          await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
+          console.log(
+            '[VerificationService.processBaselineExamResults] Successfully sent updated profile to Directory MS',
+            { userId, examType, competenciesUpdated: updatedCompetencies.size }
+          );
+        } catch (err) {
+          // Don't fail exam processing if Directory MS update fails
+          console.warn(
+            '[VerificationService.processBaselineExamResults] Failed to send updated profile to Directory MS',
+            { userId, error: err.message }
+          );
+        }
+      } else {
         console.log(
-          '[VerificationService.processBaselineExamResults] Successfully sent updated profile to Directory MS',
+          '[VerificationService.processBaselineExamResults] Coordinator integration disabled, skipping Directory MS sync',
           { userId, examType, competenciesUpdated: updatedCompetencies.size }
-        );
-      } catch (err) {
-        // Don't fail exam processing if Directory MS update fails
-        console.warn(
-          '[VerificationService.processBaselineExamResults] Failed to send updated profile to Directory MS',
-          { userId, error: err.message }
         );
       }
 

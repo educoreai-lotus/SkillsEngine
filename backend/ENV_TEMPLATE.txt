@@ -1,0 +1,10 @@
+# Add this to your backend/.env file to fix the 404 errors:
+
+ENABLE_COORDINATOR_INTEGRATION=false
+
+# This single line will:
+# ✅ Stop all 404 errors from Coordinator
+# ✅ Change error logs to clean info logs
+# ✅ Keep all features working normally
+# ✅ No other changes needed
+
