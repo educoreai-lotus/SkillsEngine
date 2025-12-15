@@ -12,6 +12,7 @@ const contentStudioHandler = require('./content/index');
 const learnerAIHandler = require('./learner/index');
 const analyticsHandler = require('./analytics/index');
 const ragHandler = require('./rag/index');
+const careerPathHandler = require('./career-path/index');
 const aiQueryBuilderService = require('../services/aiQueryBuilderService');
 
 // Service to handler mapping
@@ -24,6 +25,7 @@ const HANDLER_MAP = {
   'learnerAi': learnerAIHandler,
   'LearningAnalytics': analyticsHandler,
   'rag': ragHandler,
+  'career-path': careerPathHandler,
 
   // Backwards-compatible aliases that match external MS names
   /* 'directory-ms': directoryHandler,
