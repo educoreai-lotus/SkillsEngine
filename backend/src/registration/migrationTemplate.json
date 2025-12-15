@@ -115,7 +115,7 @@
         {
           "path": "/api/fill-content-metrics/",
           "method": "POST",
-          "description": "Unified Data Exchange endpoint for all external microservices (directory-service, assessment-service, course-builder, content-studio, learnerAi, LearningAnalytics, rag).",
+          "description": "Unified Data Exchange endpoint for all external microservices (directory-ms, assessment-ms, course-builder-ms, content-studio-ms, learner-ai-ms, analytics-ms, rag-ms).",
           "requestSchema": {
             "required": ["requester_service", "payload", "response"],
             "properties": {
