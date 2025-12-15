@@ -16,6 +16,49 @@ class LearnerAIHandler {
    */
   async process(payload, responseTemplate) {
     try {
+      const { action } = payload || {};
+
+      // Action: request_skills_breakdown
+      // Learner AI sends a list of competency names and expects leaf skills (MGS)
+      if (action === 'request_skills_breakdown') {
+        const { competencies } = payload;
+
+        if (!Array.isArray(competencies) || competencies.length === 0) {
+          return { message: 'competencies must be a non-empty array of competency names' };
+        }
+
+        const breakdown = {};
+        const allNodes = [];
+
+        for (const name of competencies) {
+          if (typeof name !== 'string' || !name.trim()) {
+            continue;
+          }
+
+          try {
+            const mgs = await competencyService.getRequiredMGSByName(name.trim());
+            breakdown[name] = mgs;
+
+            // Also push into global nodes list (flattened view)
+            for (const skill of mgs) {
+              allNodes.push(skill);
+            }
+          } catch (err) {
+            // If one competency is not found, capture the error instead of failing the whole request
+            breakdown[name] = {
+              error: err.message
+            };
+          }
+        }
+
+        return {
+          ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+          nodes: allNodes,
+          competencies: breakdown
+        };
+      }
+
+      // Default action: run gap analysis and push to Learner AI MS
       const { user_id, competency_id, competency_name } = payload;
 
       if (!user_id) {

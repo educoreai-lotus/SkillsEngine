@@ -1,7 +1,7 @@
 {
-  "requester_service": "skills-engine",
+  "requester_service": "skills-engine-service",
   "payload": {
-    "action": "sending_new_skills_gap",
+    "action": "sending_skills_gap",
     "description": "Update skills gap for learner based on exam results",
     "user_id": "b2b400ed-bc11-4aa9-a89e-f4a00d0f6321",
   "user_name": "Noam Levi",

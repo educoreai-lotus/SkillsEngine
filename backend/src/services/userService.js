@@ -275,6 +275,71 @@ class UserService {
   }
 
   /**
+   * Get a batch of full user profiles (user + competencies only) using
+   * cursor-based pagination over the users table.
+   *
+   * This is used by the Learning Analytics MS batch ingestion flow.
+   *
+   * @param {Object} options
+   * @param {string|null} [options.cursor] - Last seen user_id (null for first page)
+   * @param {number} [options.pageSize=1000] - Max profiles to return
+   * @param {string|null} [options.companyId] - Optional company_id filter
+   * @returns {Promise<{ totalCount: number, profiles: Array<{ user: Object, competencies: Object[] }>, nextCursor: string|null }>}
+   */
+  async getFullUserProfilesBatch(options = {}) {
+    const {
+      cursor = null,
+      pageSize = 1000,
+      companyId = null
+    } = options;
+
+    // 1) Fetch a page of users and the total count of all matching users
+    const { users, totalCount } = await userRepository.findAllPaginated({
+      cursor,
+      limit: pageSize,
+      companyId
+    });
+
+    if (!users || users.length === 0) {
+      return {
+        totalCount,
+        profiles: [],
+        nextCursor: null
+      };
+    }
+
+    const userIds = users.map(u => u.user_id);
+
+    // 2) Fetch all competencies for these users in a single query
+    const allCompetencies = await userCompetencyRepository.findByUsers(userIds);
+
+    const competenciesByUser = new Map();
+    for (const uc of allCompetencies) {
+      const key = uc.user_id;
+      if (!competenciesByUser.has(key)) {
+        competenciesByUser.set(key, []);
+      }
+      competenciesByUser.get(key).push(uc.toJSON());
+    }
+
+    // 3) Build profile objects (user + competencies only, no skills for Learning Analytics)
+    const profiles = users.map(user => ({
+      user: user.toJSON(),
+      competencies: competenciesByUser.get(user.user_id) || []
+    }));
+
+    // 4) nextCursor is the last user_id in this page (or null if this is the last page)
+    const lastUser = users[users.length - 1];
+    const nextCursor = users.length === pageSize ? lastUser.user_id : null;
+
+    return {
+      totalCount,
+      profiles,
+      nextCursor
+    };
+  }
+
+  /**
    * Update user profile
    * @param {string} userId - User ID
    * @param {Object} updates - Fields to update

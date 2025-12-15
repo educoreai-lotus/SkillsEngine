@@ -17,22 +17,22 @@ const aiQueryBuilderService = require('../services/aiQueryBuilderService');
 // Service to handler mapping
 const HANDLER_MAP = {
   // Core service keys used by the backend internally
-  'directory': directoryHandler,
-  'assessment': assessmentHandler,
+  'directory-service': directoryHandler,
+  'assessment-service': assessmentHandler,
   'course-builder': courseBuilderHandler,
   'content-studio': contentStudioHandler,
-  'learner-ai': learnerAIHandler,
-  'learning-analytics': analyticsHandler,
+  'learnerAi': learnerAIHandler,
+  'LearningAnalytics': analyticsHandler,
   'rag': ragHandler,
 
   // Backwards-compatible aliases that match external MS names
-  'directory-ms': directoryHandler,
+  /* 'directory-ms': directoryHandler,
   'assessment-ms': assessmentHandler,
   'course-builder-ms': courseBuilderHandler,
   'content-studio-ms': contentStudioHandler,
   'learner-ai-ms': learnerAIHandler,
   'analytics-ms': analyticsHandler,
-  'rag-ms': ragHandler
+  'rag-ms': ragHandler */
 };
 
 class UnifiedEndpointHandler {

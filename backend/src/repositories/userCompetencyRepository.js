@@ -112,6 +112,36 @@ class UserCompetencyRepository {
   }
 
   /**
+   * Find competencies for multiple users in a single query.
+   * @param {string[]} userIds - Array of user IDs
+   * @returns {Promise<UserCompetency[]>}
+   */
+  async findByUsers(userIds) {
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await this.getClient()
+      .from('usercompetency')
+      .select(`
+        user_id,
+        competency_id,
+        coverage_percentage,
+        proficiency_level,
+        verifiedskills,
+        created_at,
+        updated_at,
+        competencies (competency_name)
+      `)
+      .in('user_id', userIds)
+      .order('user_id')
+      .order('competency_id');
+
+    if (error) throw error;
+    return (data || []).map(row => new UserCompetency(row));
+  }
+
+  /**
    * Find all users for a competency
    * @param {string} competencyId - Competency ID
    * @returns {Promise<UserCompetency[]>}

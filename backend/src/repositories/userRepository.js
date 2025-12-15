@@ -22,6 +22,7 @@ class UserRepository {
     }
     return this.supabase;
   }
+
   /**
    * Create a new user
    * @param {User} user - User model instance
@@ -109,6 +110,65 @@ class UserRepository {
 
     if (error) throw error;
     return data.map(row => new User(row));
+  }
+
+  /**
+   * Find all users with optional company filter using cursor-based pagination.
+   *
+   * This is used by Learning Analytics batch ingestion to page through
+   * all user profiles in a stable order using user_id as the cursor.
+   *
+   * @param {Object} options
+   * @param {string|null} [options.cursor] - Last seen user_id (null for first page)
+   * @param {number} [options.limit=1000] - Max records to return
+   * @param {string|null} [options.companyId] - Optional company_id filter
+   * @returns {Promise<{ users: User[], totalCount: number }>}
+   */
+  async findAllPaginated(options = {}) {
+    const { cursor = null, limit = 1000, companyId = null } = options;
+    const client = this.getClient();
+
+    // 1) Get total count of all matching records (independent of cursor)
+    let countQuery = client
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+
+    if (companyId) {
+      countQuery = countQuery.eq('company_id', companyId);
+    }
+
+    const { count, error: countError } = await countQuery;
+    if (countError) {
+      throw countError;
+    }
+
+    // 2) Fetch one page of data using user_id as the cursor
+    let dataQuery = client
+      .from('users')
+      .select('*')
+      .order('user_id', { ascending: true })
+      .limit(limit);
+
+    if (companyId) {
+      dataQuery = dataQuery.eq('company_id', companyId);
+    }
+
+    if (cursor) {
+      // Return records strictly after the given cursor (last user_id)
+      dataQuery = dataQuery.gt('user_id', cursor);
+    }
+
+    const { data, error } = await dataQuery;
+    if (error) {
+      throw error;
+    }
+
+    const users = (data || []).map(row => new User(row));
+
+    return {
+      users,
+      totalCount: typeof count === 'number' ? count : 0
+    };
   }
 
   /**
