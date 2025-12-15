@@ -113,6 +113,7 @@ const competenciesRoutes = require('./routes/api/competencies');
 const userRoutes = require('./routes/api/user');
 const userCompetencyRoutes = require('./routes/api/user-competency');
 const userSkillRoutes = require('./routes/api/user-skill');
+const userCareerPathRoutes = require('./routes/api/user-career-path');
 const competencySkillRoutes = require('./routes/api/competency-skill');
 const competencySubCompetencyRoutes = require('./routes/api/competency-subcompetency');
 const sourceDiscoveryRoutes = require('./routes/api/source-discovery');
@@ -127,6 +128,7 @@ app.use('/api/competencies', competenciesRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/user-competency', userCompetencyRoutes);
 app.use('/api/user-skill', userSkillRoutes);
+app.use('/api/user-career-path', userCareerPathRoutes);
 app.use('/api/competency-skill', competencySkillRoutes);
 app.use('/api/competency-subcompetency', competencySubCompetencyRoutes);
 app.use('/api/source-discovery', sourceDiscoveryRoutes);
@@ -175,7 +177,7 @@ app.listen(PORT, '0.0.0.0', () => {
   cron.schedule(
     '0 3 * * 1',
     async () => {
-      
+
       try {
         console.log('🔎 [weekly] Running source discovery in background');
         const result = await sourceDiscoveryService.discoverAndStoreSources();
