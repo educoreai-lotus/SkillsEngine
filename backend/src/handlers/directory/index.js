@@ -39,23 +39,8 @@ class DirectoryHandler {
         });
       }
 
-      const { action } = payload;
-
-      // Main action: onboarding + ingestion based on Directory payload
-      switch (action) {
-        case 'onboard_user':
-        case 'onboard-and-ingest':
-        case 'directory_onboarding':
-          return await this.handleOnboardAndIngest(payload, responseTemplate);
-
-        default:
-          // Unknown / unsupported action – just return the template + a message
-          return (
-            (responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {
-              message: `Unsupported Directory action: ${action || 'undefined'}`
-            }
-          );
-      }
+      // Handle onboarding + ingestion based on Directory payload
+      return await this.handleOnboardAndIngest(payload, responseTemplate);
     } catch (error) {
       console.error('[DirectoryHandler] Error processing request:', {
         error: error.message,
@@ -80,7 +65,6 @@ class DirectoryHandler {
    *
    * Expected payload (flattened user data from Directory MS), e.g.:
    *  {
-   *    action: "onboard_user",
    *    user_id: "...",        // optional
    *    user_name: "...",
    *    company_id: "...",
