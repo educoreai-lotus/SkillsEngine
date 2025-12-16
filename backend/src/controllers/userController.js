@@ -9,6 +9,8 @@ const extractionService = require('../services/extractionService');
 const normalizationService = require('../services/normalizationService');
 const competencyService = require('../services/competencyService');
 const baselineExamService = require('../services/baselineExamService');
+const competencyRepository = require('../repositories/competencyRepository');
+const userCareerPathRepository = require('../repositories/userCareerPathRepository');
 
 class UserController {
   /**
@@ -61,8 +63,41 @@ class UserController {
       // Step 1.5: Build competency hierarchy from career path (if provided)
       if (pathCareer && pathCareer.trim()) {
         console.log(`[UserController] Building competency hierarchy for career path: ${pathCareer}`);
-        const hierarchyStats = await competencyService.buildHierarchyFromCareerPath(pathCareer);
-        console.log('[UserController] Hierarchy build stats:', hierarchyStats);
+        try {
+          const hierarchyStats = await competencyService.buildHierarchyFromCareerPath(pathCareer);
+          console.log('[UserController] Hierarchy build stats:', hierarchyStats);
+
+          // Step 1.6: Save career path competency to user_career_path table
+          try {
+            const careerPathCompetency = await competencyRepository.findByName(pathCareer.trim());
+            if (careerPathCompetency) {
+              await userCareerPathRepository.create({
+                user_id: userId,
+                competency_id: careerPathCompetency.competency_id
+              });
+              console.log('[UserController] Saved career path competency to user_career_path', {
+                userId,
+                competency_id: careerPathCompetency.competency_id,
+                competency_name: pathCareer.trim()
+              });
+            } else {
+              console.warn('[UserController] Career path competency not found in database', {
+                pathCareer: pathCareer.trim()
+              });
+            }
+          } catch (careerPathErr) {
+            // Log error but don't fail onboarding if career path save fails
+            console.warn('[UserController] Failed to save career path competency', {
+              userId,
+              pathCareer: pathCareer.trim(),
+              error: careerPathErr.message
+            });
+          }
+        } catch (err) {
+          console.warn('[UserController] Failed to build hierarchy from career path', {
+            error: err.message
+          });
+        }
       } else {
         console.log('[UserController] No path_career provided, skipping hierarchy generation');
       }

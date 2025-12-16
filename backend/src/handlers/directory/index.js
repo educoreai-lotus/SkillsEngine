@@ -13,6 +13,8 @@ const userService = require('../../services/userService');
 const competencyService = require('../../services/competencyService');
 const extractionService = require('../../services/extractionService');
 const normalizationService = require('../../services/normalizationService');
+const competencyRepository = require('../../repositories/competencyRepository');
+const userCareerPathRepository = require('../../repositories/userCareerPathRepository');
 
 class DirectoryHandler {
   /**
@@ -95,6 +97,33 @@ class DirectoryHandler {
       try {
         const hierarchyStats = await competencyService.buildHierarchyFromCareerPath(pathCareer);
         console.log('[DirectoryHandler] Hierarchy build stats:', hierarchyStats);
+
+        // Step 1.6: Save career path competency to user_career_path table
+        try {
+          const careerPathCompetency = await competencyRepository.findByName(pathCareer.trim());
+          if (careerPathCompetency) {
+            await userCareerPathRepository.create({
+              user_id: userId,
+              competency_id: careerPathCompetency.competency_id
+            });
+            console.log('[DirectoryHandler] Saved career path competency to user_career_path', {
+              userId,
+              competency_id: careerPathCompetency.competency_id,
+              competency_name: pathCareer.trim()
+            });
+          } else {
+            console.warn('[DirectoryHandler] Career path competency not found in database', {
+              pathCareer: pathCareer.trim()
+            });
+          }
+        } catch (careerPathErr) {
+          // Log error but don't fail onboarding if career path save fails
+          console.warn('[DirectoryHandler] Failed to save career path competency', {
+            userId,
+            pathCareer: pathCareer.trim(),
+            error: careerPathErr.message
+          });
+        }
       } catch (err) {
         console.warn('[DirectoryHandler] Failed to build hierarchy from career path', {
           error: err.message
