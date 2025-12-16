@@ -22,7 +22,8 @@ const HANDLER_MAP = {
   'assessment-service': assessmentHandler,
   'course-builder': courseBuilderHandler,
   'content-studio': contentStudioHandler,
-  'learnerAi': learnerAIHandler,
+  'learnerAI': learnerAIHandler,
+  'learnerAi': learnerAIHandler, // Alias for compatibility
   'LearningAnalytics': analyticsHandler,
   'rag': ragHandler,
   'career-path': careerPathHandler,
