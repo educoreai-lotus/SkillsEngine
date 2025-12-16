@@ -15,21 +15,24 @@ class GapAnalysisService {
    * Calculate gap analysis for a user
    * @param {string} userId - User ID
    * @param {string} competencyId - Competency ID (optional, if not provided, calculate for all)
-   * @returns {Promise<Object>} Gap analysis result
+   * @returns {Promise<Object>} Simple gap structure: { "Competency Name": [{ skill_id, skill_name }] }
    */
   async calculateGapAnalysis(userId, competencyId = null) {
     const userCompetencies = competencyId
       ? [await userCompetencyRepository.findByUserAndCompetency(userId, competencyId)]
       : await userCompetencyRepository.findByUser(userId);
 
-    const gaps = {};
+    const allGaps = {};
 
     for (const userComp of userCompetencies) {
       if (!userComp) continue;
 
+      // Get competency details
+      const competency = await competencyService.getCompetencyById(userComp.competency_id);
+      if (!competency) continue;
+
       // Get required MGS for this competency
       const requiredMGS = await competencyService.getRequiredMGS(userComp.competency_id);
-      const requiredMGSIds = new Set(requiredMGS.map(mgs => mgs.skill_id));
 
       // Get verified skills from userCompetency
       const verifiedSkillIds = new Set(
@@ -39,13 +42,13 @@ class GapAnalysisService {
       // Calculate missing MGS
       const missingMGS = requiredMGS.filter(mgs => !verifiedSkillIds.has(mgs.skill_id));
 
-      // Group missing MGS by competency (for nested competencies)
+      // Group missing MGS by sub-competency name (for nested competencies)
       const missingByCompetency = {};
       for (const mgs of missingMGS) {
-        // Find which competency this MGS belongs to
-        const competency = await this.findCompetencyForMGS(mgs.skill_id, userComp.competency_id);
-        const compName = competency?.competency_name || 'Unknown';
-        
+        // Find which sub-competency this MGS belongs to
+        const subCompetency = await this.findCompetencyForMGS(mgs.skill_id, userComp.competency_id);
+        const compName = subCompetency?.competency_name || competency.competency_name;
+
         if (!missingByCompetency[compName]) {
           missingByCompetency[compName] = [];
         }
@@ -55,17 +58,16 @@ class GapAnalysisService {
         });
       }
 
-      gaps[userComp.competency_id] = {
-        competency_id: userComp.competency_id,
-        required_mgs_count: requiredMGS.length,
-        verified_mgs_count: verifiedSkillIds.size,
-        missing_mgs_count: missingMGS.length,
-        missing_mgs: missingByCompetency,
-        coverage_percentage: userComp.coverage_percentage
-      };
+      // Merge into allGaps (competency name -> missing skills array)
+      for (const [compName, skills] of Object.entries(missingByCompetency)) {
+        if (!allGaps[compName]) {
+          allGaps[compName] = [];
+        }
+        allGaps[compName].push(...skills);
+      }
     }
 
-    return gaps;
+    return allGaps;
   }
 
   /**
@@ -77,13 +79,13 @@ class GapAnalysisService {
   async findCompetencyForMGS(mgsId, rootCompetencyId) {
     // Get all competencies that require this skill
     const competencies = await competencyService.getCompetenciesBySkill(mgsId);
-    
+
     // Find the one that matches or is a child of rootCompetencyId
     for (const comp of competencies) {
       if (comp.competency_id === rootCompetencyId) {
         return comp;
       }
-      
+
       // Check if it's a child of rootCompetencyId
       const hierarchy = await competencyService.getCompetencyHierarchy(rootCompetencyId);
       if (hierarchy && hierarchy.children) {
@@ -97,20 +99,12 @@ class GapAnalysisService {
     return null;
   }
 
-  /**
-   * Calculate gap analysis for all user competencies
-   * @param {string} userId - User ID
-   * @returns {Promise<Object>} Gap analysis for all competencies
-   */
-  async calculateAllGaps(userId) {
-    return await this.calculateGapAnalysis(userId);
-  }
 
   /**
    * Calculate career path gap analysis
    * Compares user's verified skills against their career path competencies
    * @param {string} userId - User ID
-   * @returns {Promise<Object>} Career path gap analysis with missing skills per competency
+   * @returns {Promise<Object>} Simple gap structure: { "Competency Name": [{ skill_id, skill_name }] }
    */
   async calculateCareerPathGap(userId) {
     if (!userId) {
@@ -121,16 +115,7 @@ class GapAnalysisService {
     const careerPaths = await userCareerPathRepository.findByUser(userId);
 
     if (!careerPaths || careerPaths.length === 0) {
-      return {
-        success: true,
-        user_id: userId,
-        career_paths: [],
-        total_required_skills: 0,
-        total_verified_skills: 0,
-        total_missing_skills: 0,
-        overall_progress_percentage: 0,
-        gaps: {}
-      };
+      return {};
     }
 
     // Get all user competencies to find verified skills
@@ -148,8 +133,6 @@ class GapAnalysisService {
     }
 
     const gaps = {};
-    let totalRequiredSkills = 0;
-    let totalMissingSkills = 0;
 
     // For each career path competency, calculate the gap
     for (const careerPath of careerPaths) {
@@ -165,67 +148,19 @@ class GapAnalysisService {
           mgs => !allVerifiedSkillIds.has(mgs.skill_id)
         );
 
-        // Find verified skills for this competency
-        const verifiedSkills = requiredMGS.filter(
-          mgs => allVerifiedSkillIds.has(mgs.skill_id)
-        );
-
-        const requiredCount = requiredMGS.length;
-        const verifiedCount = verifiedSkills.length;
-        const missingCount = missingSkills.length;
-        const progressPercentage = requiredCount > 0
-          ? Math.round((verifiedCount / requiredCount) * 100 * 100) / 100
-          : 0;
-
-        totalRequiredSkills += requiredCount;
-        totalMissingSkills += missingCount;
-
-        gaps[competencyId] = {
-          competency_id: competencyId,
-          competency_name: competencyName,
-          required_skills_count: requiredCount,
-          verified_skills_count: verifiedCount,
-          missing_skills_count: missingCount,
-          progress_percentage: progressPercentage,
-          missing_skills: missingSkills.map(skill => ({
-            skill_id: skill.skill_id,
-            skill_name: skill.skill_name,
-            description: skill.description || null
-          })),
-          verified_skills: verifiedSkills.map(skill => ({
+        // Only add to gaps if there are missing skills
+        if (missingSkills.length > 0) {
+          gaps[competencyName] = missingSkills.map(skill => ({
             skill_id: skill.skill_id,
             skill_name: skill.skill_name
-          }))
-        };
+          }));
+        }
       } catch (error) {
         console.error(`[GapAnalysisService] Error calculating gap for competency ${competencyId}:`, error.message);
-        gaps[competencyId] = {
-          competency_id: competencyId,
-          competency_name: competencyName,
-          error: error.message
-        };
       }
     }
 
-    const totalVerifiedSkills = totalRequiredSkills - totalMissingSkills;
-    const overallProgress = totalRequiredSkills > 0
-      ? Math.round((totalVerifiedSkills / totalRequiredSkills) * 100 * 100) / 100
-      : 0;
-
-    return {
-      success: true,
-      user_id: userId,
-      career_paths: careerPaths.map(cp => ({
-        competency_id: cp.competency_id,
-        competency_name: cp.competency_name,
-        created_at: cp.created_at
-      })),
-      total_required_skills: totalRequiredSkills,
-      total_verified_skills: totalVerifiedSkills,
-      total_missing_skills: totalMissingSkills,
-      overall_progress_percentage: overallProgress,
-      gaps: gaps
-    };
+    return gaps;
   }
 }
 

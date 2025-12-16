@@ -375,12 +375,10 @@ class VerificationService {
     try {
       if (analysisType === 'broad') {
         // Broad gap analysis scoped to career path competencies only
-        const careerPathGapResult = await gapAnalysisService.calculateCareerPathGap(userId);
-        gaps = careerPathGapResult.gaps || {};
+        gaps = await gapAnalysisService.calculateCareerPathGap(userId);
         console.log('[VerificationService.runGapAnalysis] Broad gap analysis (career path only)', {
           userId,
-          careerPathCount: careerPathGapResult.career_paths?.length || 0,
-          overallProgress: careerPathGapResult.overall_progress_percentage
+          gapKeys: Object.keys(gaps)
         });
       } else {
         // Narrow gap analysis scoped to competencies updated by this exam
@@ -391,8 +389,7 @@ class VerificationService {
         if (competencyIds.length === 0) {
           // Fallback: if we don't know which competencies were updated,
           // fall back to career path analysis
-          const careerPathGapResult = await gapAnalysisService.calculateCareerPathGap(userId);
-          gaps = careerPathGapResult.gaps || {};
+          gaps = await gapAnalysisService.calculateCareerPathGap(userId);
         } else {
           for (const competencyId of competencyIds) {
             const perCompGaps = await gapAnalysisService.calculateGapAnalysis(

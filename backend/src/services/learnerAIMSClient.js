@@ -12,21 +12,16 @@ const coordinatorClient = getCoordinatorClient();
 /**
  * Send gap analysis to Learner AI MS via Coordinator
  * @param {string} userId - User ID
- * @param {Object} gapAnalysis - Gap analysis data
+ * @param {Object} gaps - Gap analysis data (competency_name -> missing_skills array)
  * @returns {Promise<Object>} Response envelope from Coordinator
  */
-async function sendGapAnalysis(userId, gapAnalysis) {
+async function sendGapAnalysis(userId, gaps) {
   const envelope = {
     requester_service: 'skills-engine',
     payload: {
       action: 'Send gap analysis results',
       user_id: userId,
-      user_name: gapAnalysis.user_name,
-      company_id: gapAnalysis.company_id,
-      course_name: gapAnalysis.course_name,
-      missing_mgs: gapAnalysis.missing_mgs,
-      exam_status: gapAnalysis.exam_status,
-      company_name: gapAnalysis.company_name
+      missing_mgs: gaps
     },
     response: {
       answer: {}
