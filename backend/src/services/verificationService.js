@@ -337,8 +337,8 @@ class VerificationService {
   /**
    * Run gap analysis after exam results and send to Learner AI MS.
    *
-   * - Baseline exam       -> Broad gap analysis (all user competencies)
-   * - Post-course PASS    -> Broad gap analysis (all user competencies)
+   * - Baseline exam       -> Broad gap analysis (career path competencies only)
+   * - Post-course PASS    -> Broad gap analysis (career path competencies only)
    * - Post-course FAIL    -> Narrow gap analysis (only updated competencies)
    *
    * @param {string} userId - User ID
@@ -362,9 +362,9 @@ class VerificationService {
 
     // Determine analysis type based on exam type + status
     // Docs: step_3_feature_specifications.md (Feature 5)
-    // - Baseline Exam        -> Broad
-    // - Post-course PASS     -> Broad
-    // - Post-course FAIL     -> Narrow
+    // - Baseline Exam        -> Broad (career path competencies)
+    // - Post-course PASS     -> Broad (career path competencies)
+    // - Post-course FAIL     -> Narrow (updated competencies only)
     let analysisType = 'broad';
     if (normalizedExamType === 'post-course' && normalizedExamStatus === 'fail') {
       analysisType = 'narrow';
@@ -374,8 +374,14 @@ class VerificationService {
 
     try {
       if (analysisType === 'broad') {
-        // Broad gap analysis across all user competencies
-        gaps = await gapAnalysisService.calculateAllGaps(userId);
+        // Broad gap analysis scoped to career path competencies only
+        const careerPathGapResult = await gapAnalysisService.calculateCareerPathGap(userId);
+        gaps = careerPathGapResult.gaps || {};
+        console.log('[VerificationService.runGapAnalysis] Broad gap analysis (career path only)', {
+          userId,
+          careerPathCount: careerPathGapResult.career_paths?.length || 0,
+          overallProgress: careerPathGapResult.overall_progress_percentage
+        });
       } else {
         // Narrow gap analysis scoped to competencies updated by this exam
         const competencyIds = updatedCompetencies
@@ -384,8 +390,9 @@ class VerificationService {
 
         if (competencyIds.length === 0) {
           // Fallback: if we don't know which competencies were updated,
-          // fall back to broad analysis so we still provide useful data.
-          gaps = await gapAnalysisService.calculateAllGaps(userId);
+          // fall back to career path analysis
+          const careerPathGapResult = await gapAnalysisService.calculateCareerPathGap(userId);
+          gaps = careerPathGapResult.gaps || {};
         } else {
           for (const competencyId of competencyIds) {
             const perCompGaps = await gapAnalysisService.calculateGapAnalysis(
