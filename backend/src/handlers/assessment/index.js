@@ -30,7 +30,7 @@ class AssessmentHandler {
 
       // Action: request_baseline_exam_skills
       // Assessment MS requests the list of skills for baseline exam creation
-      if (action === 'request_baseline_exam_skills') {
+      if (action === 'fetch-baseline-skills') {
         return await this.handleBaselineExamSkillsRequest(payload, responseTemplate);
       }
 
@@ -130,26 +130,25 @@ class AssessmentHandler {
 
       if (!userCompetencies || userCompetencies.length === 0) {
         return {
-          message: 'No competencies found for user',
-          competencies: []
+          ...(responseTemplate || {}),
+          user_id,
+          message: 'No competencies found for user'
         };
       }
 
-      // Build competencies with MGS list
-      const competenciesWithMGS = [];
+      // Build competencies with MGS list as a map (competency_name -> MGS array)
+      const competenciesMap = {};
       for (const userComp of userCompetencies) {
         try {
           const competency = await competencyService.getCompetencyById(userComp.competency_id);
+          const competencyName = competency?.competency_name || 'Unknown';
           const mgs = await competencyService.getRequiredMGS(userComp.competency_id);
 
-          competenciesWithMGS.push({
-            competency_id: userComp.competency_id,
-            competency_name: competency?.competency_name || 'Unknown',
-            mgs: mgs.map(skill => ({
-              skill_id: skill.skill_id,
-              skill_name: skill.skill_name
-            }))
-          });
+          // Use competency name as key, array of MGS skills as value
+          competenciesMap[competencyName] = mgs.map(skill => ({
+            skill_id: skill.skill_id,
+            skill_name: skill.skill_name
+          }));
         } catch (err) {
           console.warn(
             '[AssessmentHandler.handleBaselineExamSkillsRequest] Failed to get MGS for competency',
@@ -160,13 +159,13 @@ class AssessmentHandler {
 
       console.log(
         '[AssessmentHandler.handleBaselineExamSkillsRequest] Returning baseline exam skills',
-        { user_id, competencyCount: competenciesWithMGS.length }
+        { user_id, competencyCount: Object.keys(competenciesMap).length }
       );
 
       return {
         ...(responseTemplate || {}),
         user_id,
-        competencies: competenciesWithMGS
+        skills: competenciesMap
       };
     } catch (error) {
       console.error(

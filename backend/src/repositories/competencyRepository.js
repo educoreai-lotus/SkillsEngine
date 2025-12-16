@@ -188,7 +188,12 @@ class CompetencyRepository {
 
     for (const field of allowedFields) {
       if (updates.hasOwnProperty(field)) {
-        updateData[field] = updates[field];
+        // Normalize competency_name to lowercase
+        if (field === 'competency_name' && typeof updates[field] === 'string') {
+          updateData[field] = updates[field].toLowerCase().trim();
+        } else {
+          updateData[field] = updates[field];
+        }
       }
     }
 
@@ -342,10 +347,16 @@ class CompetencyRepository {
   async searchByName(pattern, options = {}) {
     const { limit = 100, offset = 0 } = options;
 
+    // Normalize pattern to lowercase for consistent searching
+    const normalizedPattern =
+      typeof pattern === 'string'
+        ? pattern.toLowerCase().trim()
+        : pattern;
+
     const { data, error } = await this.getClient()
       .from('competencies')
       .select('*')
-      .ilike('competency_name', `%${pattern}%`)
+      .ilike('competency_name', `%${normalizedPattern}%`)
       .order('competency_name')
       .range(offset, offset + limit - 1);
 

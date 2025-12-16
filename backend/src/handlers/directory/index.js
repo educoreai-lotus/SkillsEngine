@@ -164,12 +164,13 @@ class DirectoryHandler {
     // Step 4: build initial profile (writes usercompetency & userskill)
     const profile = await userService.buildInitialProfile(userId, normalized);
 
-    // Return profile data - UnifiedEndpointHandler will fill response field
-    // in the original envelope that Directory MS sent
+    // Return profile data with userId, competencies array, and relevanceScore
+    // UnifiedEndpointHandler will fill response field in the original envelope that Directory MS sent
     return {
       ...(responseTemplate || {}),
-      success: true,
-      data: profile
+      userId: profile.userId || userId,
+      competencies: profile.competencies || [],
+      relevanceScore: profile.relevanceScore || 0
     };
   }
 }

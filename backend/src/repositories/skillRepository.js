@@ -256,7 +256,12 @@ class SkillRepository {
 
     for (const field of allowedFields) {
       if (updates.hasOwnProperty(field)) {
-        updateData[field] = updates[field];
+        // Normalize skill_name to lowercase
+        if (field === 'skill_name' && typeof updates[field] === 'string') {
+          updateData[field] = updates[field].toLowerCase().trim();
+        } else {
+          updateData[field] = updates[field];
+        }
       }
     }
 
@@ -409,10 +414,16 @@ class SkillRepository {
   async searchByName(pattern, options = {}) {
     const { limit = 100, offset = 0 } = options;
 
+    // Normalize pattern to lowercase for consistent searching
+    const normalizedPattern =
+      typeof pattern === 'string'
+        ? pattern.toLowerCase().trim()
+        : pattern;
+
     const { data, error } = await this.getClient()
       .from('skills')
       .select('*')
-      .ilike('skill_name', `%${pattern}%`)
+      .ilike('skill_name', `%${normalizedPattern}%`)
       .order('skill_name')
       .range(offset, offset + limit - 1);
 
