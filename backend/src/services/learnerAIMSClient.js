@@ -33,9 +33,8 @@ async function sendGapAnalysis(userId, gapAnalysis) {
     }
   };
 
-  return coordinatorClient.post(envelope, {
-    endpoint: '/api/events/learner-ai/gap-analysis'
-  });
+  // Use default unified endpoint /api/fill-content-metrics/
+  return coordinatorClient.post(envelope);
 }
 
 module.exports = {

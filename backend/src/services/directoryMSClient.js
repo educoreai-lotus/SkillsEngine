@@ -28,9 +28,8 @@ async function sendInitialProfile(userId, profile) {
     }
   };
 
-  return coordinatorClient.post(envelope, {
-    endpoint: '/api/events/directory/initial-profile'
-  });
+  // Use default unified endpoint /api/fill-content-metrics/
+  return coordinatorClient.post(envelope);
 }
 
 /**
@@ -53,9 +52,8 @@ async function sendUpdatedProfile(userId, profile) {
     }
   };
 
-  return coordinatorClient.post(envelope, {
-    endpoint: '/api/events/directory/updated-profile'
-  });
+  // Use default unified endpoint /api/fill-content-metrics/
+  return coordinatorClient.post(envelope);
 }
 
 /**
@@ -75,9 +73,8 @@ async function getUserData(userId) {
     }
   };
 
-  return coordinatorClient.post(envelope, {
-    endpoint: '/api/events/directory/get-user-data'
-  });
+  // Use default unified endpoint /api/fill-content-metrics/
+  return coordinatorClient.post(envelope);
 }
 
 module.exports = {

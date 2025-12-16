@@ -54,9 +54,8 @@ async function requestBaselineExam(userId, userName, competenciesWithMGS, compan
     }
   };
 
-  return coordinatorClient.post(envelope, {
-    endpoint: '/api/events/assessment/baseline-exam'
-  });
+  // Use default unified endpoint /api/fill-content-metrics/
+  return coordinatorClient.post(envelope);
 }
 
 /**
@@ -76,9 +75,8 @@ async function getExamResults(examId) {
     }
   };
 
-  return coordinatorClient.post(envelope, {
-    endpoint: '/api/events/assessment/get-exam-results'
-  });
+  // Use default unified endpoint /api/fill-content-metrics/
+  return coordinatorClient.post(envelope);
 }
 
 module.exports = {

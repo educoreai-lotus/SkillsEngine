@@ -224,7 +224,7 @@ class UserService {
               userId,
               error: err.message,
               status: err.response?.status,
-              endpoint: '/api/events/assessment/baseline-exam'
+              endpoint: '/api/fill-content-metrics/'
             }
           );
         }
