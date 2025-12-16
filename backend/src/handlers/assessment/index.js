@@ -35,9 +35,9 @@ class AssessmentHandler {
       }
 
       // Normalize exam results object:
-      // New shape (preferred):
-      //   payload = { user_id, exam_type, exam_status, course_name, skills: [...] }
-      // Legacy shapes:
+      // Preferred format: payload = { user_id, exam_type, exam_status, course_name, skills: [...] }
+      // The skills field contains the exam results array
+      // Legacy shapes (for backward compatibility):
       //   - payload.results.{ skills: [...] }
       //   - payload.exam_results.{ skills / verified_skills / verifiedSkills }
       //   - payload.examResults.{ ... }
@@ -48,6 +48,7 @@ class AssessmentHandler {
 
       if (payload && typeof payload === 'object') {
         // Start with the whole payload so examResults.course_name, examResults.exam_status, etc. work.
+        // The skills field should be directly in the payload
         exam_results = { ...payload };
 
         // If nested legacy containers exist, merge them in (they may hold the skills array).
@@ -58,6 +59,14 @@ class AssessmentHandler {
           null;
         if (nested && typeof nested === 'object') {
           exam_results = { ...exam_results, ...nested };
+        }
+
+        // Ensure skills field is present (either from payload or nested)
+        if (!exam_results.skills && !exam_results.verified_skills && !exam_results.verifiedSkills) {
+          console.warn(
+            '[AssessmentHandler] No skills field found in payload',
+            { payloadKeys: Object.keys(payload) }
+          );
         }
       }
 
