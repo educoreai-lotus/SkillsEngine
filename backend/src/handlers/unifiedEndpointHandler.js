@@ -45,10 +45,10 @@ class UnifiedEndpointHandler {
    * {
    *   "requester_service": "string",
    *   "payload": { ... },
-   *   "response": { "answer": "" }
+   *   "response": {}
    * }
    *
-   * The handler fills response.answer and we always return the full object
+   * The handler fills the response field and we always return the full object
    * as a stringified JSON in the HTTP response.
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
@@ -70,7 +70,7 @@ class UnifiedEndpointHandler {
           requester_service: null,
           payload: null,
           response: {
-            answer: `Failed to parse JSON body: ${parseError.message}`
+            message: `Failed to parse JSON body: ${parseError.message}`
           }
         };
         return res
@@ -84,7 +84,7 @@ class UnifiedEndpointHandler {
           requester_service: null,
           payload: null,
           response: {
-            answer: 'Request body must be a JSON object'
+            message: 'Request body must be a JSON object'
           }
         };
         return res
@@ -94,10 +94,10 @@ class UnifiedEndpointHandler {
       }
 
       const { requester_service, payload, response } = envelope;
-      const responseTemplate = response || { answer: '' };
+      const responseTemplate = response || {};
 
       // Ensure response object exists and preserve structure
-      envelope.response = envelope.response || { answer: '' };
+      envelope.response = envelope.response || {};
 
       // Log full incoming unified request for debugging/traceability
       try {
@@ -120,7 +120,7 @@ class UnifiedEndpointHandler {
       }
 
       if (!requester_service) {
-        envelope.response.answer = 'requester_service is required';
+        envelope.response = { message: 'requester_service is required' };
         return res
           .status(400)
           .type('application/json')
@@ -130,7 +130,7 @@ class UnifiedEndpointHandler {
       // Step 3: Route based on requester_service
       const handler = HANDLER_MAP[requester_service];
       if (!handler) {
-        envelope.response.answer = `Unknown requester_service: ${requester_service}`;
+        envelope.response = { message: `Unknown requester_service: ${requester_service}` };
         return res
           .status(400)
           .type('application/json')
@@ -142,7 +142,7 @@ class UnifiedEndpointHandler {
           '[UnifiedEndpointHandler] Handler missing process method',
           { requester_service, handlerType: typeof handler }
         );
-        envelope.response.answer = 'Handler configuration error';
+        envelope.response = { message: 'Handler configuration error' };
         return res
           .status(500)
           .type('application/json')
@@ -154,14 +154,13 @@ class UnifiedEndpointHandler {
         aiQueryBuilder: aiQueryBuilderService
       });
 
-      // Step 5: Store result in response.answer
-      // answer should be a JSON object (matching the responseTemplate shape),
-      // not a double-stringified blob.
+      // Step 5: Store result directly in response
+      // Result should be a JSON object, not a double-stringified blob.
       if (typeof result === 'string') {
         // Wrap plain strings into a standard object shape.
-        envelope.response.answer = { message: result };
+        envelope.response = { message: result };
       } else {
-        envelope.response.answer = result || {};
+        envelope.response = result || {};
       }
 
       // Step 6: Return full object as stringified JSON
@@ -183,7 +182,7 @@ class UnifiedEndpointHandler {
           requester_service: null,
           payload: null,
           response: {
-            answer: error.message || 'Internal server error'
+            message: error.message || 'Internal server error'
           }
         };
         return res

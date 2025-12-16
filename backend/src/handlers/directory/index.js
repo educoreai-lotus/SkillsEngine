@@ -63,7 +63,7 @@ class DirectoryHandler {
    *  - create/update basic user profile (persists raw_data and path_career)
    *  - optionally build competency hierarchy from path_career
    *  - run full ingestion pipeline (extract → normalize → build initial profile)
-   *  - Returns profile data which UnifiedEndpointHandler fills into response.answer
+   *  - Returns profile data which UnifiedEndpointHandler fills into response
    *
    * Expected payload (flattened user data from Directory MS), e.g.:
    *  {
@@ -145,10 +145,10 @@ class DirectoryHandler {
     // Step 4: build initial profile (writes usercompetency & userskill)
     const profile = await userService.buildInitialProfile(userId, normalized);
 
-    // Return profile data - UnifiedEndpointHandler will fill response.answer field
+    // Return profile data - UnifiedEndpointHandler will fill response field
     // in the original envelope that Directory MS sent
     return {
-      ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+      ...(responseTemplate || {}),
       success: true,
       data: profile
     };

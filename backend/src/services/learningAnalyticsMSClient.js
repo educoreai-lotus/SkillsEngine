@@ -23,9 +23,7 @@ async function sendUserProfile(userId, profileData) {
       user_id: userId,
       ...profileData
     },
-    response: {
-      answer: {}
-    }
+    response: {}
   };
 
   return coordinatorClient.post(envelope, {

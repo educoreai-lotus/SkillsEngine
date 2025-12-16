@@ -26,7 +26,13 @@ class AssessmentHandler {
         JSON.stringify(payload, null, 2)
       );
 
-      const { user_id, exam_type } = payload;
+      const { user_id, exam_type, action } = payload;
+
+      // Action: request_baseline_exam_skills
+      // Assessment MS requests the list of skills for baseline exam creation
+      if (action === 'request_baseline_exam_skills') {
+        return await this.handleBaselineExamSkillsRequest(payload, responseTemplate);
+      }
 
       // Normalize exam results object:
       // New shape (preferred):
@@ -85,7 +91,7 @@ class AssessmentHandler {
 
       // On success, return only the business result shape (merged with template).
       return {
-        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        ...(responseTemplate || {}),
         ...result
       };
     } catch (error) {
@@ -99,6 +105,75 @@ class AssessmentHandler {
       return {
         message: error.message || 'Internal server error'
       };
+    }
+  }
+
+  /**
+   * Handle baseline exam skills request from Assessment MS
+   * @param {Object} payload - Request payload with user_id
+   * @param {Object} responseTemplate - Response template
+   * @returns {Promise<Object>} Competencies with MGS for baseline exam
+   */
+  async handleBaselineExamSkillsRequest(payload, responseTemplate) {
+    const { user_id } = payload;
+
+    if (!user_id) {
+      return { message: 'user_id is required' };
+    }
+
+    try {
+      const userCompetencyRepository = require('../../repositories/userCompetencyRepository');
+      const competencyService = require('../../services/competencyService');
+
+      // Get all user competencies
+      const userCompetencies = await userCompetencyRepository.findByUser(user_id);
+
+      if (!userCompetencies || userCompetencies.length === 0) {
+        return {
+          message: 'No competencies found for user',
+          competencies: []
+        };
+      }
+
+      // Build competencies with MGS list
+      const competenciesWithMGS = [];
+      for (const userComp of userCompetencies) {
+        try {
+          const competency = await competencyService.getCompetencyById(userComp.competency_id);
+          const mgs = await competencyService.getRequiredMGS(userComp.competency_id);
+
+          competenciesWithMGS.push({
+            competency_id: userComp.competency_id,
+            competency_name: competency?.competency_name || 'Unknown',
+            mgs: mgs.map(skill => ({
+              skill_id: skill.skill_id,
+              skill_name: skill.skill_name
+            }))
+          });
+        } catch (err) {
+          console.warn(
+            '[AssessmentHandler.handleBaselineExamSkillsRequest] Failed to get MGS for competency',
+            { user_id, competency_id: userComp.competency_id, error: err.message }
+          );
+        }
+      }
+
+      console.log(
+        '[AssessmentHandler.handleBaselineExamSkillsRequest] Returning baseline exam skills',
+        { user_id, competencyCount: competenciesWithMGS.length }
+      );
+
+      return {
+        ...(responseTemplate || {}),
+        user_id,
+        competencies: competenciesWithMGS
+      };
+    } catch (error) {
+      console.error(
+        '[AssessmentHandler.handleBaselineExamSkillsRequest] Error:',
+        { user_id, error: error.message }
+      );
+      return { message: error.message };
     }
   }
 }

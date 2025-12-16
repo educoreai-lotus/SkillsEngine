@@ -36,7 +36,7 @@ class RAGHandler {
 
       // On success, return only the business result shape; no status/message wrapper.
       return {
-        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        ...(responseTemplate || {}),
         query,
         results
       };

@@ -41,7 +41,7 @@ class AnalyticsHandler {
         };
 
         return {
-          ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+          ...(responseTemplate || {}),
           ...minimalProfile
         };
       }
@@ -102,7 +102,7 @@ class AnalyticsHandler {
       competencies: profile.competencies
     }));
 
-    const baseTemplate = (responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {};
+    const baseTemplate = responseTemplate || {};
 
     return {
       ...baseTemplate,

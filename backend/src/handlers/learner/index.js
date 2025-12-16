@@ -49,7 +49,7 @@ class LearnerAIHandler {
       }
 
       return {
-        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        ...(responseTemplate || {}),
         nodes: allNodes,
         competencies: breakdown
       };

@@ -23,9 +23,7 @@ async function sendSkillsData(competencyId, skills) {
       competency_id: competencyId,
       skills
     },
-    response: {
-      answer: {}
-    }
+    response: {}
   };
 
   return coordinatorClient.post(envelope, {

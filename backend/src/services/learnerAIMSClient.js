@@ -23,9 +23,7 @@ async function sendGapAnalysis(userId, gaps) {
       user_id: userId,
       missing_mgs: gaps
     },
-    response: {
-      answer: {}
-    }
+    response: {}
   };
 
   // Use default unified endpoint /api/fill-content-metrics/

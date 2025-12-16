@@ -23,9 +23,7 @@ async function search(query, type = null) {
       query,
       type: type || null
     },
-    response: {
-      answer: {}
-    }
+    response: {}
   };
 
   return coordinatorClient.post(envelope, {

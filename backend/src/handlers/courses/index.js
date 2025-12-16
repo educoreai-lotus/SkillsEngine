@@ -28,14 +28,14 @@ class CourseBuilderHandler {
         // Trigger external discovery
         const discovered = await skillDiscoveryService.discoverExternal(competency_name);
         return {
-          ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+          ...(responseTemplate || {}),
           ...discovered
         };
       }
 
       // On success, return only the business result shape (merged with template).
       return {
-        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        ...(responseTemplate || {}),
         ...result
       };
     } catch (error) {

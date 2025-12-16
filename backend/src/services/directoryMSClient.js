@@ -23,9 +23,7 @@ async function sendInitialProfile(userId, profile) {
       user_id: userId,
       ...profile
     },
-    response: {
-      answer: {}
-    }
+    response: {}
   };
 
   // Use default unified endpoint /api/fill-content-metrics/
@@ -47,9 +45,7 @@ async function sendUpdatedProfile(userId, profile) {
       user_id: userId,
       ...profile
     },
-    response: {
-      answer: {}
-    }
+    response: {}
   };
 
   // Use default unified endpoint /api/fill-content-metrics/
@@ -68,9 +64,7 @@ async function getUserData(userId) {
       action: 'Get user data from Directory MS',
       user_id: userId
     },
-    response: {
-      answer: {}
-    }
+    response: {}
   };
 
   // Use default unified endpoint /api/fill-content-metrics/

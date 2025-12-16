@@ -18,8 +18,7 @@ class ContentStudioHandler {
   async process(payload, responseTemplate) {
     try {
       // Use AI Query Builder to generate queries dynamically
-      const responseTemplateData =
-        (responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {};
+      const responseTemplateData = responseTemplate || {};
 
       console.log('[ContentStudioHandler] Using AI Query Builder to generate queries', {
         payload,
@@ -151,7 +150,7 @@ class ContentStudioHandler {
       const skills = await competencyService.getRequiredMGSByName(competency_name);
 
       return {
-        ...((responseTemplate && (responseTemplate.answer || responseTemplate.data)) || {}),
+        ...(responseTemplate || {}),
         competency_name,
         skills
       };

@@ -49,9 +49,7 @@ async function requestBaselineExam(userId, userName, competenciesWithMGS, compan
       exam_type: 'baseline exam',
       competencies: outboundCompetencies
     },
-    response: {
-      answer: {}
-    }
+    response: {}
   };
 
   // Use default unified endpoint /api/fill-content-metrics/
@@ -70,9 +68,7 @@ async function getExamResults(examId) {
       action: 'Get exam results for assessment exam',
       exam_id: examId
     },
-    response: {
-      answer: {}
-    }
+    response: {}
   };
 
   // Use default unified endpoint /api/fill-content-metrics/

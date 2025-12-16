@@ -202,39 +202,7 @@ class UserService {
 
     // Note: When called from Directory handler via unified endpoint,
     // the profile is returned in response.answer field (no separate POST needed).
-    // When called from other contexts (e.g., UserController), the caller
-    // can decide whether to send to Directory MS separately.
-
-    // After initial competency profile is built and sent to Directory MS,
-    // automatically trigger a baseline exam request in Assessment MS.
-    // This is fire-and-forget: failures are logged but do not block the response.
-    const userName = userForMetadata?.user_name || null;
-    const companyId = userForMetadata?.company_id || null;
-
-    // Always attempt to request baseline exam (if user_name is available)
-    if (userName) {
-      (async () => {
-        try {
-          await baselineExamService.requestBaselineExam(userId, userName, companyId);
-          console.log('[UserService.buildInitialProfile] Successfully requested baseline exam from Assessment MS');
-        } catch (err) {
-          console.warn(
-            '[UserService.buildInitialProfile] Failed to request baseline exam',
-            {
-              userId,
-              error: err.message,
-              status: err.response?.status,
-              endpoint: '/api/fill-content-metrics/'
-            }
-          );
-        }
-      })();
-    } else {
-      console.warn(
-        '[UserService.buildInitialProfile] Skipping baseline exam request (missing user_name)',
-        { userId }
-      );
-    }
+    // Assessment MS will request baseline exam skills via unified endpoint when ready.
 
     return payload;
   }
