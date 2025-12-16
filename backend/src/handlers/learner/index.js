@@ -18,14 +18,24 @@ class LearnerAIHandler {
    */
   async process(payload, responseTemplate) {
     try {
-      const { competencies } = payload || {};
+      // Validate payload structure
+      if (!payload || typeof payload !== 'object') {
+        return { message: 'Invalid payload structure' };
+      }
+
+      const { action, description, competencies } = payload || {};
+
+      // Log full incoming Learner AI request for debugging
+      console.log(
+        '[LearnerAIHandler] Incoming Learner AI MS request - full payload:',
+        JSON.stringify(payload, null, 2)
+      );
 
       if (!Array.isArray(competencies) || competencies.length === 0) {
         return { message: 'competencies must be a non-empty array of competency names' };
       }
 
       const breakdown = {};
-      const allNodes = [];
 
       for (const name of competencies) {
         if (typeof name !== 'string' || !name.trim()) {
@@ -34,12 +44,11 @@ class LearnerAIHandler {
 
         try {
           const mgs = await competencyService.getRequiredMGSByName(name.trim());
-          breakdown[name] = mgs;
-
-          // Also push into global nodes list (flattened view)
-          for (const skill of mgs) {
-            allNodes.push(skill);
-          }
+          // Only include skill_id and skill_name for each skill
+          breakdown[name] = mgs.map(skill => ({
+            skill_id: skill.skill_id,
+            skill_name: skill.skill_name
+          }));
         } catch (err) {
           // If one competency is not found, capture the error instead of failing the whole request
           breakdown[name] = {
@@ -50,7 +59,6 @@ class LearnerAIHandler {
 
       return {
         ...(responseTemplate || {}),
-        nodes: allNodes,
         competencies: breakdown
       };
     } catch (error) {

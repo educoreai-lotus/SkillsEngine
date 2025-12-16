@@ -1,0 +1,13 @@
+{
+  "requester_service": "learnerAi",
+  "payload": {
+    "action": "get-mgs-for-competencies",
+    "description": "Request leaf skills (MGS) for the specified competencies",
+    "competencies": [
+      "python",
+      "reactjs"
+    ]
+  },
+  "response": {}
+}
+
