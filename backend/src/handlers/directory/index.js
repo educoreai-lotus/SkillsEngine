@@ -100,20 +100,39 @@ class DirectoryHandler {
 
         // Step 1.6: Save career path competency to user_career_path table
         try {
-          const careerPathCompetency = await competencyRepository.findByName(pathCareer.trim());
+          const trimmedCareer = pathCareer.trim();
+          const careerPathCompetency = await competencyRepository.findByName(trimmedCareer);
+
           if (careerPathCompetency) {
-            await userCareerPathRepository.create({
-              user_id: userId,
-              competency_id: careerPathCompetency.competency_id
-            });
-            console.log('[DirectoryHandler] Saved career path competency to user_career_path', {
-              userId,
-              competency_id: careerPathCompetency.competency_id,
-              competency_name: pathCareer.trim()
-            });
+            // Check if this career path competency is already saved for this user
+            const existingPaths = await userCareerPathRepository.findByUser(userId);
+            const alreadyExists = existingPaths.some(
+              (cp) => cp.competency_id === careerPathCompetency.competency_id
+            );
+
+            if (alreadyExists) {
+              console.log(
+                '[DirectoryHandler] Career path competency already exists in user_career_path, skipping create',
+                {
+                  userId,
+                  competency_id: careerPathCompetency.competency_id,
+                  competency_name: trimmedCareer
+                }
+              );
+            } else {
+              await userCareerPathRepository.create({
+                user_id: userId,
+                competency_id: careerPathCompetency.competency_id
+              });
+              console.log('[DirectoryHandler] Saved career path competency to user_career_path', {
+                userId,
+                competency_id: careerPathCompetency.competency_id,
+                competency_name: trimmedCareer
+              });
+            }
           } else {
             console.warn('[DirectoryHandler] Career path competency not found in database', {
-              pathCareer: pathCareer.trim()
+              pathCareer: trimmedCareer
             });
           }
         } catch (careerPathErr) {
