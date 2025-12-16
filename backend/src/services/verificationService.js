@@ -19,15 +19,18 @@ class VerificationService {
    * Process baseline exam results (Feature 3.2)
    * @param {string} userId - User ID
    * @param {Object} examResults - Exam results from Assessment MS
-   * @param {Object} [options] - Additional options (examType, examStatus, courseName)
+   * @param {Object} [options] - Additional options (examType, examStatus)
    * @returns {Promise<Object>} Updated profile + gap analysis metadata
    */
   async processBaselineExamResults(userId, examResults, options = {}) {
     const {
       examType = 'baseline',
-      examStatus = null,
-      courseName = null
+      examStatus: optionsExamStatus = null
     } = options;
+
+    // Check examResults first, then options, else null
+    // Note: Baseline exams don't have courseName
+    const examStatus = examResults?.exam_status || examResults?.examStatus || optionsExamStatus || null;
     try {
       // Support multiple field names from Assessment MS for backward compatibility:
       // - skills (preferred)
@@ -51,21 +54,15 @@ class VerificationService {
           return null;
         }
 
-        const { skill_id, skill_name, score, passed, status } = rawSkill;
+        const { skill_id, skill_name, status } = rawSkill;
 
-        // Support both old format (passed boolean) and new format (status: "pass"/"fail")
+        // Status field is always required (format: "pass"/"fail")
         // Normalize to lowercase string for robustness ("PASS", "Pass", etc.)
-        let skillStatus = status;
-
-        if (skillStatus == null) {
-          if (typeof passed === 'boolean') {
-            skillStatus = passed ? 'pass' : 'fail';
-          }
+        if (!status || typeof status !== 'string') {
+          return null; // Skip if status is missing or invalid
         }
 
-        if (typeof skillStatus === 'string') {
-          skillStatus = skillStatus.toLowerCase().trim();
-        }
+        const skillStatus = status.toLowerCase().trim();
 
         // Only process MGS with status "pass"
         if (skillStatus !== 'pass') {
@@ -108,6 +105,8 @@ class VerificationService {
           const { skill_id, skill_name, verified } = normalized;
 
           // Find competencies that require this skill
+          // Note: getCompetenciesBySkill works for leaf skills (MGS) by traversing
+          // up the skill hierarchy to find competencies linked at any level
           let competencies = [];
           try {
             competencies = await competencyService.getCompetenciesBySkill(skill_id);
@@ -240,7 +239,7 @@ class VerificationService {
         gapAnalysis = await this.runGapAnalysis(userId, updatedCompetencies, {
           examType,
           examStatus,
-          courseName
+          courseName: null // Baseline exams don't have courseName
         });
       } catch (err) {
         console.error(
@@ -266,25 +265,16 @@ class VerificationService {
         );
       }
 
-      return {
-        userId,
-        updated_competencies: Array.from(updatedCompetencies),
-        verified_skills_count: verifiedSkillsInput.length,
-        gap_analysis: gapAnalysis
-      };
+      // Return empty response - processing is complete
+      return {};
     } catch (error) {
       // Log error but return partial results
       console.error(
         '[VerificationService.processBaselineExamResults] Fatal error processing exam results',
         { userId, error: error.message, stack: error.stack }
       );
-      // Return partial results if available, or empty result
-      return {
-        userId,
-        updated_competencies: [],
-        verified_skills_count: 0,
-        error: error.message
-      };
+      // Return error message on failure
+      return { message: error.message || 'Failed to process exam results' };
     }
   }
 
