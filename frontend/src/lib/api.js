@@ -209,6 +209,22 @@ export const api = {
     const response = await apiClient.delete(`/api/user-career-path/${userId}`);
     return response.data;
   },
+
+  // Career Path with Gap Analysis
+  addCareerPathAndAnalyze: async (userId, competencyId, competencyName) => {
+    const response = await apiClient.post('/api/career-path/add-and-analyze', {
+      user_id: userId,
+      competency_id: competencyId,
+      competency_name: competencyName,
+    });
+    return response.data;
+  },
+
+  // Calculate gap and send to Learner AI
+  calculateGapAndSend: async (userId) => {
+    const response = await apiClient.post(`/api/career-path/${userId}/calculate-and-send`);
+    return response.data;
+  },
 };
 
 export default api;

@@ -8,6 +8,7 @@
 const userCareerPathRepository = require('../repositories/userCareerPathRepository');
 const competencyService = require('./competencyService');
 const gapAnalysisService = require('./gapAnalysisService');
+const learnerAIMSClient = require('./learnerAIMSClient');
 
 class CareerPathService {
   /**
@@ -123,6 +124,58 @@ class CareerPathService {
     }
 
     return await gapAnalysisService.calculateCareerPathGap(userId);
+  }
+
+  /**
+   * Calculate gap and send to Learner AI
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} Gap analysis result
+   */
+  async calculateGapAndSend(userId) {
+    if (!userId) {
+      throw new Error('user_id is required');
+    }
+
+    // Calculate gap analysis
+    const gapAnalysis = await this.calculateGap(userId);
+
+    // Send gap analysis to Learner AI
+    try {
+      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis);
+    } catch (error) {
+      console.error('[CareerPathService] Error sending gap analysis to Learner AI:', error.message);
+      // Don't throw - we still want to return success even if sending to Learner AI fails
+    }
+
+    return gapAnalysis;
+  }
+
+  /**
+   * Add career path, calculate gap, and send to Learner AI
+   * @param {string} userId - User ID
+   * @param {string} [competencyId] - Competency ID (optional if competencyName provided)
+   * @param {string} [competencyName] - Competency name (optional if competencyId provided)
+   * @returns {Promise<Object>} Result with career path and gap analysis
+   */
+  async addCareerPathAndSendGap(userId, competencyId, competencyName) {
+    // Add career path
+    const careerPath = await this.addCareerPath(userId, competencyId, competencyName);
+
+    // Calculate gap analysis
+    const gapAnalysis = await this.calculateGap(userId);
+
+    // Send gap analysis to Learner AI
+    try {
+      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis);
+    } catch (error) {
+      console.error('[CareerPathService] Error sending gap analysis to Learner AI:', error.message);
+      // Don't throw - we still want to return success even if sending to Learner AI fails
+    }
+
+    return {
+      careerPath,
+      gapAnalysis
+    };
   }
 }
 

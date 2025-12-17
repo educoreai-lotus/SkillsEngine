@@ -146,6 +146,56 @@ class CareerPathController {
             });
         }
     }
+
+    /**
+     * Calculate gap analysis and send to Learner AI
+     * POST /api/career-path/:userId/calculate-and-send
+     */
+    async calculateGapAndSend(req, res) {
+        try {
+            const { userId } = req.params;
+
+            const gapAnalysis = await careerPathService.calculateGapAndSend(userId);
+
+            res.json({
+                success: true,
+                data: gapAnalysis,
+                message: 'Gap analysis calculated and sent to Learner AI'
+            });
+        } catch (error) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    /**
+     * Add career path, calculate gap, and send to Learner AI
+     * POST /api/career-path/add-and-analyze
+     * Body: { user_id: string, competency_id?: string, competency_name?: string }
+     */
+    async addCareerPathAndAnalyze(req, res) {
+        try {
+            const { user_id, competency_id, competency_name } = req.body;
+
+            const result = await careerPathService.addCareerPathAndSendGap(
+                user_id,
+                competency_id,
+                competency_name
+            );
+
+            res.status(201).json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
 }
 
 module.exports = new CareerPathController();

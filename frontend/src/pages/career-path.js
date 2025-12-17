@@ -9,6 +9,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 const DEFAULT_USER_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -17,9 +18,15 @@ export default function CareerPathPage() {
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // User profile
+  const { profile } = useUserProfile(userId);
+  const user = profile?.user || profile;
+  const targetRole = user?.path_career || user?.career_path_goal || `User ${DEFAULT_USER_ID.substring(0, 8)}`;
+
   // Career path state
   const [careerPaths, setCareerPaths] = useState([]);
   const [careerPathsLoading, setCareerPathsLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,6 +101,25 @@ export default function CareerPathPage() {
     }
   };
 
+  // Calculate gap and send to Learner AI, then redirect
+  const handleCalculateGapAndSend = async () => {
+    if (careerPaths.length === 0) {
+      alert('Please add at least one competency to your career path first.');
+      return;
+    }
+
+    try {
+      setAnalyzing(true);
+      await api.calculateGapAndSend(userId);
+      // Redirect to directory page (home/dashboard)
+      router.push(`/?userId=${userId}`);
+    } catch (error) {
+      console.error('Error calculating gap and sending to Learner AI:', error);
+      alert('Failed to calculate gap and send to Learner AI.');
+      setAnalyzing(false);
+    }
+  };
+
   // Remove career path
   const handleRemoveCareerPath = async (competencyId) => {
     if (!confirm('Are you sure you want to remove this career path?')) return;
@@ -139,9 +165,14 @@ export default function CareerPathPage() {
           {/* Search Section */}
           <div className="mb-8">
             <div className="glass rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
-                Add Career Path
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
+                Customize Career Path
               </h2>
+              <div className="mb-4">
+                <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-lg inline-block">
+                  Target Role: {targetRole}
+                </span>
+              </div>
               <div className="relative">
                 <input
                   type="text"
@@ -240,6 +271,31 @@ export default function CareerPathPage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Calculate Gap Button - Always visible */}
+            {!careerPathsLoading && (
+              <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <button
+                  onClick={handleCalculateGapAndSend}
+                  disabled={analyzing || careerPaths.length === 0}
+                  className="w-full px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  {analyzing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <span>Calculating Gap & Sending to Learner AI...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span>Calculate Gap & Send to Learner AI</span>
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>
