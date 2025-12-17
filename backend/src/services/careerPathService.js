@@ -139,9 +139,9 @@ class CareerPathService {
     // Calculate gap analysis
     const gapAnalysis = await this.calculateGap(userId);
 
-    // Send gap analysis to Learner AI
+    // Send gap analysis to Learner AI (broad analysis for career path)
     try {
-      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis);
+      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis, 'broad');
     } catch (error) {
       console.error('[CareerPathService] Error sending gap analysis to Learner AI:', error.message);
       // Don't throw - we still want to return success even if sending to Learner AI fails
@@ -164,9 +164,9 @@ class CareerPathService {
     // Calculate gap analysis
     const gapAnalysis = await this.calculateGap(userId);
 
-    // Send gap analysis to Learner AI
+    // Send gap analysis to Learner AI (broad analysis for career path)
     try {
-      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis);
+      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis, 'broad');
     } catch (error) {
       console.error('[CareerPathService] Error sending gap analysis to Learner AI:', error.message);
       // Don't throw - we still want to return success even if sending to Learner AI fails

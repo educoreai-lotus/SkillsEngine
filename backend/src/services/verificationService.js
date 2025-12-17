@@ -436,7 +436,13 @@ class VerificationService {
             gaps: serializedGaps
           }
         );
-        await learnerAIMSClient.sendGapAnalysis(userId, gaps);
+        await learnerAIMSClient.sendGapAnalysis(
+          userId,
+          gaps,
+          analysisType,
+          courseName,
+          normalizedExamStatus
+        );
       } else {
         console.log(
           '[VerificationService.runGapAnalysis] No gaps to send to Learner AI MS',
