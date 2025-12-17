@@ -425,9 +425,16 @@ class VerificationService {
     // Best-effort: log and send gap analysis to Learner AI MS
     try {
       if (Object.keys(gaps).length > 0) {
+        const serializedGaps = JSON.stringify(gaps, null, 2);
         console.log(
           '[VerificationService.runGapAnalysis] Gaps payload before sending to Learner AI MS',
-          { userId, analysisType, examType: normalizedExamType, examStatus: normalizedExamStatus, gaps }
+          {
+            userId,
+            analysisType,
+            examType: normalizedExamType,
+            examStatus: normalizedExamStatus,
+            gaps: serializedGaps
+          }
         );
         await learnerAIMSClient.sendGapAnalysis(userId, gaps);
       } else {
