@@ -126,7 +126,28 @@ class VerificationService {
             continue;
           }
 
+          // Extra safety: only update competencies for which this skill_id
+          // is actually part of their required MGS set.
+          const filteredCompetencies = [];
           for (const competency of competencies) {
+            try {
+              const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
+              const isRequired = requiredMGS.some(mgs => mgs.skill_id === skill_id);
+              if (!isRequired) {
+                // Skip competencies that do not explicitly require this MGS
+                continue;
+              }
+              filteredCompetencies.push(competency);
+            } catch (err) {
+              console.warn(
+                '[VerificationService.processBaselineExamResults] Failed to validate MGS requirement for competency',
+                { userId, competency_id: competency.competency_id, skill_id, error: err.message }
+              );
+              // Be conservative: skip this competency if validation fails
+            }
+          }
+
+          for (const competency of filteredCompetencies) {
             try {
               let userComp = await userCompetencyRepository.findByUserAndCompetency(
                 userId,
