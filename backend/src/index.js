@@ -102,7 +102,8 @@ app.get('/', (req, res) => {
     endpoints: {
       skills: '/api/skills',
       competencies: '/api/competencies',
-      user: '/api/user'
+      user: '/api/user',
+      careerPath: '/api/career-path'
     }
   });
 });
@@ -119,6 +120,7 @@ const competencySubCompetencyRoutes = require('./routes/api/competency-subcompet
 const sourceDiscoveryRoutes = require('./routes/api/source-discovery');
 const competencyDiscoveryRoutes = require('./routes/api/competency-discovery');
 const webExtractionRoutes = require('./routes/api/web-extraction');
+const careerPathRoutes = require('./routes/api/career-path');
 const unifiedEndpointHandler = require('./handlers/unifiedEndpointHandler');
 const sourceDiscoveryService = require('./services/sourceDiscoveryService');
 const webExtractionService = require('./services/webExtractionService');
@@ -134,6 +136,7 @@ app.use('/api/competency-subcompetency', competencySubCompetencyRoutes);
 app.use('/api/source-discovery', sourceDiscoveryRoutes);
 app.use('/api/competency-discovery', competencyDiscoveryRoutes);
 app.use('/api/web-extraction', webExtractionRoutes);
+app.use('/api/career-path', careerPathRoutes);
 
 // Unified Data Exchange Protocol endpoint
 // This endpoint receives the entire body as a stringified JSON and is parsed manually.
