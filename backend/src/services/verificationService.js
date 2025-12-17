@@ -46,27 +46,34 @@ class VerificationService {
       const updatedCompetencies = new Set();
 
       // Helper: normalize a single verified skill coming from Assessment MS
-      // - Ensure JSON shape: { skill_id, skill_name, verified }
-      // - Only persist leaf / MGS skills (last level in the hierarchy)
-      // - Only process MGS with status "pass" (skip status "fail")
+      // Accepted input formats (for backward compatibility):
+      //   - { skill_id, skill_name, status: "pass" | "fail" }
+      //   - { skill_id, skill_name, verified: true | false }
+      // We normalize to JSON shape: { skill_id, skill_name, verified }
+      // and only persist leaf / MGS skills with status "pass" / verified === true.
       const normalizeVerifiedSkill = async (rawSkill) => {
         if (!rawSkill || !rawSkill.skill_id) {
           return null;
         }
 
-        const { skill_id, skill_name, status } = rawSkill;
+        const { skill_id, skill_name } = rawSkill;
 
-        // Status field is always required (format: "pass"/"fail")
-        // Normalize to lowercase string for robustness ("PASS", "Pass", etc.)
-        if (!status || typeof status !== 'string') {
-          return null; // Skip if status is missing or invalid
+        // Determine pass/fail status from either "status" string or "verified" boolean
+        let skillStatus = null;
+        if (typeof rawSkill.status === 'string') {
+          skillStatus = rawSkill.status.toLowerCase().trim();
+        } else if (typeof rawSkill.verified === 'boolean') {
+          skillStatus = rawSkill.verified ? 'pass' : 'fail';
         }
 
-        const skillStatus = status.toLowerCase().trim();
+        // If we still don't know the status, skip this entry
+        if (!skillStatus) {
+          return null;
+        }
 
-        // Only process MGS with status "pass"
+        // Only process MGS that are effectively "pass"
         if (skillStatus !== 'pass') {
-          return null; // Skip MGS that did not pass
+          return null; // Skip skills that did not pass
         }
 
         // Ensure we only persist MGS / leaf skills in verifiedSkills
