@@ -251,6 +251,11 @@ class UserService {
    *
    * This is used by the Learning Analytics MS batch ingestion flow.
    *
+   * NOTE: Per current data model, user skills are not populated in userskill.
+   * All profile information is derived from:
+   *   - users table (user metadata)
+   *   - usercompetency table (competencies)
+   *
    * @param {Object} options
    * @param {string|null} [options.cursor] - Last seen user_id (null for first page)
    * @param {number} [options.pageSize=1000] - Max profiles to return
@@ -293,7 +298,7 @@ class UserService {
       competenciesByUser.get(key).push(uc.toJSON());
     }
 
-    // 3) Build profile objects (user + competencies only, no skills for Learning Analytics)
+    // 3) Build profile objects (user + competencies only)
     const profiles = users.map(user => ({
       user: user.toJSON(),
       competencies: competenciesByUser.get(user.user_id) || []

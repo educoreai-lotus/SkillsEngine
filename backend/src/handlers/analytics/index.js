@@ -29,15 +29,29 @@ class AnalyticsHandler {
         const profile = await userService.getFullUserProfile(user_id);
         const { user, competencies } = profile;
 
+        // Normalize competencies so each item explicitly includes competency_name
+        const normalizedCompetencies = (competencies || []).map((comp) => ({
+          user_id: comp.user_id,
+          competency_id: comp.competency_id,
+          competency_name:
+            comp.competency_name ||
+            (comp.competencies && comp.competencies.competency_name) ||
+            null,
+          coverage_percentage: comp.coverage_percentage,
+          proficiency_level: comp.proficiency_level,
+          verifiedSkills: comp.verifiedSkills || [],
+          created_at: comp.created_at,
+          updated_at: comp.updated_at
+        }));
+
         // Build minimal response for Learning Analytics:
         // - user_id
         // - user_name
-        // - company_id
-        // - competencies (no skills)
+        // - competencies (with name, level, coverage, verifiedSkills)
         const minimalProfile = {
           user_id: user.user_id,
           user_name: user.user_name,
-          competencies
+          competencies: normalizedCompetencies
         };
 
         return {
@@ -94,13 +108,29 @@ class AnalyticsHandler {
     const returnedRecords = profiles.length;
     const hasMore = !!nextCursor && returnedRecords === pageSize;
 
-    // Build minimal array of user competency profiles for Learning Analytics
-    const userProfiles = profiles.map(profile => ({
-      user_id: profile.user.user_id,
-      user_name: profile.user.user_name,
-      company_id: profile.user.company_id || null,
-      competencies: profile.competencies
-    }));
+    // Build array of user competency profiles for Learning Analytics
+    const userProfiles = profiles.map(profile => {
+      const normalizedCompetencies = (profile.competencies || []).map((comp) => ({
+        user_id: comp.user_id,
+        competency_id: comp.competency_id,
+        competency_name:
+          comp.competency_name ||
+          (comp.competencies && comp.competencies.competency_name) ||
+          null,
+        coverage_percentage: comp.coverage_percentage,
+        proficiency_level: comp.proficiency_level,
+        verifiedSkills: comp.verifiedSkills || [],
+        created_at: comp.created_at,
+        updated_at: comp.updated_at
+      }));
+
+      return {
+        user_id: profile.user.user_id,
+        user_name: profile.user.user_name,
+        company_id: profile.user.company_id || null,
+        competencies: normalizedCompetencies
+      };
+    });
 
     const baseTemplate = responseTemplate || {};
 
