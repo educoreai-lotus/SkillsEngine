@@ -422,10 +422,19 @@ class VerificationService {
       gaps = {};
     }
 
-    // Best-effort: send gap analysis to Learner AI MS
+    // Best-effort: log and send gap analysis to Learner AI MS
     try {
       if (Object.keys(gaps).length > 0) {
+        console.log(
+          '[VerificationService.runGapAnalysis] Gaps payload before sending to Learner AI MS',
+          { userId, analysisType, examType: normalizedExamType, examStatus: normalizedExamStatus, gaps }
+        );
         await learnerAIMSClient.sendGapAnalysis(userId, gaps);
+      } else {
+        console.log(
+          '[VerificationService.runGapAnalysis] No gaps to send to Learner AI MS',
+          { userId, analysisType, examType: normalizedExamType, examStatus: normalizedExamStatus }
+        );
       }
     } catch (error) {
       // Do not fail exam processing if Learner AI is unavailable
