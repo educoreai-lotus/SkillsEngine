@@ -177,6 +177,7 @@ CREATE TABLE public.users (
     created_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
     company_name VARCHAR(255) NULL,
+    preferred_language character varying NULL DEFAULT 'en'::character varying,
     CONSTRAINT users_pkey PRIMARY KEY (user_id)
 );
 

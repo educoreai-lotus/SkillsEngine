@@ -60,7 +60,7 @@ class DirectoryHandler {
    * Handle onboarding from Directory MS using the unified payload.
    *
    * Mirrors UserController.onboardAndIngest:
-   *  - create/update basic user profile (persists raw_data and path_career)
+   *  - create/update basic user profile (persists raw_data, path_career, company_name, preferred_language, etc.)
    *  - optionally build competency hierarchy from path_career
    *  - run full ingestion pipeline (extract → normalize → build initial profile)
    *  - Returns profile data which UnifiedEndpointHandler fills into response
@@ -70,8 +70,10 @@ class DirectoryHandler {
    *    user_id: "...",        // optional
    *    user_name: "...",
    *    company_id: "...",
+   *    company_name: "...",   // optional
    *    raw_data: { ... },     // REQUIRED
-   *    path_career: "..."     // optional
+   *    path_career: "...",    // optional
+   *    preferred_language: "en"  // optional, defaults to 'en'
    *  }
    */
   async handleOnboardAndIngest(payload, responseTemplate) {

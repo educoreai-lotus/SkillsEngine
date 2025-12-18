@@ -10,9 +10,14 @@
             "user_id": "uuid",
             "user_name": "string",
             "company_id": "string",
+            "employee_type": "string",
+            "path_career": "string",
+            "raw_data": "string",
             "relevance_score": "number",
             "created_at": "timestamp",
-            "updated_at": "timestamp"
+            "updated_at": "timestamp",
+            "company_name": "string",
+            "preferred_language": "string"
           }
         },
         {

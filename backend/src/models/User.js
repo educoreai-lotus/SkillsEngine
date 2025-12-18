@@ -14,6 +14,7 @@ class User {
     this.path_career = data.path_career || null;
     this.raw_data = data.raw_data || null;
     this.relevance_score = data.relevance_score || 0.00;
+    this.preferred_language = data.preferred_language || 'en';
     this.created_at = data.created_at || null;
     this.updated_at = data.updated_at || null;
   }
@@ -81,6 +82,7 @@ class User {
       path_career: this.path_career,
       raw_data: this.raw_data,
       relevance_score: this.relevance_score,
+      preferred_language: this.preferred_language,
       created_at: this.created_at,
       updated_at: this.updated_at
     };

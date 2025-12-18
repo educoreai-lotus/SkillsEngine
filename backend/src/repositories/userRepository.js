@@ -43,7 +43,8 @@ class UserRepository {
         employee_type: user.employee_type,
         path_career: user.path_career,
         raw_data: user.raw_data,
-        relevance_score: user.relevance_score
+        relevance_score: user.relevance_score,
+        preferred_language: user.preferred_language
       })
       .select()
       .single();
@@ -178,7 +179,7 @@ class UserRepository {
    * @returns {Promise<User|null>}
    */
   async update(userId, updates) {
-    const allowedFields = ['user_name', 'company_id', 'company_name', 'employee_type', 'path_career', 'raw_data', 'relevance_score'];
+    const allowedFields = ['user_name', 'company_id', 'company_name', 'employee_type', 'path_career', 'raw_data', 'relevance_score', 'preferred_language'];
     const updateData = {};
 
     for (const field of allowedFields) {
