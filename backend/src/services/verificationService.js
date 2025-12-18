@@ -7,6 +7,7 @@
 
 const userCompetencyRepository = require('../repositories/userCompetencyRepository');
 const userSkillRepository = require('../repositories/userSkillRepository');
+const userCareerPathRepository = require('../repositories/userCareerPathRepository');
 const competencyService = require('./competencyService');
 const skillRepository = require('../repositories/skillRepository');
 const competencyRepository = require('../repositories/competencyRepository');
@@ -384,7 +385,16 @@ class VerificationService {
     let gaps = {};
 
     try {
-      if (analysisType === 'broad') {
+      // First check if user has any career path competencies.
+      // If not, we skip gap calculation and do NOT send anything to Learner AI.
+      const careerPaths = await userCareerPathRepository.findByUser(userId);
+      if (!careerPaths || careerPaths.length === 0) {
+        console.log(
+          '[VerificationService.runGapAnalysis] User has no career path competencies; skipping gap analysis and Learner AI sync',
+          { userId, examType: normalizedExamType, examStatus: normalizedExamStatus }
+        );
+        gaps = {};
+      } else if (analysisType === 'broad') {
         // Broad gap analysis scoped to career path competencies only
         gaps = await gapAnalysisService.calculateCareerPathGap(userId);
         console.log('[VerificationService.runGapAnalysis] Broad gap analysis (career path only)', {

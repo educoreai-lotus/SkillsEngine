@@ -65,18 +65,73 @@ async function sendGapAnalysis(userId, gap, analysisType, courseName = null, exa
   };
 
   // Use default unified endpoint /api/fill-content-metrics/
+  // Default timeout is now 5 minutes (300 seconds) for all Coordinator requests
   try {
     return await coordinatorClient.post(envelope);
   } catch (error) {
-    // Provide more context for 502 errors (Bad Gateway - Coordinator can't reach Learner AI MS)
-    if (error.response && error.response.status === 502) {
-      console.error('[learnerAIMSClient] Coordinator returned 502 Bad Gateway:', {
-        message: 'Coordinator received request but cannot reach Learner AI MS',
-        userId,
-        analysisType,
-        coordinatorError: error.response.data || error.message
+    // Enhanced error logging with full context
+    const errorContext = {
+      userId,
+      analysisType,
+      competencyTargetName,
+      gapCompetencyCount: Object.keys(gap).length,
+      totalMissingSkills: Object.values(gap).reduce((sum, skills) => sum + skills.length, 0)
+    };
+
+    if (error.response) {
+      // HTTP error response
+      const status = error.response.status;
+      errorContext.status = status;
+      errorContext.statusText = error.response.statusText;
+      errorContext.responseData = error.response.data;
+
+      if (status === 502) {
+        console.error('[learnerAIMSClient] Coordinator returned 502 Bad Gateway:', {
+          message: 'Coordinator received request but cannot reach Learner AI MS',
+          ...errorContext,
+          coordinatorError: error.response.data || error.message,
+          possibleCauses: [
+            'Learner AI MS is not running',
+            'Learner AI MS is not registered with Coordinator',
+            'Network connectivity issue between Coordinator and Learner AI MS'
+          ]
+        });
+      } else if (status === 404) {
+        console.error('[learnerAIMSClient] Coordinator returned 404 Not Found:', {
+          message: 'Coordinator endpoint or service not found',
+          ...errorContext
+        });
+      } else if (status === 401 || status === 403) {
+        console.error('[learnerAIMSClient] Coordinator returned authentication error:', {
+          message: 'Authentication or authorization failed',
+          status,
+          ...errorContext
+        });
+      } else {
+        console.error('[learnerAIMSClient] Coordinator returned error:', {
+          message: `HTTP ${status} error from Coordinator`,
+          ...errorContext
+        });
+      }
+    } else if (error.request) {
+      // Request made but no response
+      console.error('[learnerAIMSClient] No response from Coordinator:', {
+        message: 'Request sent but no response received',
+        ...errorContext,
+        possibleCauses: [
+          'Coordinator service is down',
+          'Network timeout',
+          'Coordinator URL is incorrect'
+        ]
+      });
+    } else {
+      // Request setup error
+      console.error('[learnerAIMSClient] Request setup error:', {
+        message: error.message,
+        ...errorContext
       });
     }
+
     throw error;
   }
 }

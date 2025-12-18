@@ -130,68 +130,68 @@ class AssessmentHandler {
   }
 
   /**
-   * Handle baseline exam skills request from Assessment MS
-   * @param {Object} payload - Request payload with user_id
+   * Handle baseline exam skills request from Assessment MS.
+   *
+   * New behavior:
+   *  - Receives a single competency_name (topic name) in the payload.
+   *  - Returns ONLY the MGS (leaf skills) for that competency.
+   *  - Does NOT depend on user_id and does NOT return all competencies the user owns.
+   *
+   * @param {Object} payload - Request payload with competency_name
    * @param {Object} responseTemplate - Response template
-   * @returns {Promise<Object>} Competencies with MGS for baseline exam
+   * @returns {Promise<Object>} MGS skills for the requested competency
    */
   async handleBaselineExamSkillsRequest(payload, responseTemplate) {
-    const { user_id } = payload;
-
-    if (!user_id) {
-      return { message: 'user_id is required' };
-    }
+    const { competency_name } = payload || {};
 
     try {
-      const userCompetencyRepository = require('../../repositories/userCompetencyRepository');
       const competencyService = require('../../services/competencyService');
 
-      // Get all user competencies
-      const userCompetencies = await userCompetencyRepository.findByUser(user_id);
-
-      if (!userCompetencies || userCompetencies.length === 0) {
+      // Validate competency_name
+      if (!competency_name || typeof competency_name !== 'string') {
         return {
           ...(responseTemplate || {}),
-          user_id,
-          message: 'No competencies found for user'
+          message: 'competency_name is required and must be a string'
         };
       }
 
-      // Build competencies with MGS list as a map (competency_name -> MGS array)
-      const competenciesMap = {};
-      for (const userComp of userCompetencies) {
-        try {
-          const competency = await competencyService.getCompetencyById(userComp.competency_id);
-          const competencyName = competency?.competency_name || 'Unknown';
-          const mgs = await competencyService.getRequiredMGS(userComp.competency_id);
+      // Use competency_name to fetch required MGS (leaf skills) for that competency
+      try {
+        const mgs = await competencyService.getRequiredMGSByName(competency_name);
 
-          // Use competency name as key, array of MGS skills as value
-          competenciesMap[competencyName] = mgs.map(skill => ({
-            skill_id: skill.skill_id,
-            skill_name: skill.skill_name
-          }));
-        } catch (err) {
-          console.warn(
-            '[AssessmentHandler.handleBaselineExamSkillsRequest] Failed to get MGS for competency',
-            { user_id, competency_id: userComp.competency_id, error: err.message }
-          );
-        }
+        const skills = mgs.map(skill => ({
+          skill_id: skill.skill_id,
+          skill_name: skill.skill_name
+        }));
+
+        console.log(
+          '[AssessmentHandler.handleBaselineExamSkillsRequest] Returning MGS for competency',
+          {
+            competency_name,
+            skills_count: skills.length
+          }
+        );
+
+        return {
+          ...(responseTemplate || {}),
+          competency_name,
+          skills
+        };
+      } catch (err) {
+        console.error(
+          '[AssessmentHandler.handleBaselineExamSkillsRequest] Error fetching MGS by competency_name',
+          { competency_name, error: err.message }
+        );
+        return {
+          ...(responseTemplate || {}),
+          competency_name,
+          message: err.message
+        };
       }
-
-      console.log(
-        '[AssessmentHandler.handleBaselineExamSkillsRequest] Returning baseline exam skills',
-        { user_id, competencyCount: Object.keys(competenciesMap).length }
-      );
-
-      return {
-        ...(responseTemplate || {}),
-        user_id,
-        skills: competenciesMap
-      };
     } catch (error) {
       console.error(
         '[AssessmentHandler.handleBaselineExamSkillsRequest] Error:',
-        { user_id, error: error.message }
+        { error: error.message }
       );
       return { message: error.message };
     }

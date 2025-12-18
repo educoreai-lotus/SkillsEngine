@@ -14,7 +14,7 @@ const logger = new Logger('CoordinatorClient');
  * @param {Object} envelope - Request envelope
  * @param {Object} options - Optional configuration
  * @param {string} options.endpoint - Custom endpoint (default: /api/fill-content-metrics/)
- * @param {number} options.timeout - Request timeout in ms (default: 30000)
+   * @param {number} options.timeout - Request timeout in ms (default: 300000 = 5 minutes)
  * @returns {Promise<Object>} Response data from Coordinator
  * @throws {Error} If request fails
  */
@@ -49,7 +49,8 @@ async function postToCoordinator(envelope, options = {}) {
   endpoint = endpoint.replace(/\/+$/, '') + '/';
 
   const url = `${cleanCoordinatorUrl}${endpoint}`;
-  const timeout = options.timeout || 30000;
+  // Default timeout: 5 minutes (300 seconds) - configurable via env var or options
+  const timeout = options.timeout || parseInt(process.env.COORDINATOR_TIMEOUT || '300000', 10);
 
   try {
     // Generate ECDSA signature for the entire envelope
@@ -88,11 +89,46 @@ async function postToCoordinator(envelope, options = {}) {
 
     return response.data;
   } catch (error) {
-    logger.error('Request to Coordinator failed', {
+    const errorDetails = {
       error: error.message,
-      status: error.response && error.response.status,
-      responseData: error.response && error.response.data
-    });
+      url,
+      serviceName: SERVICE_NAME,
+      hasSignature: !!signature
+    };
+
+    if (error.response) {
+      // HTTP error response from Coordinator
+      errorDetails.status = error.response.status;
+      errorDetails.statusText = error.response.statusText;
+      errorDetails.responseData = error.response.data;
+      errorDetails.responseHeaders = error.response.headers;
+    } else if (error.request) {
+      // Request was made but no response received
+      errorDetails.requestError = 'No response received from Coordinator';
+      errorDetails.requestData = error.request;
+    } else {
+      // Error setting up the request
+      errorDetails.setupError = 'Error setting up request';
+    }
+
+    if (error.code) {
+      errorDetails.code = error.code;
+    }
+
+    // Add timeout-specific details
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      errorDetails.timeout = true;
+      errorDetails.timeoutMs = timeout;
+      errorDetails.message = `Request timed out after ${timeout}ms`;
+      errorDetails.possibleCauses = [
+        'Coordinator is slow to respond',
+        'Coordinator is trying to reach target service but it is slow/unavailable',
+        'Network latency issues',
+        'Target service (Learner AI MS) is overloaded or not responding'
+      ];
+    }
+
+    logger.error('Request to Coordinator failed', errorDetails);
 
     // Re-throw the error so callers can handle it
     throw error;
