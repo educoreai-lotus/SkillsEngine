@@ -33,7 +33,7 @@ async function sendGapAnalysis(userId, gap, analysisType, courseName = null, exa
     userName = user?.user_name || null;
     companyId = user?.company_id || null;
     companyName = user?.company_name || null;
-    preferredLanguage = "" ;
+    preferredLanguage = user?.preferred_language || 'en';
 
     if (analysisType === 'broad') {
       // For broad analysis, get user's path_career from profile
@@ -44,6 +44,8 @@ async function sendGapAnalysis(userId, gap, analysisType, courseName = null, exa
     }
   } catch (error) {
     console.error('[learnerAIMSClient] Error fetching user profile:', error.message);
+    // Default preferred_language to 'en' if user profile fetch fails
+    preferredLanguage = 'en';
   }
 
   const envelope = {
@@ -63,7 +65,20 @@ async function sendGapAnalysis(userId, gap, analysisType, courseName = null, exa
   };
 
   // Use default unified endpoint /api/fill-content-metrics/
-  return coordinatorClient.post(envelope);
+  try {
+    return await coordinatorClient.post(envelope);
+  } catch (error) {
+    // Provide more context for 502 errors (Bad Gateway - Coordinator can't reach Learner AI MS)
+    if (error.response && error.response.status === 502) {
+      console.error('[learnerAIMSClient] Coordinator returned 502 Bad Gateway:', {
+        message: 'Coordinator received request but cannot reach Learner AI MS',
+        userId,
+        analysisType,
+        coordinatorError: error.response.data || error.message
+      });
+    }
+    throw error;
+  }
 }
 
 module.exports = {

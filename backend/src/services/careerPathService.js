@@ -9,6 +9,9 @@ const userCareerPathRepository = require('../repositories/userCareerPathReposito
 const competencyService = require('./competencyService');
 const gapAnalysisService = require('./gapAnalysisService');
 const learnerAIMSClient = require('./learnerAIMSClient');
+const Logger = require('../utils/logger');
+
+const logger = new Logger('CareerPathService');
 
 class CareerPathService {
   /**
@@ -136,14 +139,29 @@ class CareerPathService {
       throw new Error('user_id is required');
     }
 
+    logger.info('Starting gap calculation and send to Learner AI', { userId });
+
     // Calculate gap analysis
     const gapAnalysis = await this.calculateGap(userId);
+    const competencyCount = Object.keys(gapAnalysis).length;
+    const totalMissingSkills = Object.values(gapAnalysis).reduce((sum, skills) => sum + skills.length, 0);
+
+    logger.info('Gap analysis calculated, preparing to send to Learner AI', {
+      userId,
+      competencyCount,
+      totalMissingSkills
+    });
 
     // Send gap analysis to Learner AI (broad analysis for career path)
     try {
       await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis, 'broad');
+      logger.info('Successfully sent gap analysis to Learner AI', { userId });
     } catch (error) {
-      console.error('[CareerPathService] Error sending gap analysis to Learner AI:', error.message);
+      logger.error('Error sending gap analysis to Learner AI', error);
+      logger.warn('Gap calculation succeeded but sending to Learner AI failed', {
+        userId,
+        errorMessage: error.message
+      });
       // Don't throw - we still want to return success even if sending to Learner AI fails
     }
 
@@ -158,17 +176,41 @@ class CareerPathService {
    * @returns {Promise<Object>} Result with career path and gap analysis
    */
   async addCareerPathAndSendGap(userId, competencyId, competencyName) {
+    logger.info('Adding career path and calculating gap', {
+      userId,
+      competencyId,
+      competencyName
+    });
+
     // Add career path
     const careerPath = await this.addCareerPath(userId, competencyId, competencyName);
+    logger.info('Career path added successfully', {
+      userId,
+      careerPathId: careerPath?.competency_id,
+      careerPathName: careerPath?.competency_name
+    });
 
     // Calculate gap analysis
     const gapAnalysis = await this.calculateGap(userId);
+    const competencyCount = Object.keys(gapAnalysis).length;
+    const totalMissingSkills = Object.values(gapAnalysis).reduce((sum, skills) => sum + skills.length, 0);
+
+    logger.info('Gap analysis calculated after adding career path', {
+      userId,
+      competencyCount,
+      totalMissingSkills
+    });
 
     // Send gap analysis to Learner AI (broad analysis for career path)
     try {
       await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis, 'broad');
+      logger.info('Successfully sent gap analysis to Learner AI after adding career path', { userId });
     } catch (error) {
-      console.error('[CareerPathService] Error sending gap analysis to Learner AI:', error.message);
+      logger.error('Error sending gap analysis to Learner AI', error);
+      logger.warn('Career path added and gap calculated, but sending to Learner AI failed', {
+        userId,
+        errorMessage: error.message
+      });
       // Don't throw - we still want to return success even if sending to Learner AI fails
     }
 

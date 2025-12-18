@@ -9,6 +9,9 @@ const userCompetencyRepository = require('../repositories/userCompetencyReposito
 const userCareerPathRepository = require('../repositories/userCareerPathRepository');
 const competencyService = require('./competencyService');
 const skillRepository = require('../repositories/skillRepository');
+const Logger = require('../utils/logger');
+
+const logger = new Logger('GapAnalysisService');
 
 class GapAnalysisService {
   /**
@@ -18,14 +21,25 @@ class GapAnalysisService {
    * @returns {Promise<Object>} Simple gap structure: { "Competency Name": [{ skill_id, skill_name }] }
    */
   async calculateGapAnalysis(userId, competencyId = null) {
+    logger.info('Starting gap analysis calculation', { userId, competencyId });
+
     const userCompetencies = competencyId
       ? [await userCompetencyRepository.findByUserAndCompetency(userId, competencyId)]
       : await userCompetencyRepository.findByUser(userId);
 
+    logger.info('Retrieved user competencies for gap analysis', {
+      userId,
+      competencyId,
+      userCompetencyCount: userCompetencies?.length || 0
+    });
+
     const allGaps = {};
 
     for (const userComp of userCompetencies) {
-      if (!userComp) continue;
+      if (!userComp) {
+        logger.warn('Skipping null user competency', { userId, competencyId });
+        continue;
+      }
 
       // Get competency details
       const competency = await competencyService.getCompetencyById(userComp.competency_id);
@@ -66,6 +80,16 @@ class GapAnalysisService {
         allGaps[compName].push(...skills);
       }
     }
+
+    const competencyCount = Object.keys(allGaps).length;
+    const totalMissingSkills = Object.values(allGaps).reduce((sum, skills) => sum + skills.length, 0);
+    logger.info('Completed gap analysis calculation', {
+      userId,
+      gapSummary: Object.keys(allGaps).map(comp => ({
+        competency: comp,
+        missingSkillCount: allGaps[comp].length
+      }))
+    });
 
     return allGaps;
   }
@@ -110,6 +134,8 @@ class GapAnalysisService {
     if (!userId) {
       throw new Error('user_id is required');
     }
+
+    logger.info('Starting career path gap calculation', { userId });
 
     // Get user's career paths
     const careerPaths = await userCareerPathRepository.findByUser(userId);
@@ -159,6 +185,16 @@ class GapAnalysisService {
         console.error(`[GapAnalysisService] Error calculating gap for competency ${competencyId}:`, error.message);
       }
     }
+
+    const competencyCount = Object.keys(gaps).length;
+    logger.info('Completed career path gap calculation', {
+      userId,
+      competencyCount,
+      gapSummary: Object.keys(gaps).map(comp => ({
+        competency: comp,
+        missingSkillCount: gaps[comp].length
+      }))
+    });
 
     return gaps;
   }
