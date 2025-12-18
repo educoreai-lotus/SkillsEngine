@@ -1,19 +1,24 @@
 {
   "requester_service": "skills-engine",
   "payload": {
-    "action": "update_skills_gap",
-    "description": "Update skills gap for learner based on exam results and update learning path",
-    "user_id": "98765432-10fe-dcba-9876-543210fedcba",
-    "user_name": "Katy ff",
-    "company_id": "ba3dff4a-9177-4b74-b77e-6bdd6488de86",
-    "company_name": "Lotus techhu",
-    "competency_target_name": "python basic Katy",
-    "exam_status": "FAIL",
-    "gap": {
-      "python basic": [
-        "lists"
-      ]
-    }
-  },
- "response": {}
+      "action": "sending_skills_gap",
+      "description": "Update skills gap for learner based on exam results",
+      "user_id": "b2b400ed-bc11-4aa9-a89e-f4a00d0f6321",
+      "user_name": "Noam Levi",
+      "company_id": "c1d2e3f4-5678-9012-3456-789012345678",
+      "company_name": "Lotus Tech",
+      "competency_target_name": "C++ basics Noam",
+      "exam_status": "fail",
+      "preferred_language": "en",
+      "gap": {
+	      "Competency_C++_Basics": [
+		    "Pointers (basic usage & referencing)",
+		    "Passing by Value vs Passing by Reference",
+		    "Header Files and Compilation Units",
+		    "std::vector and basic STL usage",
+		    "Basic Error Handling with try/catch"
+	      ]
+      }
+    },
+  "response": {}
 }

@@ -42,7 +42,21 @@ class DirectoryHandler {
       }
 
       // Handle onboarding + ingestion based on Directory payload
-      return await this.handleOnboardAndIngest(payload, responseTemplate);
+      const result = await this.handleOnboardAndIngest(payload, responseTemplate);
+
+      // Log the response that will be sent back to Directory (goes into envelope.response)
+      try {
+        console.log(
+          '[DirectoryHandler] Outgoing response to Directory MS (envelope.response):',
+          JSON.stringify(result, null, 2)
+        );
+      } catch (logErr) {
+        console.warn('[DirectoryHandler] Failed to log outgoing response', {
+          error: logErr.message
+        });
+      }
+
+      return result;
     } catch (error) {
       console.error('[DirectoryHandler] Error processing request:', {
         error: error.message,
@@ -77,6 +91,23 @@ class DirectoryHandler {
    *  }
    */
   async handleOnboardAndIngest(payload, responseTemplate) {
+    // Optional short-circuit: if Directory sends an existing user_id, do not rebuild the profile.
+    // Instead, return a simple message so Directory knows the user already exists.
+    const incomingUserId = payload && payload.user_id;
+    if (incomingUserId) {
+      try {
+        // Reuse userService to check if the user exists.
+        await userService.getUserProfile(incomingUserId);
+        return {
+          ...(responseTemplate || {}),
+          userId: incomingUserId,
+          message: 'User already exists'
+        };
+      } catch (err) {
+        // If user is not found, proceed with normal onboarding flow.
+      }
+    }
+
     // Step 1: create or update basic profile (persists raw_data, path_career, etc.)
     const user = await userService.createBasicProfile(payload);
     const userId = user.user_id;
