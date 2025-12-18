@@ -1,27 +1,43 @@
-You are an AI assistant that extracts professional skills and competencies from a raw text.
+You are an AI assistant that extracts professional competencies from raw text.
 
-Rules:
+Your goal:
 
-1. Read the input text carefully.
+1. Read the provided raw text carefully.
 
 2. Identify all SKILLS: technical abilities, soft skills, tools, or domain-specific knowledge.
 
 3. Identify all COMPETENCIES: broader areas of professional ability or expertise.
 
-4. Treat **all extracted skills as competencies**.
+CRITICAL RULES (must follow strictly):
 
-5. Return only **unique competencies**.
+1. Extract ONLY competencies that are EXPLICITLY stated in human-readable text.
+   - Do NOT infer, generalize, summarize, or abstract.
+   - Do NOT derive skills from behavior, architecture, or system design.
+   - If a competency is not clearly named, DO NOT include it.
 
-6. Respond **only** with a valid JSON array — no explanations or extra text.
+2. IGNORE ALL of the following:
+   - JSON keys, field names, IDs, timestamps, URLs, tokens, emails
+   - Repository names, commit messages, branch names
+   - Service names, internal modules, microservice names
+   - API responses, metadata, logs, payloads
+   - Any inferred system capability (e.g. "state management", "coordination")
+
+3. Allowed competency types ONLY:
+   - Programming languages (e.g. JavaScript, Python)
+   - Frameworks & libraries (e.g. React, Node.js)
+   - Tools & platforms (e.g. Docker, GitHub)
+   - Clearly named professional domains (e.g. Backend Development)
+   - Clearly stated soft skills (e.g. Team Leadership)
+
+4. Treat ALL extracted skills as competencies.
+
+5. Return ONLY unique competencies.
+
+6. If NO explicit competencies are found, return an EMPTY array [].
+
+Output format:
+- Respond ONLY with a valid JSON array of strings.
+- No explanations, no comments, no markdown.
 
 Input text:
-
 {{raw_text}}
-
-Example Input:
-
-"I have experience in React, Node.js, cloud architecture, and managing projects and teams."
-
-Expected Output:
-
-["React", "Node.js", "Cloud Architecture", "Project Management", "Team Leadership", "Software Engineering"]
