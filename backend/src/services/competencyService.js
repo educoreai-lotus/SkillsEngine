@@ -123,6 +123,7 @@ class CompetencyService {
   /**
    * Get all MGS (Most Granular Skills) required for a competency
    * Aggregates MGS from all linked skills and child competencies
+   * Note: This method does NOT auto-generate skill trees. Use generateAndLinkSkillTree() explicitly if needed.
    * @param {string} competencyId - Competency ID
    * @returns {Promise<Array>} Array of MGS skill objects
    */
@@ -142,19 +143,7 @@ class CompetencyService {
     }
 
     // Get linked L1 skills
-    let linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
-
-    // If no skills linked and this is a leaf node, try to generate skill tree
-    if ((!linkedSkills || linkedSkills.length === 0) && (!children || children.length === 0)) {
-      console.log(`[CompetencyService.getRequiredMGS] Leaf competency ${competencyId} has no skills; attempting to generate skill tree`);
-      try {
-        await this.generateAndLinkSkillTree(competencyId);
-        // Re-fetch linked skills after generation
-        linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
-      } catch (err) {
-        console.error(`[CompetencyService.getRequiredMGS] Failed to generate skill tree for competency ${competencyId}:`, err.message);
-      }
-    }
+    const linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
 
     // For each L1 skill, get all MGS
     for (const skill of linkedSkills || []) {
@@ -217,7 +206,7 @@ class CompetencyService {
 
       // Check if skill already exists
       let skill = await skillRepository.findByName(skillName.toLowerCase().trim());
-      
+
       if (!skill) {
         // Create L2 skill
         const skillModel = new Skill({
@@ -316,11 +305,11 @@ class CompetencyService {
     }
 
     let competency = await competencyRepository.findByName(competencyName);
-    
+
     // If competency doesn't exist, create it automatically as a core-competency
     if (!competency) {
       console.log(`[CompetencyService.getRequiredMGSByName] Competency "${competencyName}" not found; creating automatically`);
-      
+
       try {
         competency = await this.createCompetency({
           competency_name: competencyName,
@@ -328,7 +317,7 @@ class CompetencyService {
           parent_competency_id: null, // Core-competency (no parent)
           source: 'auto_created'
         });
-        
+
         console.log(`[CompetencyService.getRequiredMGSByName] Created competency: ${competency.competency_id} (${competency.competency_name})`);
       } catch (err) {
         console.error(`[CompetencyService.getRequiredMGSByName] Failed to create competency "${competencyName}":`, err.message);
@@ -336,7 +325,21 @@ class CompetencyService {
       }
     }
 
-    // Get MGS (this will automatically generate skill tree if it's a leaf node with no skills)
+    // Check if it's a leaf node with no skills, then generate skill tree
+    const children = await competencyRepository.findChildren(competency.competency_id);
+    const linkedSkills = await competencyRepository.getLinkedSkills(competency.competency_id);
+
+    // If no skills linked and this is a leaf node, generate skill tree
+    if ((!linkedSkills || linkedSkills.length === 0) && (!children || children.length === 0)) {
+      console.log(`[CompetencyService.getRequiredMGSByName] Leaf competency ${competency.competency_id} has no skills; generating skill tree`);
+      try {
+        await this.generateAndLinkSkillTree(competency.competency_id);
+      } catch (err) {
+        console.error(`[CompetencyService.getRequiredMGSByName] Failed to generate skill tree for competency ${competency.competency_id}:`, err.message);
+      }
+    }
+
+    // Get MGS
     return this.getRequiredMGS(competency.competency_id);
   }
 
@@ -623,6 +626,8 @@ class CompetencyService {
 
   /**
    * Persist hierarchy nodes to database
+   * Note: This method only creates competencies and relationships. It does NOT generate skill trees.
+   * Skill tree generation is handled separately when getRequiredMGS is called (and only if skipAutoGenerate is false).
    * @param {Array} nodes - Array of node objects
    * @returns {Promise<Object>} Statistics
    */
