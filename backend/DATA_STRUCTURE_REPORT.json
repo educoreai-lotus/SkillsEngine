@@ -1,0 +1,104 @@
+{
+  "service_name": "skills-engine-backend",
+  "description": "Manages user competency profiles and exposes user + competency structures for analytics and RAG.",
+  "version": "1.0.0",
+  "data_structure": {
+    "user": "object",
+    "user.user_id": "string",
+    "user.user_name": "string",
+    "user.email": "string",
+    "user.company_id": "string",
+    "user.created_at": "datetime",
+    "user.updated_at": "datetime",
+    "competencies": "array",
+    "competencies[].user_id": "string",
+    "competencies[].competency_id": "string",
+    "competencies[].competency_name": "string",
+    "competencies[].coverage_percentage": "number",
+    "competencies[].proficiency_level": "string",
+    "competencies[].verifiedSkills": "array",
+    "competencies[].verifiedSkills[].skill_id": "string",
+    "competencies[].verifiedSkills[].skill_name": "string",
+    "competencies[].verifiedSkills[].verified": "boolean",
+    "competencies[].created_at": "datetime",
+    "competencies[].updated_at": "datetime"
+  },
+  "field_descriptions": {
+    "user": "Top-level user object representing the learner or employee.",
+    "user.user_id": "Globally unique identifier for the user (UUID).",
+    "user.user_name": "Display name of the user as stored in the users table.",
+    "user.email": "Primary email address for the user.",
+    "user.company_id": "Identifier of the company/tenant the user belongs to. Used as tenant_id for batch queries.",
+    "user.created_at": "Timestamp when the user record was created.",
+    "user.updated_at": "Timestamp when the user record was last updated.",
+    "competencies": "Array of competency profile records for this user.",
+    "competencies[].user_id": "User ID owning this competency record.",
+    "competencies[].competency_id": "Identifier of the competency in the taxonomy.",
+    "competencies[].competency_name": "Human-readable name of the competency when joined with the competencies table.",
+    "competencies[].coverage_percentage": "Coverage percentage (0-100) representing how much of the competency the user has demonstrated.",
+    "competencies[].proficiency_level": "Proficiency level for this competency (BEGINNER, INTERMEDIATE, ADVANCED, EXPERT, or undefined).",
+    "competencies[].verifiedSkills": "Array of verified skills contributing to this competency (MGS).",
+    "competencies[].verifiedSkills[].skill_id": "Identifier of the verified skill.",
+    "competencies[].verifiedSkills[].skill_name": "Human-readable name of the verified skill.",
+    "competencies[].verifiedSkills[].verified": "Whether this skill is currently verified for the user.",
+    "competencies[].created_at": "Timestamp when this usercompetency record was created.",
+    "competencies[].updated_at": "Timestamp when this usercompetency record was last updated."
+  },
+  "sample_data": {
+    "user": {
+      "user_id": "user-3f9c8b24-8a7e-4d5d-9b2b-91f7c12d5e41",
+      "user_name": "Alex Johnson",
+      "email": "alex.johnson@examplecorp.com",
+      "company_id": "company-7b12e5c9-4f3a-4e2f-9c77-9c88b5d1a210",
+      "created_at": "2025-01-10T09:15:23.000Z",
+      "updated_at": "2025-02-05T14:42:11.000Z"
+    },
+    "competencies": [
+      {
+        "user_id": "user-3f9c8b24-8a7e-4d5d-9b2b-91f7c12d5e41",
+        "competency_id": "comp-frontend-engineering",
+        "competency_name": "Frontend Engineering",
+        "coverage_percentage": 82.5,
+        "proficiency_level": "ADVANCED",
+        "verifiedSkills": [
+          {
+            "skill_id": "skill-react-advanced",
+            "skill_name": "Advanced React Development",
+            "verified": true
+          },
+          {
+            "skill_id": "skill-js-performance",
+            "skill_name": "JavaScript Performance Optimization",
+            "verified": true
+          }
+        ],
+        "created_at": "2025-01-10T09:16:00.000Z",
+        "updated_at": "2025-02-05T14:40:00.000Z"
+      },
+      {
+        "user_id": "user-3f9c8b24-8a7e-4d5d-9b2b-91f7c12d5e41",
+        "competency_id": "comp-accessibility-web",
+        "competency_name": "Web Accessibility",
+        "coverage_percentage": 64.0,
+        "proficiency_level": "INTERMEDIATE",
+        "verifiedSkills": [
+          {
+            "skill_id": "skill-wcag-implementation",
+            "skill_name": "WCAG 2.1 Implementation",
+            "verified": true
+          }
+        ],
+        "created_at": "2025-01-12T11:05:10.000Z",
+        "updated_at": "2025-02-03T10:20:45.000Z"
+      }
+    ]
+  },
+  "notes": [
+    "Batch sync mode returns data.items as an array of objects shaped exactly like this sample_data (user + competencies).",
+    "Real-time mode returns a direct array of the same objects in the top-level data field.",
+    "competencies[].verifiedSkills is derived from the usercompetency.verifiedskills JSONB column in the Supabase database.",
+    "company_id is used as the tenant_id filter when Coordinator requests batch synchronization."
+  ]
+}
+
+

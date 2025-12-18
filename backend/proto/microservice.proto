@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package microservice.v1;
+
+service MicroserviceAPI {
+  rpc Process (ProcessRequest) returns (ProcessResponse);
+}
+
+message ProcessRequest {
+  string envelope_json = 1;
+  map<string, string> metadata = 2;
+}
+
+message ProcessResponse {
+  bool success = 1;
+  string envelope_json = 2;
+  string error = 3;
+}
+
+

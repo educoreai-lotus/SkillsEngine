@@ -34,6 +34,8 @@
   "author": "Skills Engine Team",
   "license": "MIT",
   "dependencies": {
+    "@grpc/grpc-js": "^1.9.0",
+    "@grpc/proto-loader": "^0.7.10",
     "@google/generative-ai": "^0.2.1",
     "@supabase/supabase-js": "^2.84.0",
     "axios": "^1.13.2",

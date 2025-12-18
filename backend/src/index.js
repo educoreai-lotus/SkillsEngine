@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const { registerService } = require('./registration/register');
 const cron = require('node-cron');
+const grpcServer = require('./grpc/server');
 
 // Global error handlers for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -155,57 +156,105 @@ const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start server - bind explicitly to 0.0.0.0 so Railway can reach the container
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Skills Engine Backend running on port ${PORT} (process.env.PORT=${process.env.PORT || 'undefined'})`);
-  console.log(`📊 Health check available at http://localhost:${PORT}/health`);
-  console.log(`📚 API endpoints:`);
-  console.log(`   - Skills: http://localhost:${PORT}/api/skills`);
-  console.log(`   - Competencies: http://localhost:${PORT}/api/competencies`);
-  console.log(`   - User: http://localhost:${PORT}/api/user`);
-  console.log(`\n💡 If you see database connection errors, check:`);
-  console.log(`   1. DATABASE_URL in backend/.env`);
-  console.log(`   2. Supabase project is active`);
-  console.log(`   3. Run: node check-connection.js`);
+let httpServer;
 
-  // Non-blocking registration with Coordinator
-  if (process.env.ENABLE_COORDINATOR_REGISTRATION === 'true') {
-    registerService().catch((err) => {
-      console.error('Registration error (non-blocking):', err && err.message);
+async function startup() {
+  // Start server - bind explicitly to 0.0.0.0 so Railway can reach the container
+  httpServer = app.listen(PORT, '0.0.0.0', async () => {
+    console.log(
+      `🚀 Skills Engine Backend running on port ${PORT} (process.env.PORT=${process.env.PORT || 'undefined'})`
+    );
+    console.log(`📊 Health check available at http://localhost:${PORT}/health`);
+    console.log('📚 API endpoints:');
+    console.log(`   - Skills: http://localhost:${PORT}/api/skills`);
+    console.log(`   - Competencies: http://localhost:${PORT}/api/competencies`);
+    console.log(`   - User: http://localhost:${PORT}/api/user`);
+    console.log('\n💡 If you see database connection errors, check:');
+    console.log('   1. DATABASE_URL in backend/.env');
+    console.log('   2. Supabase project is active');
+    console.log('   3. Run: node check-connection.js');
+
+    // Non-blocking registration with Coordinator
+    if (process.env.ENABLE_COORDINATOR_REGISTRATION === 'true') {
+      registerService().catch((err) => {
+        console.error('Registration error (non-blocking):', err && err.message);
+      });
+    }
+
+    // Schedule weekly background job for source discovery + web extraction.
+    // Runs every Monday at 03:00 UTC.
+    cron.schedule(
+      '0 3 * * 1',
+      async () => {
+        try {
+          console.log('🔎 [weekly] Running source discovery in background');
+          const result = await sourceDiscoveryService.discoverAndStoreSources();
+          console.log('✅ [weekly] Source discovery completed:', {
+            inserted: result.inserted,
+            skipped: result.skipped,
+            totalDiscovered: result.totalDiscovered
+          });
+
+          console.log('🌐 [weekly] Running web extraction for discovered sources in background...');
+          const extractionResult = await webExtractionService.extractFromOfficialSources();
+          console.log('✅ [weekly] Web extraction completed:', {
+            competenciesInserted: extractionResult.stats?.competencies ?? 0,
+            skillsInserted: extractionResult.stats?.skills ?? 0,
+            sourceCount: extractionResult.sources?.length ?? 0
+          });
+        } catch (err) {
+          console.error(
+            '⚠️  [weekly] Initialization pipeline failed (discovery or extraction):',
+            err.message || err
+          );
+        }
+      },
+      {
+        timezone: 'UTC'
+      }
+    );
+
+    // Start GRPC server after HTTP is up
+    try {
+      await grpcServer.start();
+      console.log(
+        `🛰  gRPC server started on port ${process.env.GRPC_PORT || 50051} for service ${process.env.SERVICE_NAME || 'skills-engine-backend'
+        }`
+      );
+    } catch (err) {
+      console.error('Failed to start gRPC server:', err && err.message);
+    }
+  });
+}
+
+async function shutdown() {
+  console.log('Shutting down Skills Engine Backend...');
+
+  try {
+    // Shutdown GRPC server first
+    await grpcServer.shutdown();
+  } catch (err) {
+    console.error('Error while shutting down gRPC server:', err && err.message);
+  }
+
+  if (httpServer) {
+    await new Promise((resolve) => {
+      httpServer.close(() => {
+        console.log('HTTP server shut down');
+        resolve();
+      });
     });
   }
 
-  // Schedule weekly background job for source discovery + web extraction.
-  // Runs every Monday at 03:00 UTC.
-  cron.schedule(
-    '0 3 * * 1',
-    async () => {
+  process.exit(0);
+}
 
-      try {
-        console.log('🔎 [weekly] Running source discovery in background');
-        const result = await sourceDiscoveryService.discoverAndStoreSources();
-        console.log('✅ [weekly] Source discovery completed:', {
-          inserted: result.inserted,
-          skipped: result.skipped,
-          totalDiscovered: result.totalDiscovered,
-        });
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
-        console.log('🌐 [weekly] Running web extraction for discovered sources in background...');
-        const extractionResult = await webExtractionService.extractFromOfficialSources();
-        console.log('✅ [weekly] Web extraction completed:', {
-          competenciesInserted: extractionResult.stats?.competencies ?? 0,
-          skillsInserted: extractionResult.stats?.skills ?? 0,
-          sourceCount: extractionResult.sources?.length ?? 0,
-        });
-      } catch (err) {
-        console.error('⚠️  [weekly] Initialization pipeline failed (discovery or extraction):', err.message || err);
-      }
-    },
-    {
-      timezone: 'UTC',
-    }
-  );
-
+startup().catch((err) => {
+  console.error('Failed to start application:', err && err.message);
+  process.exit(1);
 });
 
 module.exports = app;
