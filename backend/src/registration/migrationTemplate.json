@@ -9,7 +9,7 @@
           "schema": {
             "user_id": "uuid",
             "user_name": "string",
-            "company_id": "string",
+            "company_id": "uuid",
             "employee_type": "string",
             "path_career": "string",
             "raw_data": "string",

@@ -169,7 +169,7 @@ CREATE TRIGGER update_skills_updated_at
 CREATE TABLE public.users (
     user_id UUID NOT NULL DEFAULT gen_random_uuid(),
     user_name VARCHAR(255) NOT NULL,
-    company_id VARCHAR(255) NOT NULL,
+    company_id UUID NOT NULL,
     employee_type VARCHAR(100) NULL,
     path_career VARCHAR(500) NULL,
     raw_data TEXT NULL,
