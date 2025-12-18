@@ -70,8 +70,20 @@ class AssessmentHandler {
         }
       }
 
-      if (!user_id || !exam_results) {
-        return { message: 'user_id and exam_results are required' };
+      // Validate user_id explicitly
+      if (!user_id) {
+        return {
+          ...(responseTemplate || {}),
+          error: 'user_id is required'
+        };
+      }
+
+      // Validate exam_results presence
+      if (!exam_results) {
+        return {
+          ...(responseTemplate || {}),
+          error: 'exam_results are required'
+        };
       }
 
       // Validate exam_results is an object

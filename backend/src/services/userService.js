@@ -34,6 +34,20 @@ class UserService {
    * @returns {Promise<Object>} Initial profile payload
    */
   async buildInitialProfile(userId, normalizedData) {
+    console.log(
+      '[UserService.buildInitialProfile] Start',
+      JSON.stringify(
+        {
+          userId,
+          competenciesCount: (normalizedData && Array.isArray(normalizedData.competencies))
+            ? normalizedData.competencies.length
+            : 0
+        },
+        null,
+        2
+      )
+    );
+
     // Look up user to get metadata (e.g., user_name) for downstream services
     let userForMetadata = null;
     try {
@@ -48,7 +62,15 @@ class UserService {
 
     // Step 1: Look up taxonomy IDs for competencies (includes both traditional competencies and skills)
     const competencyMappings = [];
-    for (const comp of normalizedData.competencies || []) {
+    const inputCompetencies = normalizedData.competencies || [];
+    for (let i = 0; i < inputCompetencies.length; i++) {
+      const comp = inputCompetencies[i];
+      if (i === 0 || (i + 1) % 25 === 0) {
+        console.log(
+          '[UserService.buildInitialProfile] Processing normalized competency',
+          { index: i, total: inputCompetencies.length, name: comp.normalized_name || comp.name || null }
+        );
+      }
       let competencyId = comp.taxonomy_id || null;
 
       // If not found in taxonomy or taxonomy_id is missing, try to find/create by name
@@ -79,6 +101,11 @@ class UserService {
     }
 
     // Step 2: Store competencies in user_competencies (includes both traditional competencies and skills)
+    console.log(
+      '[UserService.buildInitialProfile] Creating/updating userCompetencies',
+      { userId, count: competencyMappings.length }
+    );
+
     for (const mapping of competencyMappings) {
       const userComp = new UserCompetency({
         user_id: userId,
@@ -92,6 +119,11 @@ class UserService {
 
     // Step 3: Fetch stored user competencies
     const userCompetencies = await userCompetencyRepository.findByUser(userId);
+
+    console.log(
+      '[UserService.buildInitialProfile] Loaded userCompetencies after upsert',
+      { userId, count: userCompetencies ? userCompetencies.length : 0 }
+    );
 
     // Step 4-8: Build hierarchical competency payload.
     // Directory now receives ONLY competencies (no skills), in a hierarchy:
@@ -193,6 +225,11 @@ class UserService {
 
     const competencies = roots.map(serializeNode);
 
+    console.log(
+      '[UserService.buildInitialProfile] Finished building competency hierarchy',
+      { userId, rootCount: roots.length }
+    );
+
     // Step 11: Build final payload
     const payload = {
       userId: userId,
@@ -203,6 +240,11 @@ class UserService {
     // Note: When called from Directory handler via unified endpoint,
     // the profile is returned in response.answer field (no separate POST needed).
     // Assessment MS will request baseline exam skills via unified endpoint when ready.
+
+    console.log(
+      '[UserService.buildInitialProfile] Completed',
+      { userId, competenciesCount: competencies.length }
+    );
 
     return payload;
   }

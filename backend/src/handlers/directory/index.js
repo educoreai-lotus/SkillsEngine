@@ -97,8 +97,7 @@ class DirectoryHandler {
         pathCareer
       );
       try {
-        const hierarchyStats = await competencyService.buildHierarchyFromCareerPath(pathCareer);
-        console.log('[DirectoryHandler] Hierarchy build stats:', hierarchyStats);
+        await competencyService.buildHierarchyFromCareerPath(pathCareer);
 
         // Step 1.6: Save career path competency to user_career_path table
         try {
@@ -112,48 +111,19 @@ class DirectoryHandler {
               (cp) => cp.competency_id === careerPathCompetency.competency_id
             );
 
-            if (alreadyExists) {
-              console.log(
-                '[DirectoryHandler] Career path competency already exists in user_career_path, skipping create',
-                {
-                  userId,
-                  competency_id: careerPathCompetency.competency_id,
-                  competency_name: trimmedCareer
-                }
-              );
-            } else {
+            if (!alreadyExists) {
               await userCareerPathRepository.create({
                 user_id: userId,
                 competency_id: careerPathCompetency.competency_id
               });
-              console.log('[DirectoryHandler] Saved career path competency to user_career_path', {
-                userId,
-                competency_id: careerPathCompetency.competency_id,
-                competency_name: trimmedCareer
-              });
             }
-          } else {
-            console.warn('[DirectoryHandler] Career path competency not found in database', {
-              pathCareer: trimmedCareer
-            });
           }
         } catch (careerPathErr) {
-          // Log error but don't fail onboarding if career path save fails
-          console.warn('[DirectoryHandler] Failed to save career path competency', {
-            userId,
-            pathCareer: pathCareer.trim(),
-            error: careerPathErr.message
-          });
+          // Don't fail onboarding if career path save fails
         }
       } catch (err) {
-        console.warn('[DirectoryHandler] Failed to build hierarchy from career path', {
-          error: err.message
-        });
+        // Don't fail onboarding if hierarchy build fails
       }
-    } else {
-      console.log(
-        '[DirectoryHandler] No path_career provided in Directory payload, skipping hierarchy generation'
-      );
     }
 
     // Step 2: extract competencies & skills from raw data
