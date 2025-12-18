@@ -10,10 +10,12 @@ COPY package.json package-lock.json* ./
 # Install dependencies
 RUN npm install --production
 
-# Copy source code
+# Copy source code and supporting assets
 COPY src ./src
 COPY config ./config
 COPY docs ./docs
+COPY proto ./proto
+COPY DATA_STRUCTURE_REPORT.json ./DATA_STRUCTURE_REPORT.json
 
 # Expose port
 EXPOSE 8080
