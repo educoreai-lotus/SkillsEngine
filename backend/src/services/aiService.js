@@ -323,6 +323,21 @@ class AIService {
   }
 
   /**
+   * Generate skill tree for a competency (Feature: Auto-generate skills for last-level competencies)
+   * @param {string} competencyName - Competency name
+   * @returns {Promise<Object>} Skill tree structure with Skills, Subskills, Microskills, Nanoskills
+   */
+  async generateSkillTreeForCompetency(competencyName) {
+    const promptPath = 'docs/prompts/skill_tree_generation_prompt.txt';
+    let prompt = await this.loadPrompt(promptPath);
+
+    // Replace placeholder with competency name
+    prompt = prompt.replace('<COMPETENCY_NAME>', competencyName);
+
+    return await this.callGeminiJSON(prompt, { modelType: 'flash' });
+  }
+
+  /**
    * Validate extracted data structure
    * Note: AI now returns a simple array of competencies (strings) or object format
    * @param {Array|Object} data - Data to validate (array or object with competencies key)

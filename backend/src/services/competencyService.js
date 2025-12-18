@@ -9,6 +9,8 @@ const competencyRepository = require('../repositories/competencyRepository');
 const skillRepository = require('../repositories/skillRepository');
 const aiService = require('./aiService');
 const Competency = require('../models/Competency');
+const Skill = require('../models/Skill');
+const crypto = require('crypto');
 
 class CompetencyService {
   /**
@@ -140,10 +142,22 @@ class CompetencyService {
     }
 
     // Get linked L1 skills
-    const linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
+    let linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
+
+    // If no skills linked and this is a leaf node, try to generate skill tree
+    if ((!linkedSkills || linkedSkills.length === 0) && (!children || children.length === 0)) {
+      console.log(`[CompetencyService.getRequiredMGS] Leaf competency ${competencyId} has no skills; attempting to generate skill tree`);
+      try {
+        await this.generateAndLinkSkillTree(competencyId);
+        // Re-fetch linked skills after generation
+        linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
+      } catch (err) {
+        console.error(`[CompetencyService.getRequiredMGS] Failed to generate skill tree for competency ${competencyId}:`, err.message);
+      }
+    }
 
     // For each L1 skill, get all MGS
-    for (const skill of linkedSkills) {
+    for (const skill of linkedSkills || []) {
       const mgs = await skillRepository.findMGS(skill.skill_id);
       mgs.forEach(m => allMGS.add(m.skill_id));
     }
@@ -161,8 +175,138 @@ class CompetencyService {
   }
 
   /**
+   * Generate and link skill tree for a last-level competency
+   * @param {string} competencyId - Competency ID
+   * @returns {Promise<Object>} Stats about created skills
+   */
+  async generateAndLinkSkillTree(competencyId) {
+    const competency = await competencyRepository.findById(competencyId);
+    if (!competency) {
+      throw new Error(`Competency with ID ${competencyId} not found`);
+    }
+
+    // Check if competency is a leaf node (no children)
+    const children = await competencyRepository.findChildren(competencyId);
+    if (children && children.length > 0) {
+      console.log(`[CompetencyService.generateAndLinkSkillTree] Competency ${competencyId} has children; skipping skill tree generation`);
+      return { skillsCreated: 0, skillsLinked: 0 };
+    }
+
+    // Check if competency already has skills linked
+    const linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
+    if (linkedSkills && linkedSkills.length > 0) {
+      console.log(`[CompetencyService.generateAndLinkSkillTree] Competency ${competencyId} already has skills linked; skipping skill tree generation`);
+      return { skillsCreated: 0, skillsLinked: 0 };
+    }
+
+    // Generate skill tree using AI
+    console.log(`[CompetencyService.generateAndLinkSkillTree] Generating skill tree for competency: ${competency.competency_name}`);
+    const skillTree = await aiService.generateSkillTreeForCompetency(competency.competency_name);
+
+    if (!skillTree || !skillTree.Skills || !Array.isArray(skillTree.Skills)) {
+      console.warn(`[CompetencyService.generateAndLinkSkillTree] Invalid skill tree structure for competency ${competencyId}`);
+      return { skillsCreated: 0, skillsLinked: 0 };
+    }
+
+    const stats = { skillsCreated: 0, skillsLinked: 0 };
+
+    // Process each skill (L2 level) from the tree
+    for (const skillNode of skillTree.Skills) {
+      const skillName = typeof skillNode === 'string' ? skillNode : (skillNode.name || '');
+      if (!skillName) continue;
+
+      // Check if skill already exists
+      let skill = await skillRepository.findByName(skillName.toLowerCase().trim());
+      
+      if (!skill) {
+        // Create L2 skill
+        const skillModel = new Skill({
+          skill_id: crypto.randomUUID(),
+          skill_name: skillName,
+          parent_skill_id: null, // L2 skills have no parent
+          description: typeof skillNode === 'object' ? skillNode.description : null,
+          source: 'ai_generated'
+        });
+        skill = await skillRepository.create(skillModel);
+        stats.skillsCreated++;
+      }
+
+      // Link L2 skill to competency
+      try {
+        await competencyRepository.linkSkill(competencyId, skill.skill_id);
+        stats.skillsLinked++;
+      } catch (err) {
+        console.warn(`[CompetencyService.generateAndLinkSkillTree] Failed to link skill ${skill.skill_id} to competency ${competencyId}:`, err.message);
+      }
+
+      // Process subskills recursively
+      if (typeof skillNode === 'object' && skillNode.Subskills) {
+        await this._processSkillHierarchy(skillNode.Subskills, skill.skill_id, stats);
+      }
+    }
+
+    console.log(`[CompetencyService.generateAndLinkSkillTree] Completed for competency ${competencyId}:`, stats);
+    return stats;
+  }
+
+  /**
+   * Internal helper: process skill hierarchy recursively
+   * @param {Array} skillNodes - Array of skill nodes
+   * @param {string} parentSkillId - Parent skill ID
+   * @param {Object} stats - Stats object to update
+   * @returns {Promise<void>}
+   */
+  async _processSkillHierarchy(skillNodes, parentSkillId, stats) {
+    if (!Array.isArray(skillNodes)) return;
+
+    for (const node of skillNodes) {
+      const nodeName = typeof node === 'string' ? node : (node.name || '');
+      if (!nodeName) continue;
+
+      // Check if skill already exists
+      let skill = await skillRepository.findByName(nodeName.toLowerCase().trim());
+
+      if (!skill) {
+        // Create skill
+        const skillModel = new Skill({
+          skill_id: crypto.randomUUID(),
+          skill_name: nodeName,
+          parent_skill_id: parentSkillId,
+          description: typeof node === 'object' ? node.description : null,
+          source: 'ai_generated'
+        });
+        skill = await skillRepository.create(skillModel);
+        stats.skillsCreated++;
+      }
+
+      // Link to parent in skill_subskill table
+      if (parentSkillId) {
+        try {
+          await skillRepository.linkSubSkill(parentSkillId, skill.skill_id);
+        } catch (err) {
+          // Ignore duplicate link errors
+          if (!err.message.includes('duplicate') && !err.message.includes('unique')) {
+            console.warn(`[CompetencyService._processSkillHierarchy] Failed to link subskill:`, err.message);
+          }
+        }
+      }
+
+      // Process children recursively
+      const obj = typeof node === 'object' ? node : {};
+      const childKeys = ['Subskills', 'Microskills', 'Nanoskills'];
+      for (const key of childKeys) {
+        if (Array.isArray(obj[key])) {
+          await this._processSkillHierarchy(obj[key], skill.skill_id, stats);
+        }
+      }
+    }
+  }
+
+  /**
    * Get all required MGS for a competency by its name (case-insensitive exact match)
    * Convenience wrapper used by external microservices that send competency_name only.
+   * If the competency doesn't exist, it will be created automatically as a core-competency
+   * and a skill tree will be generated for it.
    * @param {string} competencyName - Competency name
    * @returns {Promise<Array>} Array of MGS skill objects
    */
@@ -171,11 +315,28 @@ class CompetencyService {
       throw new Error('competency_name is required and must be a string');
     }
 
-    const competency = await competencyRepository.findByName(competencyName);
+    let competency = await competencyRepository.findByName(competencyName);
+    
+    // If competency doesn't exist, create it automatically as a core-competency
     if (!competency) {
-      throw new Error(`Competency with name "${competencyName}" not found`);
+      console.log(`[CompetencyService.getRequiredMGSByName] Competency "${competencyName}" not found; creating automatically`);
+      
+      try {
+        competency = await this.createCompetency({
+          competency_name: competencyName,
+          description: `Core competency: ${competencyName}`,
+          parent_competency_id: null, // Core-competency (no parent)
+          source: 'auto_created'
+        });
+        
+        console.log(`[CompetencyService.getRequiredMGSByName] Created competency: ${competency.competency_id} (${competency.competency_name})`);
+      } catch (err) {
+        console.error(`[CompetencyService.getRequiredMGSByName] Failed to create competency "${competencyName}":`, err.message);
+        throw new Error(`Failed to create competency "${competencyName}": ${err.message}`);
+      }
     }
 
+    // Get MGS (this will automatically generate skill tree if it's a leaf node with no skills)
     return this.getRequiredMGS(competency.competency_id);
   }
 

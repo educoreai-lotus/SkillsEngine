@@ -89,6 +89,7 @@ class CompetencyRepository {
 
   /**
    * Find competency by name (case-insensitive)
+   * If multiple competencies with the same name exist, returns the first one
    * @param {string} competencyName - Competency name
    * @returns {Promise<Competency|null>}
    */
@@ -98,18 +99,21 @@ class CompetencyRepository {
         ? competencyName.toLowerCase().trim()
         : competencyName;
 
+    // Use .limit(1) instead of .maybeSingle() to handle cases where multiple rows exist
     const { data, error } = await this.getClient()
       .from('competencies')
       .select('*')
-      .ilike('competency_name', name)
-      .single();
+      .eq('competency_name', name)
+      .limit(1);
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
       throw error;
     }
 
-    return new Competency(data);
+    if (!data || data.length === 0) return null;
+
+    // Return the first match if multiple exist
+    return new Competency(data[0]);
   }
 
   /**
