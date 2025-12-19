@@ -306,12 +306,8 @@ export default function CareerPathHierarchyBrowser({
     <div className="career-path-hierarchy-browser">
       {/* Header Section */}
       <div className="glass rounded-xl p-6 mb-6">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">
-          Browse Competencies by Hierarchy
-        </h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          {userName && <span>User: <span className="font-semibold">{userName}</span> | </span>}
-          Target Role: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{targetRole}</span>
+        <p className="text-slate-600 dark:text-slate-400 mt-2">
+          Select competencies and topics for the user to learn.
         </p>
       </div>
 
