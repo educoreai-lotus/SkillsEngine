@@ -300,7 +300,6 @@ export default function CareerPathPage() {
             <CareerPathHierarchyBrowser
               userId={learnerId}
               targetRole={targetRole}
-              userName={userName}
               onAddCompetency={handleAddCompetency}
               onRemoveCompetency={handleRemoveCompetency}
               addedCompetencyIds={addedCompetencyIds}

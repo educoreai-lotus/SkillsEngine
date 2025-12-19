@@ -11,10 +11,6 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
   },
-  // Enable ES modules
-  experimental: {
-    appDir: false, // Use pages directory
-  },
   // Webpack alias configuration
   webpack: (config) => {
     config.resolve.alias = {

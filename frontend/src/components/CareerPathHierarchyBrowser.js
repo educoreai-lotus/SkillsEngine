@@ -167,7 +167,6 @@ function CompetencyNode({
 export default function CareerPathHierarchyBrowser({
   userId,
   targetRole,
-  userName,
   onAddCompetency,
   onRemoveCompetency,
   addedCompetencyIds = []
