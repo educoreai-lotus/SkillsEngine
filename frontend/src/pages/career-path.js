@@ -30,6 +30,7 @@ export default function CareerPathPage() {
   const [companyId, setCompanyId] = useState(null);
   const [learnerId, setLearnerId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Extract companyId and learnerId from window.location.search
   // Domain rule: company_id = company ID (company performing the edit)
@@ -44,6 +45,7 @@ export default function CareerPathPage() {
     // Validate that learnerId exists
     if (!extractedLearnerId) {
       console.error('learnerId is required in URL parameters');
+      setError('learnerId is required in URL parameters. Please provide a valid learner ID.');
       setLoading(false);
       return;
     }
@@ -153,6 +155,35 @@ export default function CareerPathPage() {
 
   // Get list of added competency IDs for the hierarchy browser
   const addedCompetencyIds = careerPaths.map(path => path.competency_id);
+
+  // Show error if learnerId is missing
+  if (error) {
+    return (
+      <>
+        <Head>
+          <title>Error - Skills Engine</title>
+        </Head>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+          <div className="max-w-md mx-auto px-4 text-center">
+            <div className="glass rounded-xl p-8">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+                Invalid Request
+              </h1>
+              <p className="text-slate-600 dark:text-slate-400 mb-6">
+                {error}
+              </p>
+              <Link href="/" className="inline-block px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                Back to Dashboard
+              </Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   if (loading || !learnerId || profileLoading) {
     return (
