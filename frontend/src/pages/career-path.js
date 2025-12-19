@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import CareerPathHierarchyBrowser from '@/components/CareerPathHierarchyBrowser';
+import Header from '@/components/Header';
 
 const DEFAULT_USER_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -31,6 +32,7 @@ export default function CareerPathPage() {
   const [learnerId, setLearnerId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Extract companyId and learnerId from window.location.search
   // Domain rule: company_id = company ID (company performing the edit)
@@ -73,6 +75,12 @@ export default function CareerPathPage() {
   const [careerPaths, setCareerPaths] = useState([]);
   const [careerPathsLoading, setCareerPathsLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+
+  // Create a user object for the Header component
+  const headerUser = {
+    user_name: userName || 'HR User',
+    employee_type: 'trainer'
+  };
 
   // Fetch career paths for the learner
   // Domain rule: All career path APIs operate on the learner (learnerId), never the company
@@ -163,21 +171,28 @@ export default function CareerPathPage() {
         <Head>
           <title>Error - Skills Engine</title>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
-          <div className="max-w-md mx-auto px-4 text-center">
-            <div className="glass rounded-xl p-8">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">
-                Invalid Request
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400 mb-6">
-                {error}
-              </p>
-              <Link href="/" className="inline-block px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                Back to Dashboard
-              </Link>
+        <div className={`min-h-screen ${isDarkMode ? 'dark bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
+          <Header
+            user={headerUser}
+            isDarkMode={isDarkMode}
+            setIsDarkMode={setIsDarkMode}
+          />
+          <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+            <div className="max-w-md mx-auto px-4 text-center">
+              <div className="glass dark:glass-dark rounded-xl p-8 shadow-lg dark:shadow-slate-900/50">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 dark:text-red-400 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-2">
+                  Invalid Request
+                </h1>
+                <p className="text-slate-700 dark:text-slate-300 mb-6">
+                  {error}
+                </p>
+                <Link href="/" className="inline-block px-6 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-600 dark:hover:from-emerald-600 dark:hover:to-emerald-500 transition-all shadow-lg hover:shadow-emerald-500/50 font-medium">
+                  Back to Dashboard
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -187,8 +202,15 @@ export default function CareerPathPage() {
 
   if (loading || !learnerId || profileLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
+      <div className={`min-h-screen ${isDarkMode ? 'dark bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
+        <Header
+          user={headerUser}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
+        />
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <div className="text-lg font-medium text-slate-900 dark:text-slate-50">Loading...</div>
+        </div>
       </div>
     );
   }
@@ -201,21 +223,28 @@ export default function CareerPathPage() {
         <Head>
           <title>Access Denied - Skills Engine</title>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
-          <div className="max-w-md mx-auto px-4 text-center">
-            <div className="glass rounded-xl p-8">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">
-                Access Denied
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400 mb-6">
-                You do not have permission to edit this user's career path. The user must belong to your company.
-              </p>
-              <Link href="/" className="inline-block px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                Back to Dashboard
-              </Link>
+        <div className={`min-h-screen ${isDarkMode ? 'dark bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
+          <Header
+            user={headerUser}
+            isDarkMode={isDarkMode}
+            setIsDarkMode={setIsDarkMode}
+          />
+          <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+            <div className="max-w-md mx-auto px-4 text-center">
+              <div className="glass dark:glass-dark rounded-xl p-8 shadow-lg dark:shadow-slate-900/50">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 dark:text-red-400 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-2">
+                  Access Denied
+                </h1>
+                <p className="text-slate-700 dark:text-slate-300 mb-6">
+                  You do not have permission to edit this user's career path. The user must belong to your company.
+                </p>
+                <Link href="/" className="inline-block px-6 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-600 dark:hover:from-emerald-600 dark:hover:to-emerald-500 transition-all shadow-lg hover:shadow-emerald-500/50 font-medium">
+                  Back to Dashboard
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -229,23 +258,26 @@ export default function CareerPathPage() {
         <title>Career Path - Skills Engine</title>
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className={`min-h-screen ${isDarkMode ? 'dark bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
+        <Header
+          user={headerUser}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
+        />
+
         <div className="max-w-4xl mx-auto px-4 py-8">
-          {/* Header */}
+          {/* Page Header */}
           <div className="mb-8">
-            <Link href="/" className="text-emerald-600 hover:text-emerald-700 text-sm mb-4 inline-block">
-              &larr; Back to Dashboard
-            </Link>
-            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50">
               Customize Career Path
             </h1>
             {userName && (
-              <p className="text-slate-600 dark:text-slate-400 mt-2">
-                Editing career path for <span className="font-semibold text-slate-800 dark:text-slate-100">{userName}</span>
-                {targetRole && <span className="ml-2">({targetRole})</span>}
+              <p className="text-slate-700 dark:text-slate-300 mt-2">
+                Editing career path for <span className="font-semibold text-slate-900 dark:text-slate-50">{userName}</span>
+                {targetRole && <span className="ml-2 text-slate-600 dark:text-slate-400">({targetRole})</span>}
               </p>
             )}
-            <p className="text-slate-600 dark:text-slate-400 mt-2">
+            <p className="text-slate-600 dark:text-slate-300 mt-2">
               Select competencies and topics for the learner to learn.
             </p>
           </div>
@@ -263,11 +295,11 @@ export default function CareerPathPage() {
           </div>
 
           {/* Career Paths List */}
-          <div className="glass rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
+          <div className="glass dark:glass-dark rounded-xl p-6 shadow-lg dark:shadow-slate-900/50">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-4">
               Topics in User Career Path
               {careerPaths.length > 0 && (
-                <span className="ml-2 text-sm font-normal text-slate-500">
+                <span className="ml-2 text-sm font-normal text-slate-600 dark:text-slate-400">
                   ({careerPaths.length} {careerPaths.length === 1 ? 'topic' : 'topics'})
                 </span>
               )}
@@ -278,22 +310,22 @@ export default function CareerPathPage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
               </div>
             ) : careerPaths.length === 0 ? (
-              <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                <p>No topics assigned yet.</p>
-                <p className="text-sm mt-2">Select competencies from the hierarchy above to add topics for the user to learn.</p>
+              <div className="text-center py-8 text-slate-600 dark:text-slate-300">
+                <p className="font-medium">No topics assigned yet.</p>
+                <p className="text-sm mt-2 text-slate-500 dark:text-slate-400">Select competencies from the hierarchy above to add topics for the user to learn.</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {careerPaths.map((path) => (
                   <div
                     key={path.competency_id}
-                    className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow"
+                    className="flex items-center justify-between p-4 bg-white dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700/50 hover:shadow-lg dark:hover:shadow-slate-900/50 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
                   >
                     <div className="flex-1">
-                      <h3 className="font-medium text-slate-800 dark:text-slate-100">
+                      <h3 className="font-medium text-slate-900 dark:text-slate-50">
                         {path.competency_name || 'Unknown Competency'}
                       </h3>
-                      <p className="text-xs text-slate-400 mt-2">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                         Assigned: {new Date(path.created_at).toLocaleDateString()}
                       </p>
                     </div>
@@ -313,11 +345,11 @@ export default function CareerPathPage() {
 
             {/* Calculate Gap Button - Always visible */}
             {!careerPathsLoading && (
-              <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+              <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700/50">
                 <button
                   onClick={handleCalculateGapAndSend}
                   disabled={analyzing || careerPaths.length === 0}
-                  className="w-full px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2"
+                  className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-600 dark:hover:from-emerald-600 dark:hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium flex items-center justify-center gap-2 shadow-lg hover:shadow-emerald-500/50"
                 >
                   {analyzing ? (
                     <>
