@@ -3,10 +3,21 @@
  *
  * Allows HR to customize career paths for users by selecting competencies/topics
  * from a hierarchical tree structure.
+ *
+ * Domain Rules:
+ * - company_id = company ID (company performing the edit) - used for authorization only
+ * - learnerId = learner (whose career path is edited) - used for all API operations
+ * - All career path APIs operate on the learner (learnerId), never the company
+ * - Authorization: The learner's company_id must match the company_id parameter
+ *
+ * URL Parameters:
+ * - company_id: The company ID (from Directory redirect)
+ * - learnerId: The learner user ID (from Directory redirect)
+ *
+ * Example URL: /career-path?company_id=<company-id>&learnerId=<learner-id>
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -16,62 +27,89 @@ import CareerPathHierarchyBrowser from '@/components/CareerPathHierarchyBrowser'
 const DEFAULT_USER_ID = '550e8400-e29b-41d4-a716-446655440000';
 
 export default function CareerPathPage() {
-  const router = useRouter();
-  const [userId, setUserId] = useState(null);
+  const [companyId, setCompanyId] = useState(null);
+  const [learnerId, setLearnerId] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Get current logged-in user (HR/trainer) - check from query param or localStorage
-  const hrUserId = router.query.hrUserId || (typeof window !== 'undefined' ? window.localStorage.getItem('userId') : null) || DEFAULT_USER_ID;
-  const { profile: hrProfile, loading: hrProfileLoading } = useUserProfile(hrUserId);
-  const hrUser = hrProfile?.user || hrProfile;
-  const employeeType = hrUser?.employee_type?.toLowerCase()?.trim();
-  const isTrainer = employeeType === 'trainer';
+  // Extract companyId and learnerId from window.location.search
+  // Domain rule: company_id = company ID (company performing the edit)
+  // Domain rule: learnerId = learner (whose career path is edited)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-  // User profile (the user whose career path is being customized)
-  const currentUserId = userId || DEFAULT_USER_ID;
-  const { profile } = useUserProfile(currentUserId);
+    const searchParams = new URLSearchParams(window.location.search);
+    const extractedCompanyId = searchParams.get('company_id');
+    const extractedLearnerId = searchParams.get('learnerId');
+
+    // Validate that learnerId exists
+    if (!extractedLearnerId) {
+      console.error('learnerId is required in URL parameters');
+      setLoading(false);
+      return;
+    }
+
+    // Store both values in local state
+    setCompanyId(extractedCompanyId);
+    setLearnerId(extractedLearnerId);
+    setLoading(false);
+  }, []);
+
+  // Get learner user (learnerId) - used for all API operations
+  // Domain rule: All career path APIs operate on the learner (learnerId), never the company
+  const currentUserId = learnerId || DEFAULT_USER_ID;
+  const { profile, loading: profileLoading } = useUserProfile(currentUserId);
   const user = profile?.user || profile;
   const targetRole = user?.path_career || user?.career_path_goal;
   const userName = user?.user_name || user?.userName;
+
+  // Authorization: Verify learner belongs to the company
+  // Domain rule: The learner's company_id must match the company_id parameter
+  const learnerCompanyId = user?.company_id;
+  const isAuthorized = !companyId || !learnerCompanyId || learnerCompanyId === companyId;
 
   // Career path state
   const [careerPaths, setCareerPaths] = useState([]);
   const [careerPathsLoading, setCareerPathsLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
 
-  // Initialize userId
-  useEffect(() => {
-    const id = router.query.userId || DEFAULT_USER_ID;
-    setUserId(id);
-    setLoading(false);
-  }, [router.query.userId]);
-
-  // Fetch career paths
+  // Fetch career paths for the learner
+  // Domain rule: All career path APIs operate on the learner (learnerId), never the company
+  // Uses ONLY learnerId - does NOT use companyId in the request
+  // Renders the career path editor using the learner data returned from the API
   const fetchCareerPaths = useCallback(async () => {
-    if (!userId) return;
+    if (!learnerId) return;
 
     setCareerPathsLoading(true);
     try {
-      const response = await api.getAllCareerPaths(userId);
-      setCareerPaths(response.data || []);
+      // Call GET /api/user-career-path/{learnerId}/all to get all competencies in the learner's current career path
+      // Uses ONLY learnerId - does NOT use companyId in this request
+      const response = await api.getAllCareerPaths(learnerId);
+      // Handle response - API returns { success: true, data: careerPaths[] } or { success: false, error: ... }
+      if (response && response.data) {
+        // API returns an array of career path objects (all competencies in the learner's career path)
+        setCareerPaths(Array.isArray(response.data) ? response.data : []);
+      } else {
+        setCareerPaths([]);
+      }
     } catch (error) {
       console.error('Error fetching career paths:', error);
       setCareerPaths([]);
     } finally {
       setCareerPathsLoading(false);
     }
-  }, [userId]);
+  }, [learnerId]);
 
   useEffect(() => {
-    if (userId) {
+    if (learnerId) {
       fetchCareerPaths();
     }
-  }, [userId, fetchCareerPaths]);
+  }, [learnerId, fetchCareerPaths]);
 
   // Add competency from hierarchy browser
+  // Domain rule: All career path APIs operate on the learner (learnerId), never the company
   const handleAddCompetency = async (competency) => {
     try {
-      await api.addCareerPath(userId, competency.competency_id);
+      await api.addCareerPath(learnerId, competency.competency_id);
       fetchCareerPaths(); // Refresh the list
     } catch (error) {
       console.error('Error adding competency:', error);
@@ -80,6 +118,7 @@ export default function CareerPathPage() {
   };
 
   // Calculate gap and send to Learner AI, then redirect
+  // Domain rule: All career path APIs operate on the learner (learnerId), never the company
   const handleCalculateGapAndSend = async () => {
     if (careerPaths.length === 0) {
       alert('Please add at least one competency to your career path first.');
@@ -88,9 +127,9 @@ export default function CareerPathPage() {
 
     try {
       setAnalyzing(true);
-      await api.calculateGapAndSend(userId);
-      // Redirect to directory page (home/dashboard)
-      router.push(`/?userId=${userId}`);
+      await api.calculateGapAndSend(learnerId);
+      // Redirect to external Directory MS page
+      window.location.href = `https://directory-psi-mocha.vercel.app/company/${companyId}`;
     } catch (error) {
       console.error('Error calculating gap and sending to Learner AI:', error);
       alert('Failed to calculate gap and send to Learner AI.');
@@ -98,12 +137,13 @@ export default function CareerPathPage() {
     }
   };
 
-  // Remove competency
+  // Remove competency from learner's career path
+  // Domain rule: All career path APIs operate on the learner (learnerId), never the company
   const handleRemoveCompetency = async (competencyId) => {
     if (!confirm('Remove this competency from the user\'s career path?')) return;
 
     try {
-      await api.deleteCareerPath(userId, competencyId);
+      await api.deleteCareerPath(learnerId, competencyId);
       fetchCareerPaths();
     } catch (error) {
       console.error('Error removing competency:', error);
@@ -114,7 +154,7 @@ export default function CareerPathPage() {
   // Get list of added competency IDs for the hierarchy browser
   const addedCompetencyIds = careerPaths.map(path => path.competency_id);
 
-  if (loading || !userId || hrProfileLoading) {
+  if (loading || !learnerId || profileLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">Loading...</div>
@@ -122,8 +162,9 @@ export default function CareerPathPage() {
     );
   }
 
-  // HR/Trainer access check
-  if (!isTrainer) {
+  // Company authorization check
+  // Domain rule: The learner's company_id must match the company_id parameter
+  if (!isAuthorized) {
     return (
       <>
         <Head>
@@ -139,7 +180,7 @@ export default function CareerPathPage() {
                 Access Denied
               </h1>
               <p className="text-slate-600 dark:text-slate-400 mb-6">
-                This page is only accessible to HR/Trainer personnel.
+                You do not have permission to edit this user's career path. The user must belong to your company.
               </p>
               <Link href="/" className="inline-block px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
                 Back to Dashboard
@@ -167,15 +208,21 @@ export default function CareerPathPage() {
             <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">
               Customize Career Path
             </h1>
+            {userName && (
+              <p className="text-slate-600 dark:text-slate-400 mt-2">
+                Editing career path for <span className="font-semibold text-slate-800 dark:text-slate-100">{userName}</span>
+                {targetRole && <span className="ml-2">({targetRole})</span>}
+              </p>
+            )}
             <p className="text-slate-600 dark:text-slate-400 mt-2">
-              Select competencies and topics for the user to learn.
+              Select competencies and topics for the learner to learn.
             </p>
           </div>
 
           {/* Hierarchy Browser */}
           <div className="mb-8">
             <CareerPathHierarchyBrowser
-              userId={userId}
+              userId={learnerId}
               targetRole={targetRole}
               userName={userName}
               onAddCompetency={handleAddCompetency}
