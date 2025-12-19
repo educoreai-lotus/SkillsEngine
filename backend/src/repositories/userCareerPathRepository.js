@@ -25,7 +25,7 @@ class UserCareerPathRepository {
 
   /**
    * Create a new user career path entry
-   * @param {Object} data - { user_id, competency_id }
+   * @param {Object} data - { user_id, competency_id, root_career_path_competency_id? }
    * @returns {Promise<UserCareerPath>}
    */
   async create(data) {
@@ -35,12 +35,19 @@ class UserCareerPathRepository {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
+    const insertData = {
+      user_id: model.user_id,
+      competency_id: model.competency_id
+    };
+
+    // Include root_career_path_competency_id if provided
+    if (model.root_career_path_competency_id) {
+      insertData.root_career_path_competency_id = model.root_career_path_competency_id;
+    }
+
     const { data: result, error } = await this.getClient()
       .from('user_career_path')
-      .insert({
-        user_id: model.user_id,
-        competency_id: model.competency_id
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -56,7 +63,7 @@ class UserCareerPathRepository {
   async findByUser(userId) {
     const { data, error } = await this.getClient()
       .from('user_career_path')
-      .select('user_id, competency_id, created_at')
+      .select('user_id, competency_id, root_career_path_competency_id, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -99,7 +106,7 @@ class UserCareerPathRepository {
   async findLatestByUser(userId) {
     const { data, error } = await this.getClient()
       .from('user_career_path')
-      .select('user_id, competency_id, created_at')
+      .select('user_id, competency_id, root_career_path_competency_id, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)

@@ -6,6 +6,8 @@
 
 const userCareerPathRepository = require('../repositories/userCareerPathRepository');
 const competencyService = require('../services/competencyService');
+const competencyRepository = require('../repositories/competencyRepository');
+const userRepository = require('../repositories/userRepository');
 
 class UserCareerPathController {
   /**
@@ -56,9 +58,45 @@ class UserCareerPathController {
         });
       }
 
+      // Check if this is a core-competency (has no children)
+      const isCoreCompetency = await competencyRepository.hasChildren(resolvedCompetencyId);
+      const isCore = !isCoreCompetency; // Core-competency has no children
+
+      let rootCareerPathCompetencyId = null;
+
+      // If it's a core-competency, get the root career path from user's path_career
+      if (isCore) {
+        try {
+          // Get user's career path name
+          const user = await userRepository.findById(user_id);
+          if (user && user.path_career) {
+            // Find the competency that represents the career path
+            const careerPathCompetency = await competencyRepository.findByName(user.path_career.trim());
+            if (careerPathCompetency) {
+              rootCareerPathCompetencyId = careerPathCompetency.competency_id;
+            } else {
+              console.warn('[UserCareerPathController] Career path competency not found', {
+                path_career: user.path_career,
+                userId: user_id
+              });
+            }
+          } else {
+            console.warn('[UserCareerPathController] User has no path_career set', { userId: user_id });
+          }
+        } catch (err) {
+          console.warn('[UserCareerPathController] Failed to find root career path from user.path_career', {
+            competencyId: resolvedCompetencyId,
+            userId: user_id,
+            error: err.message
+          });
+          // Continue without root link if lookup fails
+        }
+      }
+
       const careerPath = await userCareerPathRepository.create({
         user_id,
-        competency_id: resolvedCompetencyId
+        competency_id: resolvedCompetencyId,
+        root_career_path_competency_id: rootCareerPathCompetencyId
       });
 
       res.status(201).json({

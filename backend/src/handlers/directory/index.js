@@ -130,28 +130,10 @@ class DirectoryHandler {
       try {
         await competencyService.buildHierarchyFromCareerPath(pathCareer);
 
-        // Step 1.6: Save career path competency to user_career_path table
-        try {
-          const trimmedCareer = pathCareer.trim();
-          const careerPathCompetency = await competencyRepository.findByName(trimmedCareer);
-
-          if (careerPathCompetency) {
-            // Check if this career path competency is already saved for this user
-            const existingPaths = await userCareerPathRepository.findByUser(userId);
-            const alreadyExists = existingPaths.some(
-              (cp) => cp.competency_id === careerPathCompetency.competency_id
-            );
-
-            if (!alreadyExists) {
-              await userCareerPathRepository.create({
-                user_id: userId,
-                competency_id: careerPathCompetency.competency_id
-              });
-            }
-          }
-        } catch (careerPathErr) {
-          // Don't fail onboarding if career path save fails
-        }
+        // Step 1.6: (Removed) Previously we auto-saved the career path competency
+        // to the user_career_path table during onboarding. This is now handled
+        // explicitly via the HR career-path customization flow, so we intentionally
+        // do not create any user_career_path rows here.
       } catch (err) {
         // Don't fail onboarding if hierarchy build fails
       }

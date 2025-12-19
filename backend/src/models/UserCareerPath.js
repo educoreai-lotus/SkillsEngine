@@ -8,6 +8,7 @@ class UserCareerPath {
   constructor(data) {
     this.user_id = data.user_id;
     this.competency_id = data.competency_id;
+    this.root_career_path_competency_id = data.root_career_path_competency_id || null;
     this.created_at = data.created_at || null;
   }
 
@@ -40,6 +41,7 @@ class UserCareerPath {
     return {
       user_id: this.user_id,
       competency_id: this.competency_id,
+      root_career_path_competency_id: this.root_career_path_competency_id,
       created_at: this.created_at
     };
   }

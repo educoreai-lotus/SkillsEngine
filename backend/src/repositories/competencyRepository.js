@@ -374,13 +374,19 @@ class CompetencyRepository {
    * @returns {Promise<boolean>}
    */
   async hasChildren(competencyId) {
-    const { count, error } = await this.getClient()
-      .from('competencies')
-      .select('*', { count: 'exact', head: true })
-      .eq('parent_competency_id', competencyId);
+    // Check competency_subCompetency table for children
+    const { data, error } = await this.getClient()
+      .from('competency_subcompetency')
+      .select('child_competency_id')
+      .eq('parent_competency_id', competencyId)
+      .limit(1);
 
-    if (error) throw error;
-    return count > 0;
+    if (error) {
+      console.warn('[CompetencyRepository.hasChildren] Error checking children', { competencyId, error: error.message });
+      return false;
+    }
+
+    return data && data.length > 0;
   }
 
   /**

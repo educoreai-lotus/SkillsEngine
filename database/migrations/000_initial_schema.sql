@@ -334,6 +334,37 @@ CREATE INDEX idx_userskill_user_hash ON public.userskill (polynomial_hash(user_i
 CREATE INDEX idx_userskill_skill_hash ON public.userskill (polynomial_hash(skill_id::TEXT));
 
 
+-- ----------------------------------------------------------------------------
+-- USER_CAREER_PATH (Junction Table)
+-- ----------------------------------------------------------------------------
+CREATE TABLE public.user_career_path (
+    user_id UUID NOT NULL,
+    competency_id UUID NOT NULL,
+    root_career_path_competency_id UUID NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT user_career_path_pkey PRIMARY KEY (user_id, competency_id),
+    CONSTRAINT user_career_path_user_id_fkey 
+        FOREIGN KEY (user_id) 
+        REFERENCES users (user_id) ON DELETE CASCADE,
+    CONSTRAINT user_career_path_competency_id_fkey 
+        FOREIGN KEY (competency_id) 
+        REFERENCES competencies (competency_id) ON DELETE CASCADE,
+    CONSTRAINT user_career_path_root_fkey 
+        FOREIGN KEY (root_career_path_competency_id) 
+        REFERENCES competencies (competency_id) ON DELETE SET NULL
+);
+
+-- Standard Indexes
+CREATE INDEX idx_user_career_path_user_id ON public.user_career_path (user_id);
+CREATE INDEX idx_user_career_path_competency_id ON public.user_career_path (competency_id);
+CREATE INDEX idx_user_career_path_root ON public.user_career_path (root_career_path_competency_id);
+
+-- Hash Indexes
+CREATE INDEX idx_user_career_path_user_hash ON public.user_career_path (polynomial_hash(user_id::TEXT));
+CREATE INDEX idx_user_career_path_competency_hash ON public.user_career_path (polynomial_hash(competency_id::TEXT));
+CREATE INDEX idx_user_career_path_root_hash ON public.user_career_path (polynomial_hash(root_career_path_competency_id::TEXT)) WHERE root_career_path_competency_id IS NOT NULL;
+
+
 -- ============================================================================
 -- MIGRATION COMPLETE
 -- ============================================================================
