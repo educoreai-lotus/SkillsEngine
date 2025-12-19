@@ -335,11 +335,25 @@ class CompetencyRepository {
       return null;
     }
 
-    const children = await this.findChildren(parentCompetencyId);
-    return {
-      ...parent.toJSON(),
-      children: children.map(child => child.toJSON())
+    // Build full recursive hierarchy: parent → children → grandchildren → ...
+    const buildTree = async (competencyModel) => {
+      const node = competencyModel.toJSON();
+      const children = await this.findChildren(node.competency_id);
+
+      if (!children || children.length === 0) {
+        return { ...node, children: [] };
+      }
+
+      const childTrees = [];
+      for (const child of children) {
+        const subtree = await buildTree(child);
+        childTrees.push(subtree);
+      }
+
+      return { ...node, children: childTrees };
     };
+
+    return buildTree(parent);
   }
 
   /**
