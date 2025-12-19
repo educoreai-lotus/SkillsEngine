@@ -9,8 +9,6 @@ import { Sun, Moon, Bell, Sparkles } from 'lucide-react';
  * @param {{user: any, isDarkMode: boolean, setIsDarkMode: function}} props
  */
 export default function Header({ user, isDarkMode, setIsDarkMode }) {
-  const userName = user?.user_name || 'Guest';
-
   return (
     <header className="sticky top-0 z-50 glass dark:glass-dark border-b border-slate-200/50 dark:border-slate-700/50 backdrop-blur-xl">
       {/* Gradient overlay */}
@@ -45,21 +43,6 @@ export default function Header({ user, isDarkMode, setIsDarkMode }) {
               3
             </span>
           </button>
-
-          {/* User info with avatar */}
-          <div className="hidden sm:flex items-center gap-3 px-4 py-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
-              {userName.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[140px]">
-                {userName}
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {user?.employee_type?.toLowerCase()?.trim() === 'trainer' ? 'Trainer' : 'Learner'}
-              </span>
-            </div>
-          </div>
 
           {/* Theme Toggle */}
           <button

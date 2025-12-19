@@ -285,12 +285,17 @@ export default function CareerPathPage() {
               Customize Career Path
             </h1>
             {userName && (
-              <p className="text-slate-700 dark:text-slate-300 mt-2">
-                Editing career path for <span className="font-semibold text-slate-900 dark:text-slate-50">{userName}</span>
-                {targetRole && <span className="ml-2 text-slate-600 dark:text-slate-400">({targetRole})</span>}
-              </p>
+              <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium mb-1">
+                  Editing career path for:
+                </p>
+                <p className="text-lg font-semibold text-emerald-900 dark:text-emerald-100">
+                  {userName}
+                  {targetRole && <span className="ml-2 text-base font-normal text-emerald-700 dark:text-emerald-300">({targetRole})</span>}
+                </p>
+              </div>
             )}
-            <p className="text-slate-600 dark:text-slate-300 mt-2">
+            <p className="text-slate-600 dark:text-slate-300 mt-4">
               Select competencies and topics for the learner to learn.
             </p>
           </div>
