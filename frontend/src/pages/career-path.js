@@ -31,7 +31,7 @@ export default function CareerPathPage() {
   const currentUserId = userId || DEFAULT_USER_ID;
   const { profile } = useUserProfile(currentUserId);
   const user = profile?.user || profile;
-  const targetRole = user?.path_career || user?.career_path_goal || `User ${currentUserId.substring(0, 8)}`;
+  const targetRole = user?.path_career || user?.career_path_goal;
   const userName = user?.user_name || user?.userName;
 
   // Career path state
