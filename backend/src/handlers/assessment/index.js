@@ -35,8 +35,8 @@ class AssessmentHandler {
       }
 
       // Normalize exam results object:
-      // Preferred format: payload = { user_id, exam_type, exam_status, course_name, skills: [...] }
-      // The skills field contains the exam results array
+      // Preferred format: payload = { user_id, exam_type, exam_status, course_name, final_grade, skills: [...] }
+      // The skills field contains the exam results array with per-skill scores
       // Legacy shapes (for backward compatibility):
       //   - payload.results.{ skills: [...] }
       //   - payload.exam_results.{ skills / verified_skills / verifiedSkills }
@@ -157,6 +157,35 @@ class AssessmentHandler {
 
       // Use competency_name to fetch required MGS (leaf skills) for that competency
       try {
+        // Log the request
+        console.log(
+          '[AssessmentHandler.handleBaselineExamSkillsRequest] Fetching baseline exam skills from database',
+          {
+            competency_name,
+            timestamp: new Date().toISOString()
+          }
+        );
+
+        // Find the competency first to get its ID
+        const competencyRepository = require('../../repositories/competencyRepository');
+        const competency = await competencyRepository.findByName(competency_name);
+
+        if (competency) {
+          console.log(
+            '[AssessmentHandler.handleBaselineExamSkillsRequest] Found competency in database',
+            {
+              competency_name,
+              competency_id: competency.competency_id,
+              found_via: 'direct_match_or_alias'
+            }
+          );
+        } else {
+          console.log(
+            '[AssessmentHandler.handleBaselineExamSkillsRequest] Competency not found, will be created if needed',
+            { competency_name }
+          );
+        }
+
         const mgs = await competencyService.getRequiredMGSByName(competency_name);
 
         const skills = mgs.map(skill => ({
@@ -164,11 +193,17 @@ class AssessmentHandler {
           skill_name: skill.skill_name
         }));
 
+        // Log the final list of skills retrieved from database
         console.log(
-          '[AssessmentHandler.handleBaselineExamSkillsRequest] Returning MGS for competency',
+          '[AssessmentHandler.handleBaselineExamSkillsRequest] Final list of skills retrieved from database for baseline exam',
           {
             competency_name,
-            skills_count: skills.length
+            competency_id: competency?.competency_id || 'N/A',
+            skills_count: skills.length,
+            skills: skills.map(s => ({
+              skill_id: s.skill_id,
+              skill_name: s.skill_name
+            }))
           }
         );
 
