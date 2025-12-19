@@ -11,9 +11,9 @@ import { api } from '@/lib/api';
 /**
  * Recursive component for rendering competency nodes
  */
-function CompetencyNode({ 
-  competency, 
-  level = 0, 
+function CompetencyNode({
+  competency,
+  level = 0,
   isAdded = false,
   onToggle,
   onAdd,
@@ -31,8 +31,8 @@ function CompetencyNode({
       <div
         className={`
           flex items-center gap-3 p-3 rounded-lg border transition-all
-          ${isAdded 
-            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700' 
+          ${isAdded
+            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700'
             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600'
           }
           ${level === 0 ? 'font-semibold' : level === 1 ? 'font-medium' : ''}
@@ -101,28 +101,36 @@ function CompetencyNode({
           )}
         </div>
 
-        {/* Add/Remove Button */}
+        {/* Add/Remove Button - Only show for leaf nodes (core competencies) */}
         <div className="flex-shrink-0">
-          {isAdded ? (
-            <button
-              onClick={() => onRemove(competency.competency_id)}
-              className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center gap-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              Remove
-            </button>
+          {!hasChildren ? (
+            // Leaf node (core competency) - can be added/removed
+            isAdded ? (
+              <button
+                onClick={() => onRemove(competency.competency_id)}
+                className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Remove
+              </button>
+            ) : (
+              <button
+                onClick={() => onAdd(competency)}
+                className="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Add
+              </button>
+            )
           ) : (
-            <button
-              onClick={() => onAdd(competency)}
-              className="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors flex items-center gap-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
-              Add
-            </button>
+            // Parent competency - show info message instead of button
+            <span className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400 italic">
+              Select sub-competencies below
+            </span>
           )}
         </div>
       </div>
@@ -156,9 +164,9 @@ function CompetencyNode({
 /**
  * Main Hierarchy Browser Component
  */
-export default function CareerPathHierarchyBrowser({ 
-  userId, 
-  targetRole, 
+export default function CareerPathHierarchyBrowser({
+  userId,
+  targetRole,
   userName,
   onAddCompetency,
   onRemoveCompetency,
@@ -181,7 +189,7 @@ export default function CareerPathHierarchyBrowser({
         // Step 1: Search for competency matching the career path name
         const searchResponse = await api.searchCompetencies(targetRole, { limit: 5 });
         const competencies = searchResponse.data || [];
-        
+
         // Find exact or closest match
         let rootCompetency = competencies.find(
           comp => comp.competency_name.toLowerCase() === targetRole.toLowerCase()
@@ -216,7 +224,7 @@ export default function CareerPathHierarchyBrowser({
 
         const fullHierarchy = buildChildren(hierarchyData);
         setHierarchy(fullHierarchy);
-        
+
         // Expand root by default
         setExpandedNodes(new Set([fullHierarchy.competency_id]));
       } catch (err) {
