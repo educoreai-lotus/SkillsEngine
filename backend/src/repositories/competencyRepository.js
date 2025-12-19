@@ -89,6 +89,7 @@ class CompetencyRepository {
 
   /**
    * Find competency by name (case-insensitive)
+   * Checks both competency_name and aliases
    * If multiple competencies with the same name exist, returns the first one
    * @param {string} competencyName - Competency name
    * @returns {Promise<Competency|null>}
@@ -99,21 +100,105 @@ class CompetencyRepository {
         ? competencyName.toLowerCase().trim()
         : competencyName;
 
-    // Use .limit(1) instead of .maybeSingle() to handle cases where multiple rows exist
-    const { data, error } = await this.getClient()
+    // First, try direct name match
+    const { data: directMatch, error: directError } = await this.getClient()
       .from('competencies')
       .select('*')
       .eq('competency_name', name)
       .limit(1);
 
+    if (directError) {
+      throw directError;
+    }
+
+    if (directMatch && directMatch.length > 0) {
+      return new Competency(directMatch[0]);
+    }
+
+    // If no direct match, check aliases
+    const { data: aliasMatch, error: aliasError } = await this.getClient()
+      .from('competency_aliases')
+      .select('competency_id')
+      .eq('alias_name', name)
+      .limit(1);
+
+    if (aliasError) {
+      // If table doesn't exist yet, just return null (graceful degradation)
+      if (aliasError.code === '42P01') {
+        return null;
+      }
+      throw aliasError;
+    }
+
+    if (aliasMatch && aliasMatch.length > 0) {
+      // Found via alias, fetch the actual competency
+      return this.findById(aliasMatch[0].competency_id);
+    }
+
+    return null;
+  }
+
+  /**
+   * Add an alias for a competency
+   * @param {string} competencyId - Competency ID
+   * @param {string} aliasName - Alias name
+   * @returns {Promise<boolean>}
+   */
+  async addAlias(competencyId, aliasName) {
+    const normalizedAlias =
+      typeof aliasName === 'string'
+        ? aliasName.toLowerCase().trim()
+        : aliasName;
+
+    // Check if alias already exists
+    const { data: existing } = await this.getClient()
+      .from('competency_aliases')
+      .select('alias_id')
+      .eq('alias_name', normalizedAlias)
+      .single();
+
+    if (existing) {
+      return false; // Alias already exists
+    }
+
+    const { error } = await this.getClient()
+      .from('competency_aliases')
+      .insert({
+        competency_id: competencyId,
+        alias_name: normalizedAlias
+      });
+
     if (error) {
+      // If table doesn't exist yet, just return false (graceful degradation)
+      if (error.code === '42P01') {
+        return false;
+      }
       throw error;
     }
 
-    if (!data || data.length === 0) return null;
+    return true;
+  }
 
-    // Return the first match if multiple exist
-    return new Competency(data[0]);
+  /**
+   * Get all aliases for a competency
+   * @param {string} competencyId - Competency ID
+   * @returns {Promise<string[]>}
+   */
+  async getAliases(competencyId) {
+    const { data, error } = await this.getClient()
+      .from('competency_aliases')
+      .select('alias_name')
+      .eq('competency_id', competencyId);
+
+    if (error) {
+      // If table doesn't exist yet, return empty array (graceful degradation)
+      if (error.code === '42P01') {
+        return [];
+      }
+      throw error;
+    }
+
+    return (data || []).map(row => row.alias_name);
   }
 
   /**

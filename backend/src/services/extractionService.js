@@ -213,8 +213,15 @@ class ExtractionService {
 
         if (!name) continue;
 
-        // Skip if competency already exists (case-insensitive match)
-        const existing = await competencyRepository.findByName(name);
+        // Skip if competency already exists (check exact match and semantic duplicates)
+        let existing = await competencyRepository.findByName(name);
+        
+        // If not found, try semantic duplicate detection
+        if (!existing) {
+          const competencyService = require('./competencyService');
+          existing = await competencyService.findSemanticDuplicate(name);
+        }
+        
         if (existing) continue;
 
         // Let the database generate the UUID for competency_id (default gen_random_uuid()).

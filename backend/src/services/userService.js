@@ -75,7 +75,15 @@ class UserService {
 
       // If not found in taxonomy or taxonomy_id is missing, try to find/create by name
       if (!comp.found_in_taxonomy || !competencyId) {
-        const existing = await competencyRepository.findByName(comp.normalized_name);
+        // First try exact match (includes alias lookup)
+        let existing = await competencyRepository.findByName(comp.normalized_name);
+
+        // If not found, try semantic duplicate detection
+        if (!existing) {
+          const competencyService = require('./competencyService');
+          existing = await competencyService.findSemanticDuplicate(comp.normalized_name);
+        }
+
         if (existing) {
           competencyId = existing.competency_id;
         } else {

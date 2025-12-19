@@ -741,6 +741,108 @@ class CompetencyService {
 
     return true;
   }
+
+  /**
+   * Detect and merge semantic duplicates (e.g., "react", "reactjs", "react js")
+   * Uses fuzzy matching and common synonym patterns
+   * @param {string} competencyName - Competency name to check
+   * @returns {Promise<Competency|null>} Existing competency if found, null otherwise
+   */
+  async findSemanticDuplicate(competencyName) {
+    if (!competencyName || typeof competencyName !== 'string') {
+      return null;
+    }
+
+    const normalized = competencyName.toLowerCase().trim();
+
+    // Remove common separators and normalize
+    const normalizedForMatch = normalized
+      .replace(/[._-]/g, ' ')  // Replace dots, underscores, dashes with spaces
+      .replace(/\s+/g, ' ')     // Collapse multiple spaces
+      .trim();
+
+    // Try exact match first
+    let existing = await competencyRepository.findByName(normalized);
+    if (existing) return existing;
+
+    // Try normalized version (without separators)
+    existing = await competencyRepository.findByName(normalizedForMatch);
+    if (existing) {
+      // Add the original as an alias
+      await competencyRepository.addAlias(existing.competency_id, normalized);
+      return existing;
+    }
+
+    // Search for similar names using pattern matching
+    const client = competencyRepository.getClient();
+    const { data: similar, error } = await client
+      .from('competencies')
+      .select('*')
+      .or(`competency_name.ilike.%${normalizedForMatch}%,competency_name.ilike.%${normalized}%`)
+      .limit(10);
+
+    if (error || !similar || similar.length === 0) {
+      return null;
+    }
+
+    // Find the best match using simple similarity
+    let bestMatch = null;
+    let bestScore = 0;
+
+    for (const comp of similar) {
+      const compName = comp.competency_name.toLowerCase().trim();
+      const compNormalized = compName.replace(/[._-]/g, ' ').replace(/\s+/g, ' ').trim();
+
+      // Calculate similarity score
+      let score = 0;
+      if (compNormalized === normalizedForMatch) {
+        score = 100; // Exact match after normalization
+      } else if (compNormalized.includes(normalizedForMatch) || normalizedForMatch.includes(compNormalized)) {
+        score = 80; // One contains the other
+      } else {
+        // Simple character overlap
+        const set1 = new Set(normalizedForMatch.split(''));
+        const set2 = new Set(compNormalized.split(''));
+        const intersection = new Set([...set1].filter(x => set2.has(x)));
+        score = (intersection.size / Math.max(set1.size, set2.size)) * 60;
+      }
+
+      if (score > bestScore && score >= 80) {
+        bestScore = score;
+        bestMatch = comp;
+      }
+    }
+
+    if (bestMatch) {
+      // Add as alias
+      await competencyRepository.addAlias(bestMatch.competency_id, normalized);
+      return new (require('../models/Competency'))(bestMatch);
+    }
+
+    return null;
+  }
+
+  /**
+   * Create competency with alias support
+   * Checks for semantic duplicates before creating
+   * @param {Object} competencyData - Competency data
+   * @returns {Promise<Competency>}
+   */
+  async createCompetencyWithAlias(competencyData) {
+    // First check for semantic duplicates
+    const existing = await this.findSemanticDuplicate(competencyData.competency_name);
+    if (existing) {
+      // Add the new name as an alias if it's different
+      const normalized = (competencyData.competency_name || '').toLowerCase().trim();
+      if (normalized !== existing.competency_name.toLowerCase().trim()) {
+        await competencyRepository.addAlias(existing.competency_id, normalized);
+      }
+      return existing;
+    }
+
+    // No duplicate found, create new competency
+    return this.createCompetency(competencyData);
+  }
 }
 
 module.exports = new CompetencyService();

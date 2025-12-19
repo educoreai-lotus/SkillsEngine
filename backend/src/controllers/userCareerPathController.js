@@ -59,38 +59,44 @@ class UserCareerPathController {
       }
 
       // Check if this is a core-competency (has no children)
-      const isCoreCompetency = await competencyRepository.hasChildren(resolvedCompetencyId);
-      const isCore = !isCoreCompetency; // Core-competency has no children
+      const hasChildren = await competencyRepository.hasChildren(resolvedCompetencyId);
+      const isCore = !hasChildren; // Core-competency has no children
+
+      // Only allow adding leaf nodes (core competencies), not parent competencies
+      if (!isCore) {
+        return res.status(400).json({
+          success: false,
+          error: 'Only leaf nodes (core competencies) can be added to career path. Please select a competency with no sub-competencies.'
+        });
+      }
 
       let rootCareerPathCompetencyId = null;
 
-      // If it's a core-competency, get the root career path from user's path_career
-      if (isCore) {
-        try {
-          // Get user's career path name
-          const user = await userRepository.findById(user_id);
-          if (user && user.path_career) {
-            // Find the competency that represents the career path
-            const careerPathCompetency = await competencyRepository.findByName(user.path_career.trim());
-            if (careerPathCompetency) {
-              rootCareerPathCompetencyId = careerPathCompetency.competency_id;
-            } else {
-              console.warn('[UserCareerPathController] Career path competency not found', {
-                path_career: user.path_career,
-                userId: user_id
-              });
-            }
+      // Get the root career path from user's path_career
+      try {
+        // Get user's career path name
+        const user = await userRepository.findById(user_id);
+        if (user && user.path_career) {
+          // Find the competency that represents the career path
+          const careerPathCompetency = await competencyRepository.findByName(user.path_career.trim());
+          if (careerPathCompetency) {
+            rootCareerPathCompetencyId = careerPathCompetency.competency_id;
           } else {
-            console.warn('[UserCareerPathController] User has no path_career set', { userId: user_id });
+            console.warn('[UserCareerPathController] Career path competency not found', {
+              path_career: user.path_career,
+              userId: user_id
+            });
           }
-        } catch (err) {
-          console.warn('[UserCareerPathController] Failed to find root career path from user.path_career', {
-            competencyId: resolvedCompetencyId,
-            userId: user_id,
-            error: err.message
-          });
-          // Continue without root link if lookup fails
+        } else {
+          console.warn('[UserCareerPathController] User has no path_career set', { userId: user_id });
         }
+      } catch (err) {
+        console.warn('[UserCareerPathController] Failed to find root career path from user.path_career', {
+          competencyId: resolvedCompetencyId,
+          userId: user_id,
+          error: err.message
+        });
+        // Continue without root link if lookup fails
       }
 
       const careerPath = await userCareerPathRepository.create({
