@@ -325,31 +325,6 @@ export default function CareerPathHierarchyBrowser({
             addedCompetencyIds={addedCompetencyIds}
           />
         </div>
-
-        {/* Legend */}
-        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Legend:</p>
-          <div className="flex flex-wrap gap-4 text-xs">
-            <div className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-              </svg>
-              <span className="text-slate-600 dark:text-slate-400">Parent Competency</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-slate-600 dark:text-slate-400">Learning Topic (Core)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded text-xs">
-                Added
-              </span>
-              <span className="text-slate-600 dark:text-slate-400">Already in Career Path</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
