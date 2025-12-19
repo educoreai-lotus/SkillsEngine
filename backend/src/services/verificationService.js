@@ -50,8 +50,7 @@ class VerificationService {
           examId,
           finalGrade,
           passingGrade,
-          passed,
-          examStatus
+          passed
         }
       );
     }
@@ -80,7 +79,7 @@ class VerificationService {
           return null;
         }
 
-        const { skill_id, skill_name } = rawSkill;
+        const { skill_id, skill_name, score } = rawSkill;
 
         // Determine status from "status" string (values: "acquired" or "failed")
         let skillStatus = null;

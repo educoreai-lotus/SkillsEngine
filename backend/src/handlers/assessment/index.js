@@ -17,7 +17,12 @@ class AssessmentHandler {
     try {
       // Validate payload structure
       if (!payload || typeof payload !== 'object') {
-        return { message: 'Invalid payload structure' };
+        return {
+          ...(responseTemplate || {}),
+          answer: {
+            message: 'Invalid payload structure'
+          }
+        };
       }
 
       // Log incoming assessment request summary (reduced logging to prevent rate limits)
@@ -75,7 +80,9 @@ class AssessmentHandler {
       if (!user_id) {
         return {
           ...(responseTemplate || {}),
-          error: 'user_id is required'
+          answer: {
+            error: 'user_id is required'
+          }
         };
       }
 
@@ -83,13 +90,20 @@ class AssessmentHandler {
       if (!exam_results) {
         return {
           ...(responseTemplate || {}),
-          error: 'exam_results are required'
+          answer: {
+            error: 'exam_results are required'
+          }
         };
       }
 
       // Validate exam_results is an object
       if (typeof exam_results !== 'object' || exam_results === null) {
-        return { message: 'exam_results must be an object' };
+        return {
+          ...(responseTemplate || {}),
+          answer: {
+            message: 'exam_results must be an object'
+          }
+        };
       }
 
       // Process exam results
@@ -99,7 +113,12 @@ class AssessmentHandler {
       } else if (exam_type === 'post-course') {
         result = await verificationService.processPostCourseExamResults(user_id, exam_results);
       } else {
-        return { message: 'Invalid exam_type. Must be "baseline" or "post-course"' };
+        return {
+          ...(responseTemplate || {}),
+          answer: {
+            message: 'Invalid exam_type. Must be "baseline" or "post-course"'
+          }
+        };
       }
 
       // Validate result structure
@@ -108,13 +127,18 @@ class AssessmentHandler {
           '[AssessmentHandler] Verification service returned invalid result',
           { user_id, exam_type, resultType: typeof result }
         );
-        return { message: 'Failed to process exam results' };
+        return {
+          ...(responseTemplate || {}),
+          answer: {
+            message: 'Failed to process exam results'
+          }
+        };
       }
 
-      // On success, return only the business result shape (merged with template).
+      // On success, wrap result in answer field
       return {
         ...(responseTemplate || {}),
-        ...result
+        answer: result
       };
     } catch (error) {
       // Log error for debugging
@@ -125,7 +149,10 @@ class AssessmentHandler {
       });
 
       return {
-        message: error.message || 'Internal server error'
+        ...(responseTemplate || {}),
+        answer: {
+          message: error.message || 'Internal server error'
+        }
       };
     }
   }
@@ -208,12 +235,13 @@ class AssessmentHandler {
           }
         );
 
-        // Build response object with skills list
-        // Response only includes competency_name and skills array
+        // Build response object with skills list wrapped in answer field
         const response = {
           ...(responseTemplate || {}),
-          competency_name,
-          skills
+          answer: {
+            competency_name,
+            skills
+          }
         };
 
         // Log response being sent back to Assessment MS
@@ -234,8 +262,10 @@ class AssessmentHandler {
         );
         return {
           ...(responseTemplate || {}),
-          competency_name,
-          message: err.message
+          answer: {
+            competency_name,
+            message: err.message
+          }
         };
       }
     } catch (error) {
@@ -243,7 +273,11 @@ class AssessmentHandler {
         '[AssessmentHandler.handleBaselineExamSkillsRequest] Error:',
         { error: error.message }
       );
-      return { message: error.message };
+      return {
+        answer: {
+          message: error.message
+        }
+      };
     }
   }
 }
