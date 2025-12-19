@@ -49,6 +49,7 @@ export function useUserCompetencies(userId, params = {}) {
     if (userId) {
       fetchCompetencies();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, params.competency_id, params.page, params.limit]);
 
   const refetch = async () => {

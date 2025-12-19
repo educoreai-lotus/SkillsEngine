@@ -6,9 +6,9 @@
 import { Sun, Moon, Bell, Sparkles } from 'lucide-react';
 
 /**
- * @param {{user: any, isDarkMode: boolean, setIsDarkMode: function}} props
+ * @param {{isDarkMode: boolean, setIsDarkMode: function}} props
  */
-export default function Header({ user, isDarkMode, setIsDarkMode }) {
+export default function Header({ isDarkMode, setIsDarkMode }) {
   return (
     <header className="sticky top-0 z-50 glass dark:glass-dark border-b border-slate-200/50 dark:border-slate-700/50 backdrop-blur-xl">
       {/* Gradient overlay */}
