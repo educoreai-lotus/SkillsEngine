@@ -45,9 +45,21 @@ export default function CareerPathPage() {
     // Support both learnerId (camelCase) and learner_id (snake_case) for compatibility
     const extractedLearnerId = searchParams.get('learnerId') || searchParams.get('learner_id');
 
+    // Debug logging
+    console.log('[CareerPath] URL params:', {
+      search: window.location.search,
+      company_id: extractedCompanyId,
+      learnerId: searchParams.get('learnerId'),
+      learner_id: searchParams.get('learner_id'),
+      extractedLearnerId
+    });
+
     // Validate that learnerId exists
     if (!extractedLearnerId) {
-      console.error('learnerId or learner_id is required in URL parameters');
+      console.error('[CareerPath] Missing learnerId. Available params:', {
+        allParams: Object.fromEntries(searchParams.entries()),
+        search: window.location.search
+      });
       setError('learnerId or learner_id is required in URL parameters. Please provide a valid learner ID.');
       setLoading(false);
       return;
