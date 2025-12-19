@@ -192,8 +192,17 @@ class CompetencyService {
     console.log(`[CompetencyService.generateAndLinkSkillTree] Generating skill tree for competency: ${competency.competency_name}`);
     const skillTree = await aiService.generateSkillTreeForCompetency(competency.competency_name);
 
-    if (!skillTree || !skillTree.Skills || !Array.isArray(skillTree.Skills)) {
-      console.warn(`[CompetencyService.generateAndLinkSkillTree] Invalid skill tree structure for competency ${competencyId}`);
+    // Validate skill tree structure
+    if (!skillTree || typeof skillTree !== 'object') {
+      console.warn(`[CompetencyService.generateAndLinkSkillTree] Invalid skill tree: not an object for competency ${competencyId}`);
+      return { skillsCreated: 0, skillsLinked: 0 };
+    }
+
+    if (!skillTree.Skills || !Array.isArray(skillTree.Skills)) {
+      console.warn(`[CompetencyService.generateAndLinkSkillTree] Invalid skill tree structure: missing or invalid Skills array for competency ${competencyId}`);
+      // Log structure for debugging without full JSON dump
+      const keys = skillTree ? Object.keys(skillTree) : [];
+      console.warn(`[CompetencyService.generateAndLinkSkillTree] Skill tree keys:`, keys.join(', '));
       return { skillsCreated: 0, skillsLinked: 0 };
     }
 
@@ -201,8 +210,17 @@ class CompetencyService {
 
     // Process each skill (L2 level) from the tree
     for (const skillNode of skillTree.Skills) {
-      const skillName = typeof skillNode === 'string' ? skillNode : (skillNode.name || '');
-      if (!skillName) continue;
+      // Skip null, undefined, or empty objects
+      if (!skillNode || (typeof skillNode === 'object' && Object.keys(skillNode).length === 0)) {
+        console.warn(`[CompetencyService.generateAndLinkSkillTree] Skipping invalid skill node:`, skillNode);
+        continue;
+      }
+
+      const skillName = typeof skillNode === 'string' ? skillNode : (skillNode && skillNode.name || '');
+      if (!skillName || typeof skillName !== 'string') {
+        console.warn(`[CompetencyService.generateAndLinkSkillTree] Skipping skill node with invalid name:`, skillNode);
+        continue;
+      }
 
       // Check if skill already exists
       let skill = await skillRepository.findByName(skillName.toLowerCase().trim());
@@ -246,11 +264,23 @@ class CompetencyService {
    * @returns {Promise<void>}
    */
   async _processSkillHierarchy(skillNodes, parentSkillId, stats) {
-    if (!Array.isArray(skillNodes)) return;
+    if (!Array.isArray(skillNodes)) {
+      console.warn(`[CompetencyService._processSkillHierarchy] Expected array, got:`, typeof skillNodes);
+      return;
+    }
 
     for (const node of skillNodes) {
-      const nodeName = typeof node === 'string' ? node : (node.name || '');
-      if (!nodeName) continue;
+      // Skip null, undefined, or empty objects
+      if (!node || (typeof node === 'object' && Object.keys(node).length === 0)) {
+        console.warn(`[CompetencyService._processSkillHierarchy] Skipping invalid node:`, node);
+        continue;
+      }
+
+      const nodeName = typeof node === 'string' ? node : (node && node.name || '');
+      if (!nodeName || typeof nodeName !== 'string') {
+        console.warn(`[CompetencyService._processSkillHierarchy] Skipping node with invalid name:`, node);
+        continue;
+      }
 
       // Check if skill already exists
       let skill = await skillRepository.findByName(nodeName.toLowerCase().trim());
@@ -306,22 +336,30 @@ class CompetencyService {
 
     let competency = await competencyRepository.findByName(competencyName);
 
-    // If competency doesn't exist, create it automatically as a core-competency
+    // If competency doesn't exist, check for semantic duplicates (including aliases) before creating
     if (!competency) {
-      console.log(`[CompetencyService.getRequiredMGSByName] Competency "${competencyName}" not found; creating automatically`);
+      console.log(`[CompetencyService.getRequiredMGSByName] Competency "${competencyName}" not found; checking for semantic duplicates`);
 
       try {
-        competency = await this.createCompetency({
+        // Use createCompetencyWithAlias to check for semantic duplicates first
+        // This will find existing competencies via aliases or similar names
+        competency = await this.createCompetencyWithAlias({
           competency_name: competencyName,
           description: `Core competency: ${competencyName}`,
           parent_competency_id: null, // Core-competency (no parent)
           source: 'auto_created'
         });
 
-        console.log(`[CompetencyService.getRequiredMGSByName] Created competency: ${competency.competency_id} (${competency.competency_name})`);
+        if (competency.competency_name.toLowerCase().trim() !== competencyName.toLowerCase().trim()) {
+          // Found existing competency via alias/semantic duplicate
+          console.log(`[CompetencyService.getRequiredMGSByName] Found existing competency via alias/semantic match: ${competency.competency_name} (${competency.competency_id})`);
+        } else {
+          // Created new competency
+          console.log(`[CompetencyService.getRequiredMGSByName] Created new competency: ${competency.competency_id} (${competency.competency_name})`);
+        }
       } catch (err) {
-        console.error(`[CompetencyService.getRequiredMGSByName] Failed to create competency "${competencyName}":`, err.message);
-        throw new Error(`Failed to create competency "${competencyName}": ${err.message}`);
+        console.error(`[CompetencyService.getRequiredMGSByName] Failed to create/find competency "${competencyName}":`, err.message);
+        throw new Error(`Failed to create/find competency "${competencyName}": ${err.message}`);
       }
     }
 
@@ -576,7 +614,13 @@ class CompetencyService {
 
     // Step 1: Generate hierarchy tree from AI
     const hierarchyTree = await aiService.generateCompetencyHierarchy(careerPath);
-    console.log('[CompetencyService] Generated hierarchy tree:', JSON.stringify(hierarchyTree, null, 2));
+    // Reduced logging - only log structure summary to prevent rate limits
+    if (hierarchyTree && typeof hierarchyTree === 'object') {
+      const keys = Object.keys(hierarchyTree);
+      console.log('[CompetencyService] Generated hierarchy tree structure:', keys.length > 0 ? keys.join(', ') : 'empty');
+    } else {
+      console.warn('[CompetencyService] Generated hierarchy tree is not an object');
+    }
 
     // Step 2: Extract all nodes from tree
     const nodes = this.extractNodesFromTree(hierarchyTree);

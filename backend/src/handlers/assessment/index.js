@@ -20,10 +20,11 @@ class AssessmentHandler {
         return { message: 'Invalid payload structure' };
       }
 
-      // Log full incoming assessment request body for debugging
+      // Log incoming assessment request summary (reduced logging to prevent rate limits)
+      const payloadKeys = payload && typeof payload === 'object' ? Object.keys(payload) : [];
       console.log(
-        '[AssessmentHandler] Incoming Assessment MS request - full payload:',
-        JSON.stringify(payload, null, 2)
+        '[AssessmentHandler] Incoming Assessment MS request - payload keys:',
+        payloadKeys.join(', ')
       );
 
       const { user_id, exam_type, action } = payload;

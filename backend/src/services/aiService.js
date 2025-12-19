@@ -66,8 +66,10 @@ class AIService {
   async callGeminiJSON(prompt, options = {}) {
     // Let callGemini handle model + retry; we keep JSON handling focused here.
     const responseText = await this.callGemini(prompt, options);
-    console.log('[Gemini raw response length]', responseText.length);
-    console.log('[Gemini raw response full]', responseText);
+    // Reduced logging to prevent rate limits - only log length, not full content
+    if (responseText.length > 10000) {
+      console.log('[callGeminiJSON] Large response received:', responseText.length, 'chars');
+    }
     // Try to extract JSON from response (handle markdown code blocks)
     let jsonText = (responseText || '').trim();
 
@@ -88,11 +90,15 @@ class AIService {
 
     try {
       const parsed = JSON.parse(jsonText);
-      console.log('[callGeminiJSON] Parsed JSON:', JSON.stringify(parsed, null, 2));
+      // Only log structure summary, not full content to prevent rate limits
+      if (parsed && typeof parsed === 'object') {
+        const keys = Object.keys(parsed);
+        console.log('[callGeminiJSON] Parsed JSON structure:', keys.length > 0 ? keys.join(', ') : 'empty object');
+      }
       return parsed;
     } catch (parseError) {
       const preview = jsonText.slice(0, 200);
-      console.error('[callGeminiJSON] Raw response preview:', preview);
+      console.error('[callGeminiJSON] JSON parse error:', parseError.message, 'Preview:', preview);
       throw new Error(
         `Gemini did not return valid JSON. Parse error: ${parseError.message}. Response preview: ${preview}`
       );
@@ -179,8 +185,9 @@ class AIService {
     const prompt = await this.loadPrompt(promptPath);
     // Use the flash model by default for better availability and lower latency.
     const result = await this.callGeminiJSON(prompt, { modelType: 'flash' });
-    console.log('result', result);
+    // Reduced logging - only log if result is unexpected
     if (!Array.isArray(result)) {
+      console.warn('[AIService.discoverOfficialSources] Expected array, got:', typeof result);
       throw new Error('Expected Gemini to return an array of sources');
     }
 

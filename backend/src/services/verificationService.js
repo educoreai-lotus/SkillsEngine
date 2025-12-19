@@ -32,6 +32,16 @@ class VerificationService {
     // Check examResults first, then options, else null
     // Note: Baseline exams don't have courseName
     const examStatus = examResults?.exam_status || examResults?.examStatus || optionsExamStatus || null;
+    const finalGrade = examResults?.final_grade || examResults?.finalGrade || null;
+
+    // Log final grade if provided
+    if (finalGrade !== null && typeof finalGrade === 'number') {
+      console.log(
+        '[VerificationService.processBaselineExamResults] Exam final grade received',
+        { userId, examType, finalGrade }
+      );
+    }
+
     try {
       // Support multiple field names from Assessment MS for backward compatibility:
       // - skills (preferred)
@@ -48,16 +58,16 @@ class VerificationService {
 
       // Helper: normalize a single verified skill coming from Assessment MS
       // Accepted input formats (for backward compatibility):
-      //   - { skill_id, skill_name, status: "pass" | "fail" }
-      //   - { skill_id, skill_name, verified: true | false }
-      // We normalize to JSON shape: { skill_id, skill_name, verified }
+      //   - { skill_id, skill_name, status: "pass" | "fail", score: number }
+      //   - { skill_id, skill_name, verified: true | false, score: number }
+      // We normalize to JSON shape: { skill_id, skill_name, verified, score? }
       // and only persist leaf / MGS skills with status "pass" / verified === true.
       const normalizeVerifiedSkill = async (rawSkill) => {
         if (!rawSkill || !rawSkill.skill_id) {
           return null;
         }
 
-        const { skill_id, skill_name } = rawSkill;
+        const { skill_id, skill_name, score } = rawSkill;
 
         // Determine pass/fail status from either "status" string or "verified" boolean
         let skillStatus = null;
@@ -94,11 +104,18 @@ class VerificationService {
           return null;
         }
 
-        return {
+        const normalized = {
           skill_id,
           skill_name,
           verified: true // Only MGS with status "pass" are added
         };
+
+        // Include score if provided (optional field)
+        if (typeof score === 'number' && !isNaN(score)) {
+          normalized.score = score;
+        }
+
+        return normalized;
       };
 
       for (const rawVerifiedSkill of verifiedSkillsInput) {
@@ -110,7 +127,7 @@ class VerificationService {
             continue;
           }
 
-          const { skill_id, skill_name, verified } = normalized;
+          const { skill_id, skill_name, verified, score } = normalized;
 
           // Find competencies that require this skill
           // Note: getCompetenciesBySkill works for leaf skills (MGS) by traversing
@@ -180,12 +197,17 @@ class VerificationService {
               const verifiedSkills = userComp.verifiedSkills || [];
               const existingIndex = verifiedSkills.findIndex(s => s.skill_id === skill_id);
 
-              // Persist only the minimal JSON shape in verifiedSkills
+              // Persist JSON shape in verifiedSkills (includes score if provided)
               const verifiedSkillData = {
                 skill_id,
                 skill_name,
                 verified,
               };
+
+              // Include score if provided (optional field)
+              if (typeof score === 'number' && !isNaN(score)) {
+                verifiedSkillData.score = score;
+              }
 
               if (existingIndex >= 0) {
                 verifiedSkills[existingIndex] = verifiedSkillData;

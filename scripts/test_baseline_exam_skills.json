@@ -1,0 +1,13 @@
+{
+  "requester_service": "assessment-service",
+  "payload": {
+    "action": "fetch-baseline-skills",
+    "competency_name": "react"
+  },
+  "response": {
+    "status": "success",
+    "message": "",
+    "data": {}
+  }
+}
+
