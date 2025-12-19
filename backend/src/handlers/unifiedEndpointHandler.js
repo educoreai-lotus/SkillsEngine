@@ -150,9 +150,10 @@ class UnifiedEndpointHandler {
       }
 
       // Step 4: Call handler
-      const result = await handler.process(payload, responseTemplate, {
+      /* const result = await handler.process(payload, responseTemplate, {
         aiQueryBuilder: aiQueryBuilderService
-      });
+      }); */
+      const result = await handler.process(payload, responseTemplate);
 
       // Step 5: Store result directly in response
       // Result should be a JSON object, not a double-stringified blob.

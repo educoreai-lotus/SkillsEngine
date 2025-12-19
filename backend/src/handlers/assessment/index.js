@@ -198,6 +198,8 @@ class AssessmentHandler {
         console.log(
           '[AssessmentHandler.handleBaselineExamSkillsRequest] Final list of skills retrieved from database for baseline exam',
           {
+            action,
+            user_id,
             competency_name,
             competency_id: competency?.competency_id || 'N/A',
             skills_count: skills.length,
@@ -208,11 +210,25 @@ class AssessmentHandler {
           }
         );
 
-        return {
+        // Build response object with skills list
+        // Response only includes competency_name and skills array
+        const response = {
           ...(responseTemplate || {}),
           competency_name,
           skills
         };
+
+        // Log response being sent back to Assessment MS
+        console.log(
+          '[AssessmentHandler.handleBaselineExamSkillsRequest] Sending response back to Assessment MS',
+          {
+            competency_name,
+            skills_count: skills.length,
+            response_keys: Object.keys(response)
+          }
+        );
+
+        return response;
       } catch (err) {
         console.error(
           '[AssessmentHandler.handleBaselineExamSkillsRequest] Error fetching MGS by competency_name',

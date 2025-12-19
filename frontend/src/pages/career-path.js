@@ -42,12 +42,13 @@ export default function CareerPathPage() {
 
     const searchParams = new URLSearchParams(window.location.search);
     const extractedCompanyId = searchParams.get('company_id');
-    const extractedLearnerId = searchParams.get('learnerId');
+    // Support both learnerId (camelCase) and learner_id (snake_case) for compatibility
+    const extractedLearnerId = searchParams.get('learnerId') || searchParams.get('learner_id');
 
     // Validate that learnerId exists
     if (!extractedLearnerId) {
-      console.error('learnerId is required in URL parameters');
-      setError('learnerId is required in URL parameters. Please provide a valid learner ID.');
+      console.error('learnerId or learner_id is required in URL parameters');
+      setError('learnerId or learner_id is required in URL parameters. Please provide a valid learner ID.');
       setLoading(false);
       return;
     }

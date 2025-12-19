@@ -14,6 +14,7 @@ const competencyRepository = require('../repositories/competencyRepository');
 const gapAnalysisService = require('./gapAnalysisService');
 const learnerAIMSClient = require('./learnerAIMSClient');
 const directoryMSClient = require('./directoryMSClient');
+const userService = require('./userService');
 
 class VerificationService {
   /**
@@ -31,14 +32,27 @@ class VerificationService {
 
     // Check examResults first, then options, else null
     // Note: Baseline exams don't have courseName
-    const examStatus = examResults?.exam_status || examResults?.examStatus || optionsExamStatus || null;
     const finalGrade = examResults?.final_grade || examResults?.finalGrade || null;
+    const examId = examResults?.exam_id || examResults?.examId || null;
+    const passingGrade = examResults?.passing_grade || examResults?.passingGrade || null;
+    const passed = examResults?.passed;
 
-    // Log final grade if provided
-    if (finalGrade !== null && typeof finalGrade === 'number') {
+    // Convert passed boolean to examStatus string for compatibility
+    const examStatus = typeof passed === 'boolean' ? (passed ? 'passed' : 'failed') : null;
+
+    // Log exam metadata if provided
+    if (examId || finalGrade !== null || passingGrade !== null) {
       console.log(
-        '[VerificationService.processBaselineExamResults] Exam final grade received',
-        { userId, examType, finalGrade }
+        '[VerificationService.processBaselineExamResults] Exam metadata received',
+        {
+          userId,
+          examType,
+          examId,
+          finalGrade,
+          passingGrade,
+          passed,
+          examStatus
+        }
       );
     }
 
@@ -57,24 +71,21 @@ class VerificationService {
       const updatedCompetencies = new Set();
 
       // Helper: normalize a single verified skill coming from Assessment MS
-      // Accepted input formats (for backward compatibility):
-      //   - { skill_id, skill_name, status: "pass" | "fail", score: number }
-      //   - { skill_id, skill_name, verified: true | false, score: number }
+      // Accepted input format:
+      //   - { skill_id, skill_name, status: "acquired" | "failed", score: number }
       // We normalize to JSON shape: { skill_id, skill_name, verified, score? }
-      // and only persist leaf / MGS skills with status "pass" / verified === true.
+      // and only persist leaf / MGS skills with status "acquired".
       const normalizeVerifiedSkill = async (rawSkill) => {
         if (!rawSkill || !rawSkill.skill_id) {
           return null;
         }
 
-        const { skill_id, skill_name, score } = rawSkill;
+        const { skill_id, skill_name } = rawSkill;
 
-        // Determine pass/fail status from either "status" string or "verified" boolean
+        // Determine status from "status" string (values: "acquired" or "failed")
         let skillStatus = null;
         if (typeof rawSkill.status === 'string') {
           skillStatus = rawSkill.status.toLowerCase().trim();
-        } else if (typeof rawSkill.verified === 'boolean') {
-          skillStatus = rawSkill.verified ? 'pass' : 'fail';
         }
 
         // If we still don't know the status, skip this entry
@@ -82,9 +93,9 @@ class VerificationService {
           return null;
         }
 
-        // Only process MGS that are effectively "pass"
-        if (skillStatus !== 'pass') {
-          return null; // Skip skills that did not pass
+        // Only process MGS that are effectively "acquired"
+        if (skillStatus !== 'acquired') {
+          return null; // Skip skills that are "failed" or have invalid status
         }
 
         // Ensure we only persist MGS / leaf skills in verifiedSkills
@@ -107,7 +118,7 @@ class VerificationService {
         const normalized = {
           skill_id,
           skill_name,
-          verified: true // Only MGS with status "pass" are added
+          verified: true // Only MGS with status "acquired" are added
         };
 
         // Include score if provided (optional field)
@@ -127,7 +138,7 @@ class VerificationService {
             continue;
           }
 
-          const { skill_id, skill_name, verified, score } = normalized;
+          const { skill_id, skill_name, score, verified } = normalized;
 
           // Find competencies that require this skill
           // Note: getCompetenciesBySkill works for leaf skills (MGS) by traversing
@@ -287,10 +298,27 @@ class VerificationService {
 
       let gapAnalysis = null;
       try {
+        // Get user name and career path for gap analysis context
+        let userName = null;
+        let careerPath = null;
+        try {
+          const userProfile = await userService.getUserProfile(userId);
+          const user = userProfile?.user || userProfile;
+          userName = user?.user_name || null;
+          careerPath = user?.path_career || user?.career_path_goal || null;
+        } catch (err) {
+          console.warn(
+            '[VerificationService.processBaselineExamResults] Error fetching user profile for gap analysis context',
+            { userId, error: err.message }
+          );
+          // Continue without user name/career path if fetch fails
+        }
+
         gapAnalysis = await this.runGapAnalysis(userId, updatedCompetencies, {
           examType,
           examStatus,
-          courseName: null // Baseline exams don't have courseName
+          courseName: careerPath,
+          userName
         });
       } catch (err) {
         console.error(
@@ -337,7 +365,7 @@ class VerificationService {
    */
   async processPostCourseExamResults(userId, examResults) {
     // Post-course exam includes course_name, exam_type, exam_status
-    // skills array (or verified_skills) only contains skills with status "pass" (failed skills are not included)
+    // skills array (or verified_skills) only contains skills with status "acquired" (failed skills are not included)
     // The processing logic is the same as baseline, but we log the course info
     const { course_name, exam_type, exam_status } = examResults || {};
     const verified_skills =
@@ -360,7 +388,7 @@ class VerificationService {
     // - Baseline exam       -> broad (full career path)
     // - Post-course PASS    -> broad (full career path)
     // - Post-course FAIL    -> narrow (course-specific competency/competencies)
-    // Note: verified_skills should only contain skills with status "pass"
+    // Note: verified_skills should only contain skills with status "acquired"
     return await this.processBaselineExamResults(userId, examResults || {}, {
       examType: 'post-course',
       examStatus: exam_status,
@@ -377,7 +405,7 @@ class VerificationService {
    *
    * @param {string} userId - User ID
    * @param {Set<string>} updatedCompetencies - Set of competency IDs updated from this exam
-   * @param {Object} context - { examType, examStatus, courseName }
+   * @param {Object} context - { examType, examStatus, courseName, competency_target_name, userName, careerPath }
    * @returns {Promise<Object>} Gap analysis metadata and results
    */
   async runGapAnalysis(userId, updatedCompetencies, context = {}) {
@@ -400,7 +428,7 @@ class VerificationService {
     // - Post-course PASS     -> Broad (career path competencies)
     // - Post-course FAIL     -> Narrow (updated competencies only)
     let analysisType = 'broad';
-    if (normalizedExamType === 'post-course' && normalizedExamStatus === 'fail') {
+    if (normalizedExamType === 'post-course' && normalizedExamStatus === 'failed') {
       analysisType = 'narrow';
     }
 
@@ -468,11 +496,13 @@ class VerificationService {
             gaps: serializedGaps
           }
         );
+        // Use competency_target_name if provided, otherwise fall back to courseName
+        const targetName = context.competency_target_name || courseName;
         await learnerAIMSClient.sendGapAnalysis(
           userId,
           gaps,
           analysisType,
-          courseName,
+          targetName,
           normalizedExamStatus
         );
       } else {
@@ -494,6 +524,7 @@ class VerificationService {
       exam_type: normalizedExamType,
       exam_status: normalizedExamStatus,
       course_name: courseName,
+      competency_target_name: context.competency_target_name || courseName,
       gaps
     };
   }
