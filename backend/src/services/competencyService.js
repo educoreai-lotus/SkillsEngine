@@ -190,7 +190,18 @@ class CompetencyService {
 
     // Generate skill tree using AI
     console.log(`[CompetencyService.generateAndLinkSkillTree] Generating skill tree for competency: ${competency.competency_name}`);
-    const skillTree = await aiService.generateSkillTreeForCompetency(competency.competency_name);
+    let skillTree;
+    try {
+      skillTree = await aiService.generateSkillTreeForCompetency(competency.competency_name);
+    } catch (err) {
+      console.error(`[CompetencyService.generateAndLinkSkillTree] AI service error:`, {
+        error: err.message,
+        stack: err.stack,
+        competency_id: competency.competency_id,
+        competency_name: competency.competency_name
+      });
+      throw err;
+    }
 
     // Validate skill tree structure
     if (!skillTree || typeof skillTree !== 'object') {
@@ -327,6 +338,8 @@ class CompetencyService {
    * If the competency doesn't exist, it will be created automatically as a core-competency
    * and a skill tree will be generated for it.
    * @param {string} competencyName - Competency name
+   * @param {Object} options - Options
+   * @param {boolean} options.autoGenerateSkillTree - Whether to auto-generate skill tree if none exists (default: true)
    * @returns {Promise<Array>} Array of MGS skill objects
    */
   async getRequiredMGSByName(competencyName) {
@@ -363,22 +376,42 @@ class CompetencyService {
       }
     }
 
-    // Check if it's a leaf node with no skills, then generate skill tree
+    // Check if it's a leaf node with no skills, then generate skill tree (if enabled)
     const children = await competencyRepository.findChildren(competency.competency_id);
     const linkedSkills = await competencyRepository.getLinkedSkills(competency.competency_id);
 
-    // If no skills linked and this is a leaf node, generate skill tree
+    // If no skills linked and this is a leaf node, generate skill tree (if auto-generation is enabled)
     if ((!linkedSkills || linkedSkills.length === 0) && (!children || children.length === 0)) {
-      console.log(`[CompetencyService.getRequiredMGSByName] Leaf competency ${competency.competency_id} has no skills; generating skill tree`);
-      try {
-        await this.generateAndLinkSkillTree(competency.competency_id);
-      } catch (err) {
-        console.error(`[CompetencyService.getRequiredMGSByName] Failed to generate skill tree for competency ${competency.competency_id}:`, err.message);
+      if (autoGenerateSkillTree) {
+        console.log(`[CompetencyService.getRequiredMGSByName] Leaf competency ${competency.competency_id} has no skills; auto-generating skill tree`);
+        try {
+          await this.generateAndLinkSkillTree(competency.competency_id);
+        } catch (err) {
+          console.error(`[CompetencyService.getRequiredMGSByName] Failed to generate skill tree for competency ${competency.competency_id}:`, {
+            error: err.message,
+            stack: err.stack,
+            competency_id: competency.competency_id,
+            competency_name: competency.competency_name
+          });
+          // Don't throw - continue to try to get MGS even if skill tree generation failed
+        }
+      } else {
+        console.log(`[CompetencyService.getRequiredMGSByName] Leaf competency ${competency.competency_id} has no skills; auto-generation disabled, returning empty array`);
       }
     }
 
     // Get MGS
-    return this.getRequiredMGS(competency.competency_id);
+    try {
+      return await this.getRequiredMGS(competency.competency_id);
+    } catch (err) {
+      console.error(`[CompetencyService.getRequiredMGSByName] Failed to get required MGS for competency ${competency.competency_id}:`, {
+        error: err.message,
+        stack: err.stack,
+        competency_id: competency.competency_id,
+        competency_name: competency.competency_name
+      });
+      throw err;
+    }
   }
 
   /**

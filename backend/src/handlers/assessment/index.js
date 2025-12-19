@@ -198,8 +198,6 @@ class AssessmentHandler {
         console.log(
           '[AssessmentHandler.handleBaselineExamSkillsRequest] Final list of skills retrieved from database for baseline exam',
           {
-            action,
-            user_id,
             competency_name,
             competency_id: competency?.competency_id || 'N/A',
             skills_count: skills.length,
