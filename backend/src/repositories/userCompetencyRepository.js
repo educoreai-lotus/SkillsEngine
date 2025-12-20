@@ -167,6 +167,42 @@ class UserCompetencyRepository {
   }
 
   /**
+   * Find user competencies for a user and multiple competency IDs (batch query)
+   * @param {string} userId - User ID
+   * @param {string[]} competencyIds - Array of competency IDs
+   * @returns {Promise<Map<string, UserCompetency>>} Map of competency_id -> UserCompetency
+   */
+  async findByUserAndCompetencies(userId, competencyIds) {
+    if (!Array.isArray(competencyIds) || competencyIds.length === 0) {
+      return new Map();
+    }
+
+    const { data, error } = await this.getClient()
+      .from('usercompetency')
+      .select(`
+        user_id,
+        competency_id,
+        coverage_percentage,
+        proficiency_level,
+        verifiedskills,
+        created_at,
+        updated_at,
+        competencies (competency_name)
+      `)
+      .eq('user_id', userId)
+      .in('competency_id', competencyIds);
+
+    if (error) throw error;
+
+    const map = new Map();
+    (data || []).forEach(row => {
+      const userComp = new UserCompetency(row);
+      map.set(row.competency_id, userComp);
+    });
+    return map;
+  }
+
+  /**
    * Update a user competency
    * @param {string} userId - User ID
    * @param {string} competencyId - Competency ID

@@ -640,16 +640,18 @@ class VerificationService {
       return await this.calculateCoverage(userId, parentCompetencyId);
     }
 
+    // Batch fetch all user competencies for children in a single query
+    const childCompetencyIds = childCompetencies.map(c => c.competency_id);
+    const childUserCompsMap = await userCompetencyRepository.findByUserAndCompetencies(userId, childCompetencyIds);
+
     // Aggregate coverage from all child competencies
     let totalRequiredMGS = 0;
     let totalVerifiedMGS = 0;
 
+    // Process all children (can be parallelized if needed, but sequential is fine for now)
     for (const child of childCompetencies) {
       const childRequiredMGS = await competencyService.getRequiredMGS(child.competency_id);
-      const childUserComp = await userCompetencyRepository.findByUserAndCompetency(
-        userId,
-        child.competency_id
-      );
+      const childUserComp = childUserCompsMap.get(child.competency_id);
 
       if (childUserComp) {
         totalRequiredMGS += childRequiredMGS.length;
@@ -674,20 +676,37 @@ class VerificationService {
    * Traverses up the hierarchy and updates all parent competencies if user owns them
    * @param {string} userId - User ID
    * @param {string} childCompetencyId - Child competency ID that was just updated
+   * @param {Set<string>} visited - Set of already visited competency IDs (to prevent duplicate updates)
    * @returns {Promise<void>}
    */
-  async updateParentCompetencies(userId, childCompetencyId) {
+  async updateParentCompetencies(userId, childCompetencyId, visited = new Set()) {
     try {
+      // Prevent infinite loops and duplicate updates
+      if (visited.has(childCompetencyId)) {
+        return;
+      }
+      visited.add(childCompetencyId);
+
       // Find all parent competencies (traversing up the hierarchy)
       const parentCompetencies = await competencyRepository.getParentCompetencies(childCompetencyId);
 
+      if (parentCompetencies.length === 0) {
+        return;
+      }
+
+      // Batch fetch all parent user competencies in a single query
+      const parentCompetencyIds = parentCompetencies.map(p => p.competency_id);
+      const parentUserCompsMap = await userCompetencyRepository.findByUserAndCompetencies(userId, parentCompetencyIds);
+
       // Update each parent competency (create if user doesn't own it yet)
       for (const parent of parentCompetencies) {
+        // Skip if already visited (shouldn't happen, but safety check)
+        if (visited.has(parent.competency_id)) {
+          continue;
+        }
+
         // Check if user owns this parent competency
-        let parentUserComp = await userCompetencyRepository.findByUserAndCompetency(
-          userId,
-          parent.competency_id
-        );
+        let parentUserComp = parentUserCompsMap.get(parent.competency_id);
 
         // If user doesn't own parent, create it
         if (!parentUserComp) {
@@ -734,8 +753,8 @@ class VerificationService {
           }
         );
 
-        // Recursively update grandparents (if any)
-        await this.updateParentCompetencies(userId, parent.competency_id);
+        // Recursively update grandparents (if any) - pass visited set to prevent duplicates
+        await this.updateParentCompetencies(userId, parent.competency_id, visited);
       }
     } catch (error) {
       // Log error but don't fail the entire process
