@@ -43,8 +43,12 @@ RULES:
      - "elif statement"
      - "else statement"
 
-10. Generate 2-4 L2 skills per competency, each with 1-2 L3 skills (subskills/microskills), 
-    each with 1-2 MGS skills (nanoskills). Keep the tree compact and focused on essential skills only.
+10. **STRICT LIMITS**: Generate EXACTLY 2-3 L2 skills per competency. Each L2 skill should have:
+    - EITHER: 1-2 Subskills (L3), each with 1-2 Nanoskills (MGS) directly
+    - OR: 1-2 Microskills (L3), each with 1-2 Nanoskills (MGS) directly
+    - Do NOT use both Subskills AND Microskills in the same branch - choose one path only
+    - Maximum total MGS (Nanoskills): 12 skills (aim for 6-10 MGS total)
+    - Keep the tree compact and focused on essential skills only
 
 11. **All skill names must be in lowercase** (e.g., "react hooks", "useState hook", "state management").
 
