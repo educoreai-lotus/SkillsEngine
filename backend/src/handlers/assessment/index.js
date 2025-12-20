@@ -49,6 +49,11 @@ class AssessmentHandler {
 
       const { user_id, exam_type, action } = payload;
 
+      // Normalize exam_type (handle "postcourse" -> "post-course")
+      const normalizedExamType = exam_type && typeof exam_type === 'string'
+        ? exam_type.toLowerCase().trim().replace(/^postcourse$/, 'post-course')
+        : exam_type;
+
       // Validate user_id early - must be present, not null, and valid UUID format
       if (user_id === null || user_id === undefined || user_id === '') {
         return {
@@ -151,17 +156,25 @@ class AssessmentHandler {
         };
       }
 
+      // Normalize course_name (trim and convert empty string to null)
+      if (exam_results && exam_results.course_name !== undefined) {
+        const trimmedCourseName = typeof exam_results.course_name === 'string'
+          ? exam_results.course_name.trim() || null
+          : exam_results.course_name;
+        exam_results.course_name = trimmedCourseName;
+      }
+
       // Process exam results
       let result;
-      if (exam_type === 'baseline') {
+      if (normalizedExamType === 'baseline') {
         result = await verificationService.processBaselineExamResults(user_id, exam_results);
-      } else if (exam_type === 'post-course') {
+      } else if (normalizedExamType === 'post-course') {
         result = await verificationService.processPostCourseExamResults(user_id, exam_results);
       } else {
         return {
           ...(responseTemplate || {}),
           answer: {
-            message: 'Invalid exam_type. Must be "baseline" or "post-course"'
+            message: `Invalid exam_type: "${exam_type}". Must be "baseline" or "post-course" (or "postcourse")`
           }
         };
       }
