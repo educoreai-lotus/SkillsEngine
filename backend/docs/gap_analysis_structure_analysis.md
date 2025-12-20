@@ -175,3 +175,4 @@ Instead of:
    - Missing skills from ReactJS and NodeJS
    - Should show "ReactJS" and "NodeJS", not "Fullstack"
 
+

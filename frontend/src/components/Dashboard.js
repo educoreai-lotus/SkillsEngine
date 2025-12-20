@@ -64,12 +64,11 @@ export default function Dashboard({ userId }) {
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
       <Header
-        user={user}
         isDarkMode={isDarkMode}
         setIsDarkMode={setIsDarkMode}
       />
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8" style={{ paddingTop: '96px' }}>
         {/* Error / empty states */}
         {error && (
           <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800 rounded-2xl px-6 py-4 text-red-700 dark:text-red-400 text-sm animate-slide-down">

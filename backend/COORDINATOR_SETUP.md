@@ -214,3 +214,4 @@ Before enabling Coordinator integration in production:
 - **Microservice Integration:** `docs/step_3_feature_specifications.md` (Section 8)
 - **Directory MS Profile Structure:** `docs/directory_ms_profile_structure.md`
 
+

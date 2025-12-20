@@ -89,11 +89,6 @@ export default function CareerPathPage() {
   const [careerPathsLoading, setCareerPathsLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
 
-  // Create a user object for the Header component
-  const headerUser = {
-    user_name: userName || 'HR User',
-    employee_type: 'trainer'
-  };
 
   // Fetch career paths for the learner
   // Domain rule: All career path APIs operate on the learner (learnerId), never the company
@@ -186,11 +181,10 @@ export default function CareerPathPage() {
         </Head>
         <div className={`min-h-screen ${isDarkMode ? 'dark bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
           <Header
-            user={headerUser}
             isDarkMode={isDarkMode}
             setIsDarkMode={setIsDarkMode}
           />
-          <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]" style={{ paddingTop: '96px' }}>
             <div className="max-w-md mx-auto px-4 text-center">
               <div className="glass dark:glass-dark rounded-xl p-8 shadow-lg dark:shadow-slate-900/50">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 dark:text-red-400 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
@@ -217,11 +211,10 @@ export default function CareerPathPage() {
     return (
       <div className={`min-h-screen ${isDarkMode ? 'dark bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
         <Header
-          user={headerUser}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
         />
-        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+        <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]" style={{ paddingTop: '96px' }}>
           <div className="text-lg font-medium text-slate-900 dark:text-slate-50">Loading...</div>
         </div>
       </div>
@@ -238,11 +231,10 @@ export default function CareerPathPage() {
         </Head>
         <div className={`min-h-screen ${isDarkMode ? 'dark bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
           <Header
-            user={headerUser}
             isDarkMode={isDarkMode}
             setIsDarkMode={setIsDarkMode}
           />
-          <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+          <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]" style={{ paddingTop: '96px' }}>
             <div className="max-w-md mx-auto px-4 text-center">
               <div className="glass dark:glass-dark rounded-xl p-8 shadow-lg dark:shadow-slate-900/50">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 dark:text-red-400 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
@@ -271,14 +263,13 @@ export default function CareerPathPage() {
         <title>Career Path - Skills Engine</title>
       </Head>
 
-      <div className={`min-h-screen ${isDarkMode ? 'dark bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
-        <Header
-          user={headerUser}
-          isDarkMode={isDarkMode}
-          setIsDarkMode={setIsDarkMode}
-        />
+        <div className={`min-h-screen ${isDarkMode ? 'dark bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'}`}>
+          <Header
+            isDarkMode={isDarkMode}
+            setIsDarkMode={setIsDarkMode}
+          />
 
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-8" style={{ paddingTop: '96px' }}>
           {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50">

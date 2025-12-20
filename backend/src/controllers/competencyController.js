@@ -32,7 +32,7 @@ class CompetencyController {
     try {
       const { competencyId } = req.params;
       const competency = await competencyService.getCompetencyById(competencyId);
-      
+
       if (!competency) {
         return res.status(404).json({ success: false, error: 'Competency not found' });
       }
@@ -95,7 +95,7 @@ class CompetencyController {
     try {
       const { competencyId } = req.params;
       const competency = await competencyService.updateCompetency(competencyId, req.body);
-      
+
       if (!competency) {
         return res.status(404).json({ success: false, error: 'Competency not found' });
       }
@@ -114,7 +114,7 @@ class CompetencyController {
     try {
       const { competencyId } = req.params;
       const deleted = await competencyService.deleteCompetency(competencyId);
-      
+
       if (!deleted) {
         return res.status(404).json({ success: false, error: 'Competency not found' });
       }
