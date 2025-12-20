@@ -274,10 +274,20 @@ class AssessmentHandler {
 
         const mgs = await competencyService.getRequiredMGSByName(competency_name);
 
-        const skills = mgs.map(skill => ({
-          skill_id: skill.skill_id,
-          skill_name: skill.skill_name
-        }));
+        // Map MGS to skills array, ensuring both skill_id and skill_name are included
+        const skills = mgs.map(skill => {
+          if (!skill || !skill.skill_id) {
+            console.warn(
+              '[AssessmentHandler.handleBaselineExamSkillsRequest] MGS skill missing skill_id',
+              { skill }
+            );
+            return null;
+          }
+          return {
+            skill_id: skill.skill_id,
+            skill_name: skill.skill_name || skill.skillName || 'Unknown'
+          };
+        }).filter(s => s !== null); // Remove any null entries
 
         // Log the final list of skills retrieved from database (log summary to avoid formatting issues)
         const logData = {
@@ -300,14 +310,18 @@ class AssessmentHandler {
           }
         };
 
-        // Log response being sent back to Assessment MS
+        // Log response being sent back to Assessment MS (include full skills with IDs)
         console.log(
           '[AssessmentHandler.handleBaselineExamSkillsRequest] Sending response back to Assessment MS',
-          {
+          JSON.stringify({
             competency_name,
             skills_count: skills.length,
+            skills: skills.map(s => ({
+              skill_id: s.skill_id,
+              skill_name: s.skill_name
+            })),
             response_keys: Object.keys(response)
-          }
+          }, null, 2)
         );
 
         return response;
