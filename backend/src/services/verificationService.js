@@ -683,11 +683,16 @@ class VerificationService {
     try {
       // Prevent infinite loops and duplicate updates
       if (visited.has(childCompetencyId)) {
+        console.log(
+          '[VerificationService.updateParentCompetencies] Skipping already visited competency',
+          { childCompetencyId, visited: Array.from(visited) }
+        );
         return;
       }
       visited.add(childCompetencyId);
 
       // Find all parent competencies (traversing up the hierarchy)
+      // Note: getParentCompetencies returns ALL parents in the chain (immediate, grandparent, etc.)
       const parentCompetencies = await competencyRepository.getParentCompetencies(childCompetencyId);
 
       if (parentCompetencies.length === 0) {
@@ -698,12 +703,20 @@ class VerificationService {
       const parentCompetencyIds = parentCompetencies.map(p => p.competency_id);
       const parentUserCompsMap = await userCompetencyRepository.findByUserAndCompetencies(userId, parentCompetencyIds);
 
-      // Update each parent competency (create if user doesn't own it yet)
+      // Process parents from bottom to top (immediate parent first, then grandparents)
+      // Since getParentCompetencies already returns ALL parents in the chain,
+      // we process them all in one pass without recursion
       for (const parent of parentCompetencies) {
-        // Skip if already visited (shouldn't happen, but safety check)
+        // Mark as visited BEFORE processing to prevent duplicate processing
+        // This is critical because the same parent might be reached via different paths
         if (visited.has(parent.competency_id)) {
+          console.log(
+            '[VerificationService.updateParentCompetencies] Skipping already processed parent',
+            { parent_competency_id: parent.competency_id, parent_competency_name: parent.competency_name }
+          );
           continue;
         }
+        visited.add(parent.competency_id);
 
         // Check if user owns this parent competency
         let parentUserComp = parentUserCompsMap.get(parent.competency_id);
@@ -752,9 +765,6 @@ class VerificationService {
             proficiency_level: parentProficiencyLevel
           }
         );
-
-        // Recursively update grandparents (if any) - pass visited set to prevent duplicates
-        await this.updateParentCompetencies(userId, parent.competency_id, visited);
       }
     } catch (error) {
       // Log error but don't fail the entire process

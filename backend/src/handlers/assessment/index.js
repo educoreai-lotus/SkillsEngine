@@ -279,18 +279,16 @@ class AssessmentHandler {
           skill_name: skill.skill_name
         }));
 
-        // Log the final list of skills retrieved from database
+        // Log the final list of skills retrieved from database (log summary to avoid formatting issues)
+        const logData = {
+          competency_name,
+          competency_id: competency?.competency_id || 'N/A',
+          skills_count: skills.length,
+          skill_names: skills.map(s => s.skill_name)
+        };
         console.log(
-          '[AssessmentHandler.handleBaselineExamSkillsRequest] Final list of skills retrieved from database for baseline exam',
-          {
-            competency_name,
-            competency_id: competency?.competency_id || 'N/A',
-            skills_count: skills.length,
-            skills: skills.map(s => ({
-              skill_id: s.skill_id,
-              skill_name: s.skill_name
-            }))
-          }
+          '[AssessmentHandler.handleBaselineExamSkillsRequest] Final list of skills retrieved from database for baseline exam:',
+          JSON.stringify(logData, null, 2)
         );
 
         // Build response object with skills list wrapped in answer field
