@@ -75,6 +75,7 @@ class VerificationService {
       //   - { skill_id, skill_name, status: "acquired" | "failed", score: number }
       // We normalize to JSON shape: { skill_id, skill_name, verified, score? }
       // and only persist leaf / MGS skills with status "acquired".
+      console.log("test tset");
       const normalizeVerifiedSkill = async (rawSkill) => {
         if (!rawSkill || !rawSkill.skill_id) {
           return null;
