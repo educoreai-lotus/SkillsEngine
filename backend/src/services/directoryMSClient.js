@@ -26,6 +26,12 @@ async function sendInitialProfile(userId, profile) {
     response: {}
   };
 
+  // Log request body before sending
+  console.log(
+    '[DirectoryMSClient.sendInitialProfile] Sending POST request to Directory MS',
+    JSON.stringify(envelope, null, 2)
+  );
+
   // Use default unified endpoint /api/fill-content-metrics/
   return coordinatorClient.post(envelope);
 }
@@ -48,6 +54,12 @@ async function sendUpdatedProfile(userId, profile) {
     response: {}
   };
 
+  // Log request body before sending
+  console.log(
+    '[DirectoryMSClient.sendUpdatedProfile] Sending POST request to Directory MS',
+    JSON.stringify(envelope, null, 2)
+  );
+
   // Use default unified endpoint /api/fill-content-metrics/
   return coordinatorClient.post(envelope);
 }
@@ -66,6 +78,12 @@ async function getUserData(userId) {
     },
     response: {}
   };
+
+  // Log request body before sending
+  console.log(
+    '[DirectoryMSClient.getUserData] Sending POST request to Directory MS',
+    JSON.stringify(envelope, null, 2)
+  );
 
   // Use default unified endpoint /api/fill-content-metrics/
   return coordinatorClient.post(envelope);

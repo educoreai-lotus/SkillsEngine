@@ -64,6 +64,12 @@ async function sendGapAnalysis(userId, gap, analysisType, courseName = null, exa
     response: {}
   };
 
+  // Log request body before sending
+  console.log(
+    '[LearnerAIMSClient.sendGapAnalysis] Sending POST request to Learner AI MS',
+    JSON.stringify(envelope, null, 2)
+  );
+
   // Use default unified endpoint /api/fill-content-metrics/
   // Default timeout is now 5 minutes (300 seconds) for all Coordinator requests
   try {

@@ -6,6 +6,21 @@
 
 const verificationService = require('../../services/verificationService');
 
+/**
+ * Validate UUID format
+ * @param {string} uuid - UUID string to validate
+ * @returns {boolean} True if valid UUID format
+ */
+function isValidUUID(uuid) {
+  if (typeof uuid !== 'string') {
+    return false;
+  }
+  // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  // where x is any hexadecimal digit and y is one of 8, 9, A, or B
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
 class AssessmentHandler {
   /**
    * Process Assessment MS request
@@ -33,6 +48,26 @@ class AssessmentHandler {
       );
 
       const { user_id, exam_type, action } = payload;
+
+      // Validate user_id early - must be present, not null, and valid UUID format
+      if (user_id === null || user_id === undefined || user_id === '') {
+        return {
+          ...(responseTemplate || {}),
+          answer: {
+            error: 'user_id is required and cannot be null or empty'
+          }
+        };
+      }
+
+      // Validate user_id is a valid UUID format
+      if (!isValidUUID(user_id)) {
+        return {
+          ...(responseTemplate || {}),
+          answer: {
+            error: 'user_id must be a valid UUID format'
+          }
+        };
+      }
 
       // Action: request_baseline_exam_skills
       // Assessment MS requests the list of skills for baseline exam creation
@@ -76,12 +111,22 @@ class AssessmentHandler {
         }
       }
 
-      // Validate user_id explicitly
-      if (!user_id) {
+      // Validate user_id explicitly (redundant check, but kept for safety)
+      if (user_id === null || user_id === undefined || user_id === '') {
         return {
           ...(responseTemplate || {}),
           answer: {
-            error: 'user_id is required'
+            error: 'user_id is required and cannot be null or empty'
+          }
+        };
+      }
+
+      // Validate user_id is a valid UUID format (redundant check, but kept for safety)
+      if (!isValidUUID(user_id)) {
+        return {
+          ...(responseTemplate || {}),
+          answer: {
+            error: 'user_id must be a valid UUID format'
           }
         };
       }
