@@ -624,34 +624,67 @@ class VerificationService {
       // Find all parent competencies (traversing up the hierarchy)
       const parentCompetencies = await competencyRepository.getParentCompetencies(childCompetencyId);
 
-      // Update each parent competency if user owns it
+      // Update each parent competency (create if user doesn't own it yet)
       for (const parent of parentCompetencies) {
         // Check if user owns this parent competency
-        const parentUserComp = await userCompetencyRepository.findByUserAndCompetency(
+        let parentUserComp = await userCompetencyRepository.findByUserAndCompetency(
           userId,
           parent.competency_id
         );
 
-        if (parentUserComp) {
-          // Recalculate parent coverage by aggregating from all child competencies
-          const parentCoverage = await this.calculateParentCoverage(userId, parent.competency_id);
-          const parentProficiencyLevel = this.mapCoverageToProficiency(parentCoverage);
-
-          // Update parent userCompetency
-          await userCompetencyRepository.update(userId, parent.competency_id, {
-            coverage_percentage: parentCoverage,
-            proficiency_level: parentProficiencyLevel
-          });
-
-          // Recursively update grandparents (if any)
-          await this.updateParentCompetencies(userId, parent.competency_id);
+        // If user doesn't own parent, create it
+        if (!parentUserComp) {
+          try {
+            parentUserComp = await userCompetencyRepository.create({
+              user_id: userId,
+              competency_id: parent.competency_id,
+              coverage_percentage: 0.00,
+              proficiency_level: 'undefined',
+              verifiedSkills: []
+            });
+            console.log(
+              '[VerificationService.updateParentCompetencies] Created parent userCompetency',
+              { userId, parent_competency_id: parent.competency_id, parent_competency_name: parent.competency_name }
+            );
+          } catch (err) {
+            console.error(
+              '[VerificationService.updateParentCompetencies] Error creating parent userCompetency',
+              { userId, parent_competency_id: parent.competency_id, error: err.message }
+            );
+            // Continue to next parent if creation fails
+            continue;
+          }
         }
+
+        // Recalculate parent coverage by aggregating from all child competencies
+        const parentCoverage = await this.calculateParentCoverage(userId, parent.competency_id);
+        const parentProficiencyLevel = this.mapCoverageToProficiency(parentCoverage);
+
+        // Update parent userCompetency
+        await userCompetencyRepository.update(userId, parent.competency_id, {
+          coverage_percentage: parentCoverage,
+          proficiency_level: parentProficiencyLevel
+        });
+
+        console.log(
+          '[VerificationService.updateParentCompetencies] Updated parent competency',
+          {
+            userId,
+            parent_competency_id: parent.competency_id,
+            parent_competency_name: parent.competency_name,
+            coverage: parentCoverage,
+            proficiency_level: parentProficiencyLevel
+          }
+        );
+
+        // Recursively update grandparents (if any)
+        await this.updateParentCompetencies(userId, parent.competency_id);
       }
     } catch (error) {
       // Log error but don't fail the entire process
       console.error(
         '[VerificationService.updateParentCompetencies] Error updating parent competencies',
-        { userId, childCompetencyId, error: error.message }
+        { userId, childCompetencyId, error: error.message, stack: error.stack }
       );
     }
   }
@@ -675,34 +708,82 @@ class VerificationService {
         };
       }
 
-      // Build competency hierarchy
+      // Build competency hierarchy (similar to buildInitialProfile)
+      // Include parent competencies in hierarchy even if user doesn't own them directly
       const nodes = new Map();
 
-      for (const userComp of userCompetencies) {
-        const competency = await competencyRepository.findById(userComp.competency_id);
-        if (!competency) continue;
+      // Helper to ensure we have a node for a competency_id (with name loaded once)
+      const ensureNode = async (competencyId) => {
+        if (!competencyId) return null;
+        let node = nodes.get(competencyId);
+        if (node) {
+          return node;
+        }
 
-        // Get parent relationships
-        const parentLinks = await competencyRepository.getParentCompetencies(userComp.competency_id);
-        const parentId = parentLinks.length > 0 ? parentLinks[0].competency_id : null;
+        const competency = await competencyRepository.findById(competencyId);
+        if (!competency) {
+          return null;
+        }
 
-        const node = {
-          competencyId: userComp.competency_id,
+        // Check if user owns this competency
+        const userComp = await userCompetencyRepository.findByUserAndCompetency(userId, competencyId);
+
+        node = {
+          competencyId: competency.competency_id,
           competencyName: competency.competency_name,
-          level: userComp.proficiency_level || 'undefined',
-          coverage: userComp.coverage_percentage || 0,
-          parentId: parentId,
+          level: userComp ? (userComp.proficiency_level || 'undefined') : 'undefined',
+          coverage: userComp ? (userComp.coverage_percentage || 0) : 0,
+          parentId: null,
           children: []
         };
+        nodes.set(competencyId, node);
+        return node;
+      };
 
-        nodes.set(userComp.competency_id, node);
+      // Seed nodes with user-owned competencies
+      for (const userComp of userCompetencies) {
+        if (!userComp) continue;
+
+        const node = await ensureNode(userComp.competency_id);
+        if (!node) continue;
+
+        node.level = userComp.proficiency_level || 'undefined';
+        node.coverage = userComp.coverage_percentage || 0;
+
+        // Walk up the competency_subcompetency chain and attach parents
+        try {
+          const parents = await competencyRepository.getParentCompetencies(userComp.competency_id);
+
+          // parents[0] is the immediate parent, then its parent, etc.
+          let childId = userComp.competency_id;
+          for (const parent of parents) {
+            const parentNode = await ensureNode(parent.competency_id);
+            const childNode = await ensureNode(childId);
+
+            if (parentNode && childNode && !childNode.parentId) {
+              childNode.parentId = parentNode.competencyId;
+            }
+
+            childId = parent.competency_id;
+          }
+        } catch (err) {
+          console.warn(
+            '[VerificationService.buildUpdatedProfilePayload] Failed to load parent competencies',
+            { competency_id: userComp.competency_id, error: err.message }
+          );
+        }
       }
 
-      // Build parent-child relationships
-      for (const [id, node] of nodes.entries()) {
-        if (node.parentId && nodes.has(node.parentId)) {
-          const parent = nodes.get(node.parentId);
-          parent.children.push(node);
+      // Build children arrays based on parentId links
+      for (const node of nodes.values()) {
+        node.children = [];
+      }
+      for (const node of nodes.values()) {
+        if (node.parentId) {
+          const parentNode = nodes.get(node.parentId);
+          if (parentNode) {
+            parentNode.children.push(node);
+          }
         }
       }
 
