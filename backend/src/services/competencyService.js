@@ -251,10 +251,28 @@ class CompetencyService {
 
       // Link L2 skill to competency
       try {
-        await competencyRepository.linkSkill(competencyId, skill.skill_id);
-        stats.skillsLinked++;
+        const linked = await competencyRepository.linkSkill(competencyId, skill.skill_id);
+        if (linked) {
+          stats.skillsLinked++;
+          console.log(`[CompetencyService.generateAndLinkSkillTree] Successfully linked skill to competency`, {
+            competency_id: competencyId,
+            competency_name: competency.competency_name,
+            skill_id: skill.skill_id,
+            skill_name: skill.skill_name
+          });
+        }
       } catch (err) {
-        console.warn(`[CompetencyService.generateAndLinkSkillTree] Failed to link skill ${skill.skill_id} to competency ${competencyId}:`, err.message);
+        console.error(`[CompetencyService.generateAndLinkSkillTree] Failed to link skill ${skill.skill_id} to competency ${competencyId}:`, {
+          error: err.message,
+          stack: err.stack,
+          competency_id: competencyId,
+          competency_name: competency.competency_name,
+          skill_id: skill.skill_id,
+          skill_name: skill.skill_name,
+          error_code: err.code,
+          error_details: err.details
+        });
+        // Don't throw - continue processing other skills
       }
 
       // Process subskills recursively

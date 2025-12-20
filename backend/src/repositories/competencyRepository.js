@@ -356,20 +356,51 @@ class CompetencyRepository {
    */
   async linkSkill(competencyId, skillId) {
     // Check if link already exists
-    const { data: existing } = await this.getClient()
+    const { data: existing, error: checkError } = await this.getClient()
       .from('competency_skill')
       .select('*')
       .eq('competency_id', competencyId)
       .eq('skill_id', skillId)
+      .maybeSingle();
+
+    // If there's an error checking (other than "no rows found"), throw it
+    if (checkError && checkError.code !== 'PGRST116') {
+      throw checkError;
+    }
+
+    // If link already exists, return true
+    if (existing) {
+      console.log(`[CompetencyRepository.linkSkill] Link already exists`, {
+        competency_id: competencyId,
+        skill_id: skillId
+      });
+      return true;
+    }
+
+    // Insert new link
+    const { data: inserted, error: insertError } = await this.getClient()
+      .from('competency_skill')
+      .insert({ competency_id: competencyId, skill_id: skillId })
+      .select()
       .single();
 
-    if (existing) return true;
+    if (insertError) {
+      console.error(`[CompetencyRepository.linkSkill] Failed to insert link`, {
+        competency_id: competencyId,
+        skill_id: skillId,
+        error: insertError.message,
+        error_code: insertError.code,
+        error_details: insertError.details
+      });
+      throw insertError;
+    }
 
-    const { error } = await this.getClient()
-      .from('competency_skill')
-      .insert({ competency_id: competencyId, skill_id: skillId });
+    console.log(`[CompetencyRepository.linkSkill] Successfully created link`, {
+      competency_id: competencyId,
+      skill_id: skillId,
+      inserted_data: inserted
+    });
 
-    if (error) throw error;
     return true;
   }
 
