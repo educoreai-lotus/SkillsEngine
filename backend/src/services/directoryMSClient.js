@@ -89,9 +89,44 @@ async function getUserData(userId) {
   return coordinatorClient.post(envelope);
 }
 
+/**
+ * Send career path competencies to Directory MS via Coordinator
+ * (Called after career path submission to sync chosen competencies)
+ * @param {string} userId - User ID
+ * @param {Array} careerPaths - Array of career path objects from user_career_path table
+ * @returns {Promise<Object>} Response envelope from Coordinator
+ */
+async function sendCareerPathCompetencies(userId, careerPaths) {
+  // Format career paths for Directory MS (only competency_id and competency_name)
+  const competencies = careerPaths.map(cp => ({
+    competency_id: cp.competency_id,
+    competency_name: cp.competency_name || null
+  }));
+
+  const envelope = {
+    requester_service: 'skills-engine-service',
+    payload: {
+      action: 'Update user career path competencies',
+      user_id: userId,
+      career_path_competencies: competencies
+    },
+    response: {}
+  };
+
+  // Log request body before sending
+  console.log(
+    '[DirectoryMSClient.sendCareerPathCompetencies] Sending POST request to Directory MS',
+    JSON.stringify(envelope, null, 2)
+  );
+
+  // Use default unified endpoint /api/fill-content-metrics/
+  return coordinatorClient.post(envelope);
+}
+
 module.exports = {
   sendInitialProfile,
   sendUpdatedProfile,
-  getUserData
+  getUserData,
+  sendCareerPathCompetencies
 };
 

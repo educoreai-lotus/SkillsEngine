@@ -165,6 +165,34 @@ class CareerPathService {
       // Don't throw - we still want to return success even if sending to Learner AI fails
     }
 
+    // Get all career path competencies from user_career_path table
+    const directoryMSClient = require('./directoryMSClient');
+    try {
+      const careerPaths = await userCareerPathRepository.findByUser(userId);
+      logger.info('Retrieved career path competencies from user_career_path table', {
+        userId,
+        careerPathCount: careerPaths.length
+      });
+
+      // Send career path competencies to Directory MS
+      if (careerPaths && careerPaths.length > 0) {
+        await directoryMSClient.sendCareerPathCompetencies(userId, careerPaths);
+        logger.info('Successfully sent career path competencies to Directory MS', {
+          userId,
+          competencyCount: careerPaths.length
+        });
+      } else {
+        logger.warn('No career path competencies found to send to Directory MS', { userId });
+      }
+    } catch (error) {
+      logger.error('Error sending career path competencies to Directory MS', error);
+      logger.warn('Gap calculation and Learner AI send succeeded, but sending to Directory MS failed', {
+        userId,
+        errorMessage: error.message
+      });
+      // Don't throw - we still want to return success even if sending to Directory MS fails
+    }
+
     return gapAnalysis;
   }
 
