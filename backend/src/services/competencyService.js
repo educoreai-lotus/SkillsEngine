@@ -360,12 +360,32 @@ class CompetencyService {
    * @param {boolean} options.autoGenerateSkillTree - Whether to auto-generate skill tree if none exists (default: true)
    * @returns {Promise<Array>} Array of MGS skill objects
    */
-  async getRequiredMGSByName(competencyName) {
+  async getRequiredMGSByName(competencyName, options = {}) {
     if (!competencyName || typeof competencyName !== 'string') {
       throw new Error('competency_name is required and must be a string');
     }
 
+    const { autoGenerateSkillTree = true } = options;
+
     let competency = await competencyRepository.findByName(competencyName);
+    let foundViaAlias = false;
+
+    // Check if the competency was found via alias (by checking if competencyName matches an alias)
+    if (competency) {
+      try {
+        const aliases = await competencyRepository.getAliases(competency.competency_id);
+        const normalizedInput = competencyName.toLowerCase().trim();
+        const normalizedCompetencyName = competency.competency_name.toLowerCase().trim();
+
+        // If input name doesn't match competency name but matches an alias, it was found via alias
+        if (normalizedInput !== normalizedCompetencyName && aliases && aliases.some(alias => alias.toLowerCase().trim() === normalizedInput)) {
+          foundViaAlias = true;
+          console.log(`[CompetencyService.getRequiredMGSByName] Competency found via alias: "${competencyName}" -> "${competency.competency_name}" (${competency.competency_id})`);
+        }
+      } catch (err) {
+        // Ignore errors checking aliases
+      }
+    }
 
     // If competency doesn't exist, check for semantic duplicates (including aliases) before creating
     if (!competency) {
@@ -397,11 +417,31 @@ class CompetencyService {
     // Check if it's a leaf node with no skills, then generate skill tree (if enabled)
     const children = await competencyRepository.findChildren(competency.competency_id);
     const linkedSkills = await competencyRepository.getLinkedSkills(competency.competency_id);
+    const isLeaf = (!linkedSkills || linkedSkills.length === 0) && (!children || children.length === 0);
 
     // If no skills linked and this is a leaf node, generate skill tree (if auto-generation is enabled)
-    if ((!linkedSkills || linkedSkills.length === 0) && (!children || children.length === 0)) {
-      if (autoGenerateSkillTree) {
-        console.log(`[CompetencyService.getRequiredMGSByName] Leaf competency ${competency.competency_id} has no skills; auto-generating skill tree`);
+    // BUT: If competency is a leaf AND has aliases, skip auto-generation
+    if (isLeaf) {
+      // Check if competency has aliases
+      let aliases = [];
+      try {
+        aliases = await competencyRepository.getAliases(competency.competency_id);
+      } catch (err) {
+        console.warn(`[CompetencyService.getRequiredMGSByName] Error checking aliases for competency ${competency.competency_id}:`, err.message);
+        // Continue - treat as no aliases if check fails
+      }
+
+      const hasAliases = aliases && aliases.length > 0;
+
+      if (hasAliases) {
+        console.log(`[CompetencyService.getRequiredMGSByName] Leaf competency ${competency.competency_id} has aliases; skipping auto-generation of skill tree`, {
+          competency_id: competency.competency_id,
+          competency_name: competency.competency_name,
+          aliases_count: aliases.length,
+          aliases: aliases
+        });
+      } else if (autoGenerateSkillTree) {
+        console.log(`[CompetencyService.getRequiredMGSByName] Leaf competency ${competency.competency_id} has no skills and no aliases; auto-generating skill tree`);
         try {
           await this.generateAndLinkSkillTree(competency.competency_id);
         } catch (err) {
