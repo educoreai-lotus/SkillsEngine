@@ -18,52 +18,31 @@ const userService = require('./userService');
 
 class VerificationService {
   /**
-   * Extract and normalize exam metadata from exam results
+   * Process baseline exam results (Feature 3.2)
+   * @param {string} userId - User ID
    * @param {Object} examResults - Exam results from Assessment MS
-   * @returns {Object} Normalized exam metadata
+   * @param {Object} [options] - Additional options (examType, examStatus, courseName)
+   * @returns {Promise<Object>} Updated profile + gap analysis metadata
    */
-  _extractExamMetadata(examResults) {
+  async processBaselineExamResults(userId, examResults, options = {}) {
+    const {
+      examType = 'baseline',
+      examStatus = null,
+      courseName = null
+    } = options;
+
+    // Extract exam metadata
     const finalGrade = examResults?.final_grade || examResults?.finalGrade || null;
     const examId = examResults?.exam_id || examResults?.examId || null;
     const passingGrade = examResults?.passing_grade || examResults?.passingGrade || null;
     const passed = examResults?.passed;
-
-    // Convert passed boolean to examStatus string for compatibility
-    const examStatus = typeof passed === 'boolean' ? (passed ? 'passed' : 'failed') : null;
-
-    return {
-      finalGrade,
-      examId,
-      passingGrade,
-      passed,
-      examStatus
-    };
-  }
-
-  /**
-   * Core exam results processing logic (shared by baseline and post-course)
-   * @param {string} userId - User ID
-   * @param {Object} examResults - Exam results from Assessment MS
-   * @param {Object} context - { examType, examStatus, courseName }
-   * @returns {Promise<Object>} Updated profile + gap analysis metadata
-   */
-  async _processExamResultsCore(userId, examResults, context = {}) {
-    const {
-      examType = 'baseline',
-      examStatus: contextExamStatus = null,
-      courseName = null
-    } = context;
-
-    // Extract exam metadata
-    const { finalGrade, examId, passingGrade, passed, examStatus: extractedExamStatus } = this._extractExamMetadata(examResults);
-
-    // Use context examStatus if provided, otherwise use extracted one
-    const examStatus = contextExamStatus || extractedExamStatus;
+    const examStatusFromResults = typeof passed === 'boolean' ? (passed ? 'passed' : 'failed') : null;
+    const normalizedExamStatus = examStatus || examStatusFromResults;
 
     // Log exam metadata if provided
     if (examId || finalGrade !== null || passingGrade !== null || courseName) {
       console.log(
-        `[VerificationService._processExamResultsCore] Processing ${examType} exam`,
+        '[VerificationService.processBaselineExamResults] Processing baseline exam',
         {
           userId,
           examType,
@@ -72,7 +51,7 @@ class VerificationService {
           finalGrade,
           passingGrade,
           passed,
-          examStatus
+          examStatus: normalizedExamStatus
         }
       );
     }
@@ -130,7 +109,7 @@ class VerificationService {
         } catch (err) {
           // If leaf check fails for any reason, fail-safe by skipping this entry
           console.warn(
-            '[VerificationService._processExamResultsCore] Failed to check leaf for skill',
+            '[VerificationService.processBaselineExamResults] Failed to check leaf for skill',
             { skill_id, error: err.message }
           );
           return null;
@@ -169,7 +148,7 @@ class VerificationService {
             competencies = await competencyService.getCompetenciesBySkill(skill_id);
           } catch (err) {
             console.error(
-              '[VerificationService._processExamResultsCore] Error finding competencies for skill',
+              '[VerificationService.processBaselineExamResults] Error finding competencies for skill',
               { skill_id, error: err.message }
             );
             // Skip this skill if we can't find competencies
@@ -190,7 +169,7 @@ class VerificationService {
               filteredCompetencies.push(competency);
             } catch (err) {
               console.warn(
-                '[VerificationService._processExamResultsCore] Failed to validate MGS requirement for competency',
+                '[VerificationService.processBaselineExamResults] Failed to validate MGS requirement for competency',
                 { userId, competency_id: competency.competency_id, skill_id, error: err.message }
               );
               // Be conservative: skip this competency if validation fails
@@ -217,7 +196,7 @@ class VerificationService {
                   });
                 } catch (err) {
                   console.error(
-                    '[VerificationService._processExamResultsCore] Error creating userCompetency',
+                    '[VerificationService.processBaselineExamResults] Error creating userCompetency',
                     { userId, competency_id: competency.competency_id, error: err.message }
                   );
                   // Skip this competency if creation fails
@@ -264,7 +243,7 @@ class VerificationService {
                 }
               } catch (err) {
                 console.warn(
-                  '[VerificationService._processExamResultsCore] Error calculating coverage (in-memory)',
+                  '[VerificationService.processBaselineExamResults] Error calculating coverage (in-memory)',
                   { userId, competency_id: competency.competency_id, error: err.message }
                 );
                 // Use existing coverage if calculation fails
@@ -282,27 +261,16 @@ class VerificationService {
                 });
 
                 updatedCompetencies.add(competency.competency_id);
-
-                // Update parent competencies if user owns them (don't fail if this fails)
-                try {
-                  await this.updateParentCompetencies(userId, competency.competency_id);
-                } catch (err) {
-                  console.warn(
-                    '[VerificationService._processExamResultsCore] Error updating parent competencies',
-                    { userId, competency_id: competency.competency_id, error: err.message }
-                  );
-                  // Continue - parent update failure shouldn't fail the whole process
-                }
               } catch (err) {
                 console.error(
-                  '[VerificationService._processExamResultsCore] Error updating userCompetency',
+                  '[VerificationService.processBaselineExamResults] Error updating userCompetency',
                   { userId, competency_id: competency.competency_id, error: err.message }
                 );
                 // Continue processing other competencies
               }
             } catch (err) {
               console.error(
-                '[VerificationService._processExamResultsCore] Error processing competency',
+                '[VerificationService.processBaselineExamResults] Error processing competency',
                 { userId, competency_id: competency?.competency_id, error: err.message }
               );
               // Continue processing other competencies
@@ -310,7 +278,7 @@ class VerificationService {
           }
         } catch (err) {
           console.error(
-            '[VerificationService._processExamResultsCore] Error processing skill',
+            '[VerificationService.processBaselineExamResults] Error processing skill',
             { skill_id: rawVerifiedSkill?.skill_id, error: err.message }
           );
           // Continue processing other skills
@@ -329,7 +297,7 @@ class VerificationService {
           careerPath = user?.path_career || user?.career_path_goal || null;
         } catch (err) {
           console.warn(
-            '[VerificationService._processExamResultsCore] Error fetching user profile for gap analysis context',
+            '[VerificationService.processBaselineExamResults] Error fetching user profile for gap analysis context',
             { userId, error: err.message }
           );
           // Continue without user name/career path if fetch fails
@@ -337,13 +305,13 @@ class VerificationService {
 
         gapAnalysis = await this.runGapAnalysis(userId, updatedCompetencies, {
           examType,
-          examStatus,
+          examStatus: normalizedExamStatus,
           courseName: courseName || careerPath,
           userName
         });
       } catch (err) {
         console.error(
-          '[VerificationService._processExamResultsCore] Error running gap analysis',
+          '[VerificationService.processBaselineExamResults] Error running gap analysis',
           { userId, error: err.message }
         );
       }
@@ -354,13 +322,13 @@ class VerificationService {
         const updatedProfile = await this.buildUpdatedProfilePayload(userId);
         await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
         console.log(
-          '[VerificationService._processExamResultsCore] Successfully sent updated profile to Directory MS',
+          '[VerificationService.processBaselineExamResults] Successfully sent updated profile to Directory MS',
           { userId, examType, competenciesUpdated: updatedCompetencies.size }
         );
       } catch (err) {
         // Don't fail exam processing if Directory MS update fails
         console.warn(
-          '[VerificationService._processExamResultsCore] Failed to send updated profile to Directory MS',
+          '[VerificationService.processBaselineExamResults] Failed to send updated profile to Directory MS',
           { userId, error: err.message }
         );
       }
@@ -370,34 +338,12 @@ class VerificationService {
     } catch (error) {
       // Log error but return partial results
       console.error(
-        '[VerificationService._processExamResultsCore] Fatal error processing exam results',
+        '[VerificationService.processBaselineExamResults] Fatal error processing exam results',
         { userId, error: error.message, stack: error.stack }
       );
       // Return error message on failure
       return { message: error.message || 'Failed to process exam results' };
     }
-  }
-
-  /**
-   * Process baseline exam results (Feature 3.2)
-   * @param {string} userId - User ID
-   * @param {Object} examResults - Exam results from Assessment MS
-   * @param {Object} [options] - Additional options (examType, examStatus, courseName)
-   * @returns {Promise<Object>} Updated profile + gap analysis metadata
-   */
-  async processBaselineExamResults(userId, examResults, options = {}) {
-    const {
-      examType = 'baseline',
-      examStatus = null,
-      courseName = null
-    } = options;
-
-    // Use the shared core processing logic
-    return await this._processExamResultsCore(userId, examResults || {}, {
-      examType,
-      examStatus,
-      courseName
-    });
   }
 
   /**
@@ -412,22 +358,334 @@ class VerificationService {
     const { course_name, exam_type, exam_status } = examResults || {};
 
     // Extract exam metadata
-    const { examStatus: extractedExamStatus } = this._extractExamMetadata(examResults);
+    const finalGrade = examResults?.final_grade || examResults?.finalGrade || null;
+    const examId = examResults?.exam_id || examResults?.examId || null;
+    const passingGrade = examResults?.passing_grade || examResults?.passingGrade || null;
+    const passed = examResults?.passed;
+    const examStatusFromResults = typeof passed === 'boolean' ? (passed ? 'passed' : 'failed') : null;
+    const normalizedExamStatus = exam_status || examStatusFromResults;
+    const examType = 'post-course';
 
-    // Use exam_status from examResults if provided, otherwise use extracted one
-    const normalizedExamStatus = exam_status || extractedExamStatus;
+    // Log exam metadata if provided
+    if (examId || finalGrade !== null || passingGrade !== null || course_name) {
+      console.log(
+        '[VerificationService.processPostCourseExamResults] Processing post-course exam',
+        {
+          userId,
+          examType,
+          courseName: course_name,
+          examId,
+          finalGrade,
+          passingGrade,
+          passed,
+          examStatus: normalizedExamStatus
+        }
+      );
+    }
 
-    // Use the shared core processing logic with post-course specific context
-    // so gap analysis can distinguish between broad vs narrow analysis:
-    // - Baseline exam       -> broad (full career path)
-    // - Post-course PASS    -> broad (full career path)
-    // - Post-course FAIL    -> narrow (course-specific competency/competencies)
-    // Note: verified_skills should only contain skills with status "acquired"
-    return await this._processExamResultsCore(userId, examResults || {}, {
-      examType: 'post-course',
-      examStatus: normalizedExamStatus,
-      courseName: course_name
-    });
+    try {
+      // Support multiple field names from Assessment MS for backward compatibility:
+      // - skills (preferred)
+      // - verified_skills (legacy snake_case)
+      // - verifiedSkills (legacy camelCase)
+      const verifiedSkillsInput =
+        examResults?.skills ||
+        examResults?.verified_skills ||
+        examResults?.verifiedSkills ||
+        [];
+
+      // Update userCompetency with verified skills
+      const updatedCompetencies = new Set();
+
+      // Helper: normalize a single verified skill coming from Assessment MS
+      // Accepted input format:
+      //   - { skill_id, skill_name, status: "acquired" | "failed", score: number }
+      // We normalize to JSON shape: { skill_id, skill_name, verified, score? }
+      // and only persist leaf / MGS skills with status "acquired".
+      const normalizeVerifiedSkill = async (rawSkill) => {
+        if (!rawSkill || !rawSkill.skill_id) {
+          return null;
+        }
+
+        const { skill_id, skill_name, score } = rawSkill;
+
+        // Determine status from "status" string (values: "acquired" or "failed")
+        let skillStatus = null;
+        if (typeof rawSkill.status === 'string') {
+          skillStatus = rawSkill.status.toLowerCase().trim();
+        }
+
+        // If we still don't know the status, skip this entry
+        if (!skillStatus) {
+          return null;
+        }
+
+        // Only process MGS that are effectively "acquired"
+        if (skillStatus !== 'acquired') {
+          return null; // Skip skills that are "failed" or have invalid status
+        }
+
+        // Ensure we only persist MGS / leaf skills in verifiedSkills
+        // If this skill has children, skip it here so verifiedSkills
+        // always represents the most granular skills only.
+        try {
+          const isLeaf = await skillRepository.isLeaf(skill_id);
+          if (!isLeaf) {
+            return null;
+          }
+        } catch (err) {
+          // If leaf check fails for any reason, fail-safe by skipping this entry
+          console.warn(
+            '[VerificationService.processPostCourseExamResults] Failed to check leaf for skill',
+            { skill_id, error: err.message }
+          );
+          return null;
+        }
+
+        const normalized = {
+          skill_id,
+          skill_name,
+          verified: true // Only MGS with status "acquired" are added
+        };
+
+        // Include score if provided (optional field)
+        if (typeof score === 'number' && !isNaN(score)) {
+          normalized.score = score;
+        }
+
+        return normalized;
+      };
+
+      for (const rawVerifiedSkill of verifiedSkillsInput) {
+        try {
+          const normalized = await normalizeVerifiedSkill(rawVerifiedSkill);
+
+          // If the skill is not a leaf or invalid, ignore it for verifiedSkills persistence
+          if (!normalized) {
+            continue;
+          }
+
+          const { skill_id, skill_name, score, verified } = normalized;
+
+          // Find competencies that require this skill
+          // Note: getCompetenciesBySkill works for leaf skills (MGS) by traversing
+          // up the skill hierarchy to find competencies linked at any level
+          let competencies = [];
+          try {
+            competencies = await competencyService.getCompetenciesBySkill(skill_id);
+          } catch (err) {
+            console.error(
+              '[VerificationService.processPostCourseExamResults] Error finding competencies for skill',
+              { skill_id, error: err.message }
+            );
+            // Skip this skill if we can't find competencies
+            continue;
+          }
+
+          // Extra safety: only update competencies for which this skill_id
+          // is actually part of their required MGS set.
+          const filteredCompetencies = [];
+          for (const competency of competencies) {
+            try {
+              const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
+              const isRequired = requiredMGS.some(mgs => mgs.skill_id === skill_id);
+              if (!isRequired) {
+                // Skip competencies that do not explicitly require this MGS
+                continue;
+              }
+              filteredCompetencies.push(competency);
+            } catch (err) {
+              console.warn(
+                '[VerificationService.processPostCourseExamResults] Failed to validate MGS requirement for competency',
+                { userId, competency_id: competency.competency_id, skill_id, error: err.message }
+              );
+              // Be conservative: skip this competency if validation fails
+            }
+          }
+
+          for (const competency of filteredCompetencies) {
+            try {
+              let userComp = await userCompetencyRepository.findByUserAndCompetency(
+                userId,
+                competency.competency_id
+              );
+
+              if (!userComp) {
+                // Create userCompetency if doesn't exist
+                // Initial proficiency_level is 'undefined' (string) - will be determined after baseline exam
+                try {
+                  userComp = await userCompetencyRepository.create({
+                    user_id: userId,
+                    competency_id: competency.competency_id,
+                    coverage_percentage: 0.00,
+                    proficiency_level: 'undefined', // Initially undefined - will be determined after baseline exam
+                    verifiedSkills: []
+                  });
+                } catch (err) {
+                  console.error(
+                    '[VerificationService.processPostCourseExamResults] Error creating userCompetency',
+                    { userId, competency_id: competency.competency_id, error: err.message }
+                  );
+                  // Skip this competency if creation fails
+                  continue;
+                }
+              }
+
+              // Update verifiedSkills array
+              const verifiedSkills = userComp.verifiedSkills || [];
+              const existingIndex = verifiedSkills.findIndex(s => s.skill_id === skill_id);
+
+              // Persist JSON shape in verifiedSkills (includes score if provided)
+              const verifiedSkillData = {
+                skill_id,
+                skill_name,
+                verified,
+              };
+
+              // Include score if provided (optional field)
+              if (typeof score === 'number' && !isNaN(score)) {
+                verifiedSkillData.score = score;
+              }
+
+              if (existingIndex >= 0) {
+                verifiedSkills[existingIndex] = verifiedSkillData;
+              } else {
+                verifiedSkills.push(verifiedSkillData);
+              }
+
+              // Recalculate coverage percentage using in-memory verifiedSkills
+              // This avoids a race where calculateCoverage() re-reads from DB
+              // before the latest verifiedSkills have been persisted.
+              let coverage = 0;
+              try {
+                // Get required MGS for this competency
+                const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
+                const requiredCount = requiredMGS.length;
+
+                if (requiredCount === 0) {
+                  coverage = 0;
+                } else {
+                  const verifiedCount = verifiedSkills.filter(s => s.verified === true).length;
+                  coverage = Math.round((verifiedCount / requiredCount) * 100 * 100) / 100;
+                }
+              } catch (err) {
+                console.warn(
+                  '[VerificationService.processPostCourseExamResults] Error calculating coverage (in-memory)',
+                  { userId, competency_id: competency.competency_id, error: err.message }
+                );
+                // Use existing coverage if calculation fails
+                coverage = userComp.coverage_percentage || 0;
+              }
+
+              // Map coverage to proficiency level
+              const proficiencyLevel = this.mapCoverageToProficiency(coverage);
+
+              try {
+                await userCompetencyRepository.update(userId, competency.competency_id, {
+                  verifiedSkills: verifiedSkills,
+                  coverage_percentage: coverage,
+                  proficiency_level: proficiencyLevel
+                });
+
+                updatedCompetencies.add(competency.competency_id);
+              } catch (err) {
+                console.error(
+                  '[VerificationService.processPostCourseExamResults] Error updating userCompetency',
+                  { userId, competency_id: competency.competency_id, error: err.message }
+                );
+                // Continue processing other competencies
+              }
+            } catch (err) {
+              console.error(
+                '[VerificationService.processPostCourseExamResults] Error processing competency',
+                { userId, competency_id: competency?.competency_id, error: err.message }
+              );
+              // Continue processing other competencies
+            }
+          }
+        } catch (err) {
+          console.error(
+            '[VerificationService.processPostCourseExamResults] Error processing skill',
+            { skill_id: rawVerifiedSkill?.skill_id, error: err.message }
+          );
+          // Continue processing other skills
+        }
+      }
+
+      // Update all parent competencies after processing all child competencies
+      // This prevents duplicate updates when multiple children share the same parent
+      const visitedParents = new Set();
+      for (const competencyId of updatedCompetencies) {
+        try {
+          await this.updateParentCompetencies(userId, competencyId, visitedParents);
+        } catch (err) {
+          console.warn(
+            '[VerificationService.processPostCourseExamResults] Error updating parent competencies',
+            { userId, competency_id: competencyId, error: err.message }
+          );
+          // Continue - parent update failure shouldn't fail the whole process
+        }
+      }
+
+      let gapAnalysis = null;
+      try {
+        // Get user name and career path for gap analysis context
+        let userName = null;
+        let careerPath = null;
+        try {
+          const userProfile = await userService.getUserProfile(userId);
+          const user = userProfile?.user || userProfile;
+          userName = user?.user_name || null;
+          careerPath = user?.path_career || user?.career_path_goal || null;
+        } catch (err) {
+          console.warn(
+            '[VerificationService.processPostCourseExamResults] Error fetching user profile for gap analysis context',
+            { userId, error: err.message }
+          );
+          // Continue without user name/career path if fetch fails
+        }
+
+        gapAnalysis = await this.runGapAnalysis(userId, updatedCompetencies, {
+          examType,
+          examStatus: normalizedExamStatus,
+          courseName: course_name || careerPath,
+          userName
+        });
+      } catch (err) {
+        console.error(
+          '[VerificationService.processPostCourseExamResults] Error running gap analysis',
+          { userId, error: err.message }
+        );
+      }
+
+      // Automatically send updated profile to Directory MS after processing exam results
+      // This happens automatically whenever userCompetency is updated
+      try {
+        const updatedProfile = await this.buildUpdatedProfilePayload(userId);
+        await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
+        console.log(
+          '[VerificationService.processPostCourseExamResults] Successfully sent updated profile to Directory MS',
+          { userId, examType, competenciesUpdated: updatedCompetencies.size }
+        );
+      } catch (err) {
+        // Don't fail exam processing if Directory MS update fails
+        console.warn(
+          '[VerificationService.processPostCourseExamResults] Failed to send updated profile to Directory MS',
+          { userId, error: err.message }
+        );
+      }
+
+      // Return empty response - processing is complete
+      return {};
+    } catch (error) {
+      // Log error but return partial results
+      console.error(
+        '[VerificationService.processPostCourseExamResults] Fatal error processing exam results',
+        { userId, error: error.message, stack: error.stack }
+      );
+      // Return error message on failure
+      return { message: error.message || 'Failed to process exam results' };
+    }
   }
 
   /**
