@@ -321,16 +321,10 @@ class VerificationService {
       // This happens automatically whenever userCompetency is updated
       try {
         const updatedProfile = await this.buildUpdatedProfilePayload(userId);
-        const response = await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
+        await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
         console.log(
-          '[VerificationService.processBaselineExamResults] Successfully sent updated profile to Directory MS after baseline exam',
-          {
-            userId,
-            examType,
-            competenciesUpdated: updatedCompetencies.size,
-            profileCompetenciesCount: updatedProfile?.competencies?.length || 0,
-            responseStatus: response?.status || 'unknown'
-          }
+          '[VerificationService.processBaselineExamResults] Successfully sent updated profile to Directory MS',
+          { userId, examType, competenciesUpdated: updatedCompetencies.size }
         );
       } catch (err) {
         // Don't fail exam processing if Directory MS update fails
@@ -669,18 +663,10 @@ class VerificationService {
       // This happens automatically whenever userCompetency is updated
       try {
         const updatedProfile = await this.buildUpdatedProfilePayload(userId);
-        const response = await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
+        await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
         console.log(
-          '[VerificationService.processPostCourseExamResults] Successfully sent updated profile to Directory MS after post-course exam',
-          {
-            userId,
-            examType,
-            examStatus: normalizedExamStatus,
-            courseName: course_name,
-            competenciesUpdated: updatedCompetencies.size,
-            profileCompetenciesCount: updatedProfile?.competencies?.length || 0,
-            responseStatus: response?.status || 'unknown'
-          }
+          '[VerificationService.processPostCourseExamResults] Successfully sent updated profile to Directory MS',
+          { userId, examType, competenciesUpdated: updatedCompetencies.size }
         );
       } catch (err) {
         // Don't fail exam processing if Directory MS update fails

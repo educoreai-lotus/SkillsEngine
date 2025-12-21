@@ -62,19 +62,7 @@ async function sendUpdatedProfile(userId, profile) {
   );
 
   // Use default unified endpoint /api/fill-content-metrics/
-  const response = await coordinatorClient.post(envelope);
-
-  // Log response after sending
-  console.log(
-    '[DirectoryMSClient.sendUpdatedProfile] Successfully received response from Directory MS',
-    {
-      userId,
-      responseStatus: response?.status || 'unknown',
-      responseData: response ? JSON.stringify(response, null, 2) : 'no response'
-    }
-  );
-
-  return response;
+  return coordinatorClient.post(envelope);
 }
 
 /**
