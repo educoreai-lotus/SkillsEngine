@@ -295,7 +295,7 @@ class VerificationService {
           const userProfile = await userService.getUserProfile(userId);
           const user = userProfile?.user || userProfile;
           userName = user?.user_name || null;
-          careerPath = user?.path_career || user?.career_path_goal || null;
+          careerPath = user?.path_career || null;
         } catch (err) {
           console.warn(
             '[VerificationService.processBaselineExamResults] Error fetching user profile for gap analysis context',
@@ -321,10 +321,16 @@ class VerificationService {
       // This happens automatically whenever userCompetency is updated
       try {
         const updatedProfile = await this.buildUpdatedProfilePayload(userId);
-        await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
+        const response = await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
         console.log(
-          '[VerificationService.processBaselineExamResults] Successfully sent updated profile to Directory MS',
-          { userId, examType, competenciesUpdated: updatedCompetencies.size }
+          '[VerificationService.processBaselineExamResults] Successfully sent updated profile to Directory MS after baseline exam',
+          {
+            userId,
+            examType,
+            competenciesUpdated: updatedCompetencies.size,
+            profileCompetenciesCount: updatedProfile?.competencies?.length || 0,
+            responseStatus: response?.status || 'unknown'
+          }
         );
       } catch (err) {
         // Don't fail exam processing if Directory MS update fails
@@ -663,10 +669,18 @@ class VerificationService {
       // This happens automatically whenever userCompetency is updated
       try {
         const updatedProfile = await this.buildUpdatedProfilePayload(userId);
-        await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
+        const response = await directoryMSClient.sendUpdatedProfile(userId, updatedProfile);
         console.log(
-          '[VerificationService.processPostCourseExamResults] Successfully sent updated profile to Directory MS',
-          { userId, examType, competenciesUpdated: updatedCompetencies.size }
+          '[VerificationService.processPostCourseExamResults] Successfully sent updated profile to Directory MS after post-course exam',
+          {
+            userId,
+            examType,
+            examStatus: normalizedExamStatus,
+            courseName: course_name,
+            competenciesUpdated: updatedCompetencies.size,
+            profileCompetenciesCount: updatedProfile?.competencies?.length || 0,
+            responseStatus: response?.status || 'unknown'
+          }
         );
       } catch (err) {
         // Don't fail exam processing if Directory MS update fails
