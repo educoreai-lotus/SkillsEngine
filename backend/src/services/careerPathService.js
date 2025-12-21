@@ -9,6 +9,7 @@ const userCareerPathRepository = require('../repositories/userCareerPathReposito
 const competencyService = require('./competencyService');
 const gapAnalysisService = require('./gapAnalysisService');
 const learnerAIMSClient = require('./learnerAIMSClient');
+const userService = require('./userService');
 const Logger = require('../utils/logger');
 
 const logger = new Logger('CareerPathService');
@@ -152,10 +153,22 @@ class CareerPathService {
       totalMissingSkills
     });
 
-    // Send gap analysis to Learner AI (broad analysis for career path)
+    // Get user's career path for courseName parameter
+    let userCareerPath = null;
     try {
-      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis, 'broad');
-      logger.info('Successfully sent gap analysis to Learner AI', { userId });
+      const profile = await userService.getUserProfile(userId);
+      const user = profile?.user || profile;
+      userCareerPath = user?.path_career || user?.career_path_goal || null;
+    } catch (error) {
+      logger.warn('Failed to fetch user profile for career path', { userId, error: error.message });
+    }
+
+    // Send gap analysis to Learner AI (broad analysis for career path)
+    // When called from UI, examStatus should always be 'fail'
+    // courseName should be the user's career path
+    try {
+      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis, 'broad', userCareerPath, 'fail');
+      logger.info('Successfully sent gap analysis to Learner AI', { userId, careerPath: userCareerPath });
     } catch (error) {
       logger.error('Error sending gap analysis to Learner AI', error);
       logger.warn('Gap calculation succeeded but sending to Learner AI failed', {
@@ -229,10 +242,22 @@ class CareerPathService {
       totalMissingSkills
     });
 
-    // Send gap analysis to Learner AI (broad analysis for career path)
+    // Get user's career path for courseName parameter
+    let userCareerPath = null;
     try {
-      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis, 'broad');
-      logger.info('Successfully sent gap analysis to Learner AI after adding career path', { userId });
+      const profile = await userService.getUserProfile(userId);
+      const user = profile?.user || profile;
+      userCareerPath = user?.path_career || user?.career_path_goal || null;
+    } catch (error) {
+      logger.warn('Failed to fetch user profile for career path', { userId, error: error.message });
+    }
+
+    // Send gap analysis to Learner AI (broad analysis for career path)
+    // When called from UI, examStatus should always be 'fail'
+    // courseName should be the user's career path
+    try {
+      await learnerAIMSClient.sendGapAnalysis(userId, gapAnalysis, 'broad', userCareerPath, 'fail');
+      logger.info('Successfully sent gap analysis to Learner AI after adding career path', { userId, careerPath: userCareerPath });
     } catch (error) {
       logger.error('Error sending gap analysis to Learner AI', error);
       logger.warn('Career path added and gap calculated, but sending to Learner AI failed', {

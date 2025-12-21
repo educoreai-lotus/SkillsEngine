@@ -52,7 +52,7 @@ async function sendGapAnalysis(userId, gap, analysisType, courseName = null, exa
     requester_service: 'skills-engine-service',
     payload: {
       action: 'update_skills_gap to learnerAI-service',
-      description:'Send skills gap analysis to Learner AI MS for user in order to create learn path for the learner',
+      description: 'Send skills gap analysis to Learner AI MS for user in order to create learn path for the learner',
       user_id: userId,
       user_name: userName,
       company_id: companyId,
@@ -116,7 +116,7 @@ async function sendGapAnalysis(userId, gap, analysisType, courseName = null, exa
         });
       } else {
         console.error('[learnerAIMSClient] Coordinator returned error:', {
-          message: `HTTP ${ status } error from Coordinator`,
+          message: `HTTP ${status} error from Coordinator`,
           ...errorContext
         });
       }
