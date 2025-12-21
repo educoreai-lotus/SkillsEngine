@@ -37,7 +37,9 @@ class VerificationService {
     const passingGrade = examResults?.passing_grade || examResults?.passingGrade || null;
     const passed = examResults?.passed;
     const examStatusFromResults = typeof passed === 'boolean' ? (passed ? 'passed' : 'failed') : null;
-    const normalizedExamStatus = examStatus || examStatusFromResults;
+    // For baseline exams, always set exam status to "failed" for Learner AI
+    // Baseline exams are diagnostic and should be treated as failed for gap analysis purposes
+    const normalizedExamStatus = examType === 'baseline' ? 'failed' : (examStatus || examStatusFromResults);
 
     // Log exam metadata if provided
     if (examId || finalGrade !== null || passingGrade !== null || courseName) {
@@ -1030,12 +1032,15 @@ class VerificationService {
         );
         // Use competency_target_name if provided, otherwise fall back to courseName
         const targetName = context.competency_target_name || courseName;
+        // For baseline exams, always send exam status as "failed" for Learner AI
+        // Baseline exams are diagnostic and should be treated as failed for gap analysis
+        const examStatusForLearnerAI = normalizedExamType === 'baseline' ? 'failed' : normalizedExamStatus;
         await learnerAIMSClient.sendGapAnalysis(
           userId,
           gaps,
           analysisType,
           targetName,
-          normalizedExamStatus
+          examStatusForLearnerAI
         );
       } else {
         console.log(
