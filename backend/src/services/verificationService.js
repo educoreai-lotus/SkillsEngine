@@ -1073,11 +1073,20 @@ class VerificationService {
         // Check if user owns this competency
         const userComp = await userCompetencyRepository.findByUserAndCompetency(userId, competencyId);
 
+        // Ensure coverage_percentage is properly included (handle null/undefined but preserve 0.00)
+        let coverage = 0;
+        if (userComp) {
+          // Use actual value from database, default to 0 only if null/undefined
+          coverage = (userComp.coverage_percentage !== null && userComp.coverage_percentage !== undefined)
+            ? userComp.coverage_percentage
+            : 0;
+        }
+
         node = {
           competencyId: competency.competency_id,
           competencyName: competency.competency_name,
           level: userComp ? (userComp.proficiency_level || 'undefined') : 'undefined',
-          coverage: userComp ? (userComp.coverage_percentage || 0) : 0,
+          coverage: coverage,
           parentId: null,
           children: []
         };
@@ -1093,7 +1102,24 @@ class VerificationService {
         if (!node) continue;
 
         node.level = userComp.proficiency_level || 'undefined';
-        node.coverage = userComp.coverage_percentage || 0;
+
+        // Ensure coverage_percentage is properly included (handle null/undefined but preserve 0.00)
+        // Use actual value from database, default to 0 only if null/undefined
+        node.coverage = (userComp.coverage_percentage !== null && userComp.coverage_percentage !== undefined)
+          ? userComp.coverage_percentage
+          : 0;
+
+        // Log coverage value for debugging
+        if (userComp.coverage_percentage !== null && userComp.coverage_percentage !== undefined && userComp.coverage_percentage > 0) {
+          console.log(
+            '[VerificationService.buildUpdatedProfilePayload] Including coverage_percentage in profile',
+            {
+              userId,
+              competency_id: userComp.competency_id,
+              coverage_percentage: userComp.coverage_percentage
+            }
+          );
+        }
 
         // Walk up the competency_subcompetency chain and attach parents
         try {
@@ -1160,6 +1186,24 @@ class VerificationService {
         relevanceScore: 0,
         competencies: competencies
       };
+
+      // Log coverage values to verify they're included correctly
+      const competenciesWithCoverage = competencies.filter(c => c.coverage > 0);
+      if (competenciesWithCoverage.length > 0) {
+        console.log(
+          '[VerificationService.buildUpdatedProfilePayload] Profile payload includes coverage_percentage',
+          {
+            userId,
+            totalCompetencies: competencies.length,
+            competenciesWithCoverage: competenciesWithCoverage.length,
+            coverageValues: competenciesWithCoverage.map(c => ({
+              competencyId: c.competencyId,
+              competencyName: c.competencyName,
+              coverage: c.coverage
+            }))
+          }
+        );
+      }
 
       return payload;
     } catch (error) {

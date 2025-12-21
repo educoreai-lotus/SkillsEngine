@@ -48,6 +48,7 @@ async function sendUpdatedProfile(userId, profile) {
     requester_service: 'skills-engine-service',
     payload: {
       action: 'Update user profile',
+      description: 'This request to Directory servier is to update the employee profile',
       user_id: userId,
       ...profile
     },
