@@ -176,16 +176,47 @@ class VerificationService {
               const isRequired = requiredMGS.some(mgs => mgs.skill_id === skill_id);
               if (!isRequired) {
                 // Skip competencies that do not explicitly require this MGS
+                console.log(
+                  '[VerificationService.processBaselineExamResults] Skipping competency - skill not in required MGS',
+                  {
+                    userId,
+                    skill_id,
+                    skill_name,
+                    competency_id: competency.competency_id,
+                    competency_name: competency.competency_name,
+                    requiredMGS_count: requiredMGS.length
+                  }
+                );
                 continue;
               }
               filteredCompetencies.push(competency);
             } catch (err) {
               console.warn(
-                '[VerificationService.processBaselineExamResults] Failed to validate MGS requirement for competency',
-                { userId, competency_id: competency.competency_id, skill_id, error: err.message }
+                '[VerificationService.processBaselineExamResults] Failed to validate MGS requirement for competency - skipping',
+                {
+                  userId,
+                  skill_id,
+                  skill_name,
+                  competency_id: competency.competency_id,
+                  competency_name: competency.competency_name,
+                  error: err.message
+                }
               );
               // Be conservative: skip this competency if validation fails
             }
+          }
+
+          if (filteredCompetencies.length === 0 && uniqueCompetencies.length > 0) {
+            console.warn(
+              '[VerificationService.processBaselineExamResults] No competencies passed MGS validation for skill',
+              {
+                userId,
+                skill_id,
+                skill_name,
+                found_competencies_count: uniqueCompetencies.length,
+                found_competency_names: uniqueCompetencies.map(c => c.competency_name)
+              }
+            );
           }
 
           for (const competency of filteredCompetencies) {
@@ -206,6 +237,16 @@ class VerificationService {
                     proficiency_level: 'undefined', // Initially undefined - will be determined after baseline exam
                     verifiedSkills: []
                   });
+                  console.log(
+                    '[VerificationService.processBaselineExamResults] Created new userCompetency for skill update',
+                    {
+                      userId,
+                      competency_id: competency.competency_id,
+                      competency_name: competency.competency_name,
+                      skill_id,
+                      skill_name
+                    }
+                  );
                 } catch (err) {
                   console.error(
                     '[VerificationService.processBaselineExamResults] Error creating userCompetency',
@@ -214,6 +255,42 @@ class VerificationService {
                   // Skip this competency if creation fails
                   continue;
                 }
+              }
+
+              // Double-check: Verify the skill is actually in the required MGS before adding
+              // This is a safety check to prevent adding skills to wrong competencies
+              let finalRequiredMGS = [];
+              try {
+                finalRequiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
+                const isActuallyRequired = finalRequiredMGS.some(mgs => mgs.skill_id === skill_id);
+                if (!isActuallyRequired) {
+                  console.error(
+                    '[VerificationService.processBaselineExamResults] CRITICAL: Skill not in required MGS - skipping skill addition',
+                    {
+                      userId,
+                      skill_id,
+                      skill_name,
+                      competency_id: competency.competency_id,
+                      competency_name: competency.competency_name,
+                      requiredMGS_count: finalRequiredMGS.length,
+                      requiredMGS_ids: finalRequiredMGS.map(m => m.skill_id)
+                    }
+                  );
+                  continue; // Skip adding this skill to this competency
+                }
+              } catch (err) {
+                console.error(
+                  '[VerificationService.processBaselineExamResults] Error in final MGS validation - skipping skill addition',
+                  {
+                    userId,
+                    skill_id,
+                    skill_name,
+                    competency_id: competency.competency_id,
+                    competency_name: competency.competency_name,
+                    error: err.message
+                  }
+                );
+                continue; // Skip if validation fails
               }
 
               // Update verifiedSkills array
@@ -234,8 +311,28 @@ class VerificationService {
 
               if (existingIndex >= 0) {
                 verifiedSkills[existingIndex] = verifiedSkillData;
+                console.log(
+                  '[VerificationService.processBaselineExamResults] Updated existing skill in verifiedSkills',
+                  {
+                    userId,
+                    skill_id,
+                    skill_name,
+                    competency_id: competency.competency_id,
+                    competency_name: competency.competency_name
+                  }
+                );
               } else {
                 verifiedSkills.push(verifiedSkillData);
+                console.log(
+                  '[VerificationService.processBaselineExamResults] Added new skill to verifiedSkills',
+                  {
+                    userId,
+                    skill_id,
+                    skill_name,
+                    competency_id: competency.competency_id,
+                    competency_name: competency.competency_name
+                  }
+                );
               }
 
               // Recalculate coverage percentage using in-memory verifiedSkills
@@ -243,8 +340,8 @@ class VerificationService {
               // before the latest verifiedSkills have been persisted.
               let coverage = 0;
               try {
-                // Get required MGS for this competency
-                const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
+                // Get required MGS for this competency (reuse finalRequiredMGS from validation above)
+                const requiredMGS = finalRequiredMGS.length > 0 ? finalRequiredMGS : await competencyService.getRequiredMGS(competency.competency_id);
                 const requiredCount = requiredMGS.length;
 
                 if (requiredCount === 0) {
@@ -514,16 +611,47 @@ class VerificationService {
               const isRequired = requiredMGS.some(mgs => mgs.skill_id === skill_id);
               if (!isRequired) {
                 // Skip competencies that do not explicitly require this MGS
+                console.log(
+                  '[VerificationService.processPostCourseExamResults] Skipping competency - skill not in required MGS',
+                  {
+                    userId,
+                    skill_id,
+                    skill_name,
+                    competency_id: competency.competency_id,
+                    competency_name: competency.competency_name,
+                    requiredMGS_count: requiredMGS.length
+                  }
+                );
                 continue;
               }
               filteredCompetencies.push(competency);
             } catch (err) {
               console.warn(
-                '[VerificationService.processPostCourseExamResults] Failed to validate MGS requirement for competency',
-                { userId, competency_id: competency.competency_id, skill_id, error: err.message }
+                '[VerificationService.processPostCourseExamResults] Failed to validate MGS requirement for competency - skipping',
+                {
+                  userId,
+                  skill_id,
+                  skill_name,
+                  competency_id: competency.competency_id,
+                  competency_name: competency.competency_name,
+                  error: err.message
+                }
               );
               // Be conservative: skip this competency if validation fails
             }
+          }
+
+          if (filteredCompetencies.length === 0 && uniqueCompetencies.length > 0) {
+            console.warn(
+              '[VerificationService.processPostCourseExamResults] No competencies passed MGS validation for skill',
+              {
+                userId,
+                skill_id,
+                skill_name,
+                found_competencies_count: uniqueCompetencies.length,
+                found_competency_names: uniqueCompetencies.map(c => c.competency_name)
+              }
+            );
           }
 
           for (const competency of filteredCompetencies) {
@@ -544,6 +672,16 @@ class VerificationService {
                     proficiency_level: 'undefined', // Initially undefined - will be determined after baseline exam
                     verifiedSkills: []
                   });
+                  console.log(
+                    '[VerificationService.processPostCourseExamResults] Created new userCompetency for skill update',
+                    {
+                      userId,
+                      competency_id: competency.competency_id,
+                      competency_name: competency.competency_name,
+                      skill_id,
+                      skill_name
+                    }
+                  );
                 } catch (err) {
                   console.error(
                     '[VerificationService.processPostCourseExamResults] Error creating userCompetency',
@@ -552,6 +690,42 @@ class VerificationService {
                   // Skip this competency if creation fails
                   continue;
                 }
+              }
+
+              // Double-check: Verify the skill is actually in the required MGS before adding
+              // This is a safety check to prevent adding skills to wrong competencies
+              let finalRequiredMGS = [];
+              try {
+                finalRequiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
+                const isActuallyRequired = finalRequiredMGS.some(mgs => mgs.skill_id === skill_id);
+                if (!isActuallyRequired) {
+                  console.error(
+                    '[VerificationService.processPostCourseExamResults] CRITICAL: Skill not in required MGS - skipping skill addition',
+                    {
+                      userId,
+                      skill_id,
+                      skill_name,
+                      competency_id: competency.competency_id,
+                      competency_name: competency.competency_name,
+                      requiredMGS_count: finalRequiredMGS.length,
+                      requiredMGS_ids: finalRequiredMGS.map(m => m.skill_id)
+                    }
+                  );
+                  continue; // Skip adding this skill to this competency
+                }
+              } catch (err) {
+                console.error(
+                  '[VerificationService.processPostCourseExamResults] Error in final MGS validation - skipping skill addition',
+                  {
+                    userId,
+                    skill_id,
+                    skill_name,
+                    competency_id: competency.competency_id,
+                    competency_name: competency.competency_name,
+                    error: err.message
+                  }
+                );
+                continue; // Skip if validation fails
               }
 
               // Update verifiedSkills array
@@ -572,8 +746,28 @@ class VerificationService {
 
               if (existingIndex >= 0) {
                 verifiedSkills[existingIndex] = verifiedSkillData;
+                console.log(
+                  '[VerificationService.processPostCourseExamResults] Updated existing skill in verifiedSkills',
+                  {
+                    userId,
+                    skill_id,
+                    skill_name,
+                    competency_id: competency.competency_id,
+                    competency_name: competency.competency_name
+                  }
+                );
               } else {
                 verifiedSkills.push(verifiedSkillData);
+                console.log(
+                  '[VerificationService.processPostCourseExamResults] Added new skill to verifiedSkills',
+                  {
+                    userId,
+                    skill_id,
+                    skill_name,
+                    competency_id: competency.competency_id,
+                    competency_name: competency.competency_name
+                  }
+                );
               }
 
               // Recalculate coverage percentage using in-memory verifiedSkills
@@ -581,8 +775,8 @@ class VerificationService {
               // before the latest verifiedSkills have been persisted.
               let coverage = 0;
               try {
-                // Get required MGS for this competency
-                const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
+                // Get required MGS for this competency (reuse finalRequiredMGS from validation above)
+                const requiredMGS = finalRequiredMGS.length > 0 ? finalRequiredMGS : await competencyService.getRequiredMGS(competency.competency_id);
                 const requiredCount = requiredMGS.length;
 
                 if (requiredCount === 0) {
@@ -1003,6 +1197,8 @@ class VerificationService {
         let parentUserComp = parentUserCompsMap.get(parent.competency_id);
 
         // If user doesn't own parent, create it
+        // NOTE: Parent competencies have empty verifiedSkills array because they aggregate from children
+        // They don't have direct skills - their coverage is calculated from child competencies
         if (!parentUserComp) {
           try {
             parentUserComp = await userCompetencyRepository.create({
@@ -1010,11 +1206,16 @@ class VerificationService {
               competency_id: parent.competency_id,
               coverage_percentage: 0.00,
               proficiency_level: 'undefined',
-              verifiedSkills: []
+              verifiedSkills: [] // Parent competencies don't have direct skills - they aggregate from children
             });
             console.log(
-              '[VerificationService.updateParentCompetencies] Created parent userCompetency',
-              { userId, parent_competency_id: parent.competency_id, parent_competency_name: parent.competency_name }
+              '[VerificationService.updateParentCompetencies] Created parent userCompetency (no direct skills - aggregates from children)',
+              {
+                userId,
+                parent_competency_id: parent.competency_id,
+                parent_competency_name: parent.competency_name,
+                child_competency_id: childCompetencyId
+              }
             );
           } catch (err) {
             console.error(
