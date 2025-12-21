@@ -107,6 +107,7 @@ async function sendCareerPathCompetencies(userId, careerPaths) {
     requester_service: 'skills-engine-service',
     payload: {
       action: 'Update user career path competencies',
+      description: 'This request to Directory MS is to show the career-path competencies for the employee',
       user_id: userId,
       career_path_competencies: competencies
     },
