@@ -229,34 +229,19 @@ class VerificationService {
               );
 
               if (!userComp) {
-                // Create userCompetency if doesn't exist
-                // Initial proficiency_level is 'undefined' (string) - will be determined after baseline exam
-                try {
-                  userComp = await userCompetencyRepository.create({
-                    user_id: userId,
+                // For baseline exams, only update competencies the user already owns
+                // Don't create new competencies - baseline is diagnostic, not for learning new competencies
+                console.log(
+                  '[VerificationService.processBaselineExamResults] Skipping competency - user does not own it (baseline exam only updates existing competencies)',
+                  {
+                    userId,
                     competency_id: competency.competency_id,
-                    coverage_percentage: 0.00,
-                    proficiency_level: 'undefined', // Initially undefined - will be determined after baseline exam
-                    verifiedSkills: []
-                  });
-                  console.log(
-                    '[VerificationService.processBaselineExamResults] Created new userCompetency for skill update',
-                    {
-                      userId,
-                      competency_id: competency.competency_id,
-                      competency_name: competency.competency_name,
-                      skill_id,
-                      skill_name
-                    }
-                  );
-                } catch (err) {
-                  console.error(
-                    '[VerificationService.processBaselineExamResults] Error creating userCompetency',
-                    { userId, competency_id: competency.competency_id, error: err.message }
-                  );
-                  // Skip this competency if creation fails
-                  continue;
-                }
+                    competency_name: competency.competency_name,
+                    skill_id,
+                    skill_name
+                  }
+                );
+                continue; // Skip competencies the user doesn't own for baseline exams
               }
 
               // Double-check: Verify the skill is actually in the required MGS before adding
