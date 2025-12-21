@@ -156,10 +156,21 @@ class VerificationService {
             continue;
           }
 
+          // Deduplicate by competency_id to ensure aliases (which point to same competency_id) 
+          // are not treated as separate competencies
+          const uniqueCompetenciesMap = new Map();
+          for (const competency of competencies) {
+            if (competency && competency.competency_id) {
+              // Use competency_id as key to ensure uniqueness (aliases share same competency_id)
+              uniqueCompetenciesMap.set(competency.competency_id, competency);
+            }
+          }
+          const uniqueCompetencies = Array.from(uniqueCompetenciesMap.values());
+
           // Extra safety: only update competencies for which this skill_id
           // is actually part of their required MGS set.
           const filteredCompetencies = [];
-          for (const competency of competencies) {
+          for (const competency of uniqueCompetencies) {
             try {
               const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
               const isRequired = requiredMGS.some(mgs => mgs.skill_id === skill_id);
@@ -483,10 +494,21 @@ class VerificationService {
             continue;
           }
 
+          // Deduplicate by competency_id to ensure aliases (which point to same competency_id) 
+          // are not treated as separate competencies
+          const uniqueCompetenciesMap = new Map();
+          for (const competency of competencies) {
+            if (competency && competency.competency_id) {
+              // Use competency_id as key to ensure uniqueness (aliases share same competency_id)
+              uniqueCompetenciesMap.set(competency.competency_id, competency);
+            }
+          }
+          const uniqueCompetencies = Array.from(uniqueCompetenciesMap.values());
+
           // Extra safety: only update competencies for which this skill_id
           // is actually part of their required MGS set.
           const filteredCompetencies = [];
-          for (const competency of competencies) {
+          for (const competency of uniqueCompetencies) {
             try {
               const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
               const isRequired = requiredMGS.some(mgs => mgs.skill_id === skill_id);
