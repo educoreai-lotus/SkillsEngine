@@ -52,9 +52,10 @@ async function postToCoordinator(envelope, options = {}) {
   // Default timeout: 5 minutes (300 seconds) - configurable via env var or options
   const timeout = options.timeout || parseInt(process.env.COORDINATOR_TIMEOUT || '300000', 10);
 
+  let signature = null;
   try {
     // Generate ECDSA signature for the entire envelope
-    const signature = generateSignature(SERVICE_NAME, privateKey, envelope);
+    signature = generateSignature(SERVICE_NAME, privateKey, envelope);
 
     // Send POST request with signature headers
     const response = await axios.post(url, envelope, {

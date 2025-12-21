@@ -423,9 +423,29 @@ class VerificationService {
         );
       } catch (err) {
         // Don't fail exam processing if Directory MS update fails
+        const errorDetails = {
+          userId,
+          examType,
+          error: err.message,
+          stack: err.stack
+        };
+
+        // Include additional error details if available
+        if (err.response) {
+          errorDetails.status = err.response.status;
+          errorDetails.statusText = err.response.statusText;
+          errorDetails.responseData = err.response.data;
+        } else if (err.request) {
+          errorDetails.requestError = 'No response received';
+        }
+
+        if (err.code) {
+          errorDetails.code = err.code;
+        }
+
         console.warn(
           '[VerificationService.processBaselineExamResults] Failed to send updated profile to Directory MS',
-          { userId, error: err.message }
+          errorDetails
         );
       }
 
@@ -873,9 +893,29 @@ class VerificationService {
         );
       } catch (err) {
         // Don't fail exam processing if Directory MS update fails
+        const errorDetails = {
+          userId,
+          examType,
+          error: err.message,
+          stack: err.stack
+        };
+
+        // Include additional error details if available
+        if (err.response) {
+          errorDetails.status = err.response.status;
+          errorDetails.statusText = err.response.statusText;
+          errorDetails.responseData = err.response.data;
+        } else if (err.request) {
+          errorDetails.requestError = 'No response received';
+        }
+
+        if (err.code) {
+          errorDetails.code = err.code;
+        }
+
         console.warn(
           '[VerificationService.processPostCourseExamResults] Failed to send updated profile to Directory MS',
-          { userId, error: err.message }
+          errorDetails
         );
       }
 
