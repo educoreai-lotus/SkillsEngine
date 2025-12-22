@@ -1001,6 +1001,14 @@ class VerificationService {
       analysisType = 'narrow';
     }
 
+    console.log('[VerificationService.runGapAnalysis] ===== STARTING GAP ANALYSIS =====', {
+      userId,
+      examType: normalizedExamType,
+      examStatus: normalizedExamStatus,
+      analysisType,
+      courseName
+    });
+
     let gaps = {};
 
     try {
@@ -1013,6 +1021,10 @@ class VerificationService {
         );
         gaps = {};
       } else {
+        console.log('[VerificationService.runGapAnalysis] Calling calculateCareerPathGap for all career path competencies', {
+          userId,
+          careerPathCount: careerPaths.length
+        });
         // Always calculate gap analysis for all career path competencies
         const allCareerPathGaps = await gapAnalysisService.calculateCareerPathGap(userId);
 
