@@ -164,6 +164,21 @@ class UnifiedEndpointHandler {
         envelope.response = result || {};
       }
 
+      // Log response being sent back (especially for Learner AI requests)
+      if (requester_service === 'learnerAI' || requester_service === 'learner-ai-ms') {
+        console.log('[UnifiedEndpointHandler] Sending response back to Learner AI MS:', {
+          requester_service,
+          responseStructure: {
+            hasCompetencies: !!envelope.response.competencies,
+            competencyCount: envelope.response.competencies ? Object.keys(envelope.response.competencies).length : 0,
+            totalMGS: envelope.response.competencies ? Object.values(envelope.response.competencies).reduce((sum, mgs) => {
+              return sum + (Array.isArray(mgs) ? mgs.length : 0);
+            }, 0) : 0
+          },
+          fullResponse: JSON.stringify(envelope, null, 2)
+        });
+      }
+
       // Step 6: Return full object as stringified JSON
       return res
         .status(200)
