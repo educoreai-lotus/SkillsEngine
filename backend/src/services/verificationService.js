@@ -284,17 +284,12 @@ class VerificationService {
               const verifiedSkills = userComp.verifiedSkills || [];
               const existingIndex = verifiedSkills.findIndex(s => s.skill_id === skill_id);
 
-              // Persist JSON shape in verifiedSkills (includes score if provided)
+              // Persist JSON shape in verifiedSkills (score is not included)
               const verifiedSkillData = {
                 skill_id,
                 skill_name,
                 verified,
               };
-
-              // Include score if provided (optional field)
-              if (typeof score === 'number' && !isNaN(score)) {
-                verifiedSkillData.score = score;
-              }
 
               if (existingIndex >= 0) {
                 verifiedSkills[existingIndex] = verifiedSkillData;
@@ -781,17 +776,12 @@ class VerificationService {
               const verifiedSkills = userComp.verifiedSkills || [];
               const existingIndex = verifiedSkills.findIndex(s => s.skill_id === skill_id);
 
-              // Persist JSON shape in verifiedSkills (includes score if provided)
+              // Persist JSON shape in verifiedSkills (score is not included)
               const verifiedSkillData = {
                 skill_id,
                 skill_name,
                 verified,
               };
-
-              // Include score if provided (optional field)
-              if (typeof score === 'number' && !isNaN(score)) {
-                verifiedSkillData.score = score;
-              }
 
               if (existingIndex >= 0) {
                 verifiedSkills[existingIndex] = verifiedSkillData;
