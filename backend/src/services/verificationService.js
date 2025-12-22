@@ -1279,35 +1279,19 @@ class VerificationService {
         // Check if user owns this parent competency
         let parentUserComp = parentUserCompsMap.get(parent.competency_id);
 
-        // If user doesn't own parent, create it
-        // NOTE: Parent competencies have empty verifiedSkills array because they aggregate from children
-        // They don't have direct skills - their coverage is calculated from child competencies
+        // If user doesn't own this parent competency, skip it.
+        // We only aggregate coverage for parents that already exist for the user.
         if (!parentUserComp) {
-          try {
-            parentUserComp = await userCompetencyRepository.create({
-              user_id: userId,
-              competency_id: parent.competency_id,
-              coverage_percentage: 0.00,
-              proficiency_level: 'undefined',
-              verifiedSkills: [] // Parent competencies don't have direct skills - they aggregate from children
-            });
-            console.log(
-              '[VerificationService.updateParentCompetencies] Created parent userCompetency (no direct skills - aggregates from children)',
-              {
-                userId,
-                parent_competency_id: parent.competency_id,
-                parent_competency_name: parent.competency_name,
-                child_competency_id: childCompetencyId
-              }
-            );
-          } catch (err) {
-            console.error(
-              '[VerificationService.updateParentCompetencies] Error creating parent userCompetency',
-              { userId, parent_competency_id: parent.competency_id, error: err.message }
-            );
-            // Continue to next parent if creation fails
-            continue;
-          }
+          console.log(
+            '[VerificationService.updateParentCompetencies] Skipping parent competency - user does not own it',
+            {
+              userId,
+              parent_competency_id: parent.competency_id,
+              parent_competency_name: parent.competency_name,
+              child_competency_id: childCompetencyId
+            }
+          );
+          continue;
         }
 
         // Recalculate parent coverage by aggregating from all child competencies
