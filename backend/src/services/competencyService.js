@@ -125,42 +125,74 @@ class CompetencyService {
    * Aggregates MGS from all linked skills and child competencies
    * Note: This method does NOT auto-generate skill trees. Use generateAndLinkSkillTree() explicitly if needed.
    * @param {string} competencyId - Competency ID
+   * @param {Set<string>} visited - Set of visited competency IDs to prevent cycles (internal use)
+   * @param {number} depth - Current recursion depth (internal use, max 50)
    * @returns {Promise<Array>} Array of MGS skill objects
    */
-  async getRequiredMGS(competencyId) {
+  async getRequiredMGS(competencyId, visited = new Set(), depth = 0) {
+    // Prevent infinite recursion from circular references
+    if (visited.has(competencyId)) {
+      console.warn(`[CompetencyService.getRequiredMGS] Circular reference detected for competency ${competencyId}, skipping`);
+      return [];
+    }
+
+    // Prevent stack overflow from very deep hierarchies
+    if (depth > 50) {
+      console.warn(`[CompetencyService.getRequiredMGS] Maximum recursion depth (50) reached for competency ${competencyId}, stopping`);
+      return [];
+    }
+
     const competency = await competencyRepository.findById(competencyId);
     if (!competency) {
       throw new Error(`Competency with ID ${competencyId} not found`);
     }
 
+    // Mark as visited
+    visited.add(competencyId);
+
     const allMGS = new Set();
 
-    // Get MGS from child competencies (if any)
-    const children = await competencyRepository.findChildren(competencyId);
-    for (const child of children) {
-      const childMGS = await this.getRequiredMGS(child.competency_id);
-      childMGS.forEach(mgs => allMGS.add(mgs.skill_id));
-    }
-
-    // Get linked L1 skills
-    const linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
-
-    // For each L1 skill, get all MGS
-    for (const skill of linkedSkills || []) {
-      const mgs = await skillRepository.findMGS(skill.skill_id);
-      mgs.forEach(m => allMGS.add(m.skill_id));
-    }
-
-    // Return full MGS objects
-    const mgsArray = [];
-    for (const mgsId of allMGS) {
-      const mgsSkill = await skillRepository.findById(mgsId);
-      if (mgsSkill) {
-        mgsArray.push(mgsSkill.toJSON());
+    try {
+      // Get MGS from child competencies (if any)
+      const children = await competencyRepository.findChildren(competencyId);
+      for (const child of children) {
+        const childMGS = await this.getRequiredMGS(child.competency_id, visited, depth + 1);
+        childMGS.forEach(mgs => allMGS.add(mgs.skill_id));
       }
-    }
 
-    return mgsArray;
+      // Get linked L1 skills
+      const linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
+
+      // For each L1 skill, get all MGS
+      for (const skill of linkedSkills || []) {
+        const mgs = await skillRepository.findMGS(skill.skill_id);
+        mgs.forEach(m => allMGS.add(m.skill_id));
+      }
+
+      // Batch fetch all MGS skills in one query instead of N+1 queries
+      const mgsArray = [];
+      if (allMGS.size > 0) {
+        const mgsIds = Array.from(allMGS);
+        const { data, error } = await skillRepository.getClient()
+          .from('skills')
+          .select('*')
+          .in('skill_id', mgsIds);
+
+        if (error) {
+          console.error(`[CompetencyService.getRequiredMGS] Error fetching MGS skills:`, error);
+          throw error;
+        }
+
+        if (data) {
+          mgsArray.push(...data.map(skill => new Skill(skill).toJSON()));
+        }
+      }
+
+      return mgsArray;
+    } finally {
+      // Remove from visited set when done (allows same competency to be visited in different branches)
+      visited.delete(competencyId);
+    }
   }
 
   /**

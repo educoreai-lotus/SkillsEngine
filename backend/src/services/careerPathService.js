@@ -161,6 +161,7 @@ class CareerPathService {
       if (careerPaths && careerPaths.length > 0 && careerPaths[0].competency_name) {
         userCareerPath = careerPaths[0].competency_name;
       }
+      console.log('userCareerPath',userCareerPath);
     } catch (error) {
       logger.warn('Failed to fetch career paths for user', { userId, error: error.message });
     }
