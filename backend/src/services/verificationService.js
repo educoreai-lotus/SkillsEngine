@@ -990,6 +990,13 @@ class VerificationService {
       ? examStatus.toLowerCase().trim()
       : null;
 
+    console.log('[VerificationService.runGapAnalysis] ===== STARTING GAP ANALYSIS =====', {
+      userId,
+      examType: normalizedExamType,
+      examStatus: normalizedExamStatus,
+      courseName
+    });
+
     // Determine analysis type based on exam type + status
     // Docs: step_3_feature_specifications.md (Feature 5)
     // - Baseline Exam        -> Broad (all career path competencies)
@@ -1000,30 +1007,41 @@ class VerificationService {
     if (normalizedExamType === 'postcourse' && normalizedExamStatus === 'failed') {
       analysisType = 'narrow';
     }
-
-    console.log('[VerificationService.runGapAnalysis] ===== STARTING GAP ANALYSIS =====', {
+    console.log('[VerificationService.runGapAnalysis] Step 1: Determined analysis type', {
       userId,
       examType: normalizedExamType,
       examStatus: normalizedExamStatus,
-      analysisType,
-      courseName
+      analysisType
     });
 
     let gaps = {};
 
     try {
       // Always use career path competencies from user_career_path table for both baseline and post-course exams
+      console.log('[VerificationService.runGapAnalysis] Step 2: Fetching career path competencies from user_career_path table', {
+        userId
+      });
       const careerPaths = await userCareerPathRepository.findByUser(userId);
+      console.log('[VerificationService.runGapAnalysis] Step 2: Found career path competencies', {
+        userId,
+        careerPathCount: careerPaths?.length || 0,
+        careerPaths: careerPaths?.map(cp => ({
+          competency_id: cp.competency_id,
+          competency_name: cp.competency_name
+        })) || []
+      });
+
       if (!careerPaths || careerPaths.length === 0) {
         console.log(
-          '[VerificationService.runGapAnalysis] User has no career path competencies; skipping gap analysis and Learner AI sync',
+          '[VerificationService.runGapAnalysis] Step 2: User has no career path competencies; skipping gap analysis and Learner AI sync',
           { userId, examType: normalizedExamType, examStatus: normalizedExamStatus }
         );
         gaps = {};
       } else {
-        console.log('[VerificationService.runGapAnalysis] Calling calculateCareerPathGap for all career path competencies', {
+        console.log('[VerificationService.runGapAnalysis] Step 3: Calling calculateCareerPathGap for all career path competencies', {
           userId,
-          careerPathCount: careerPaths.length
+          careerPathCount: careerPaths.length,
+          analysisType
         });
         // Always calculate gap analysis for all career path competencies
         const allCareerPathGaps = await gapAnalysisService.calculateCareerPathGap(userId);
@@ -1031,35 +1049,60 @@ class VerificationService {
         // Both broad and narrow analysis return all career path gaps
         // Narrow analysis still shows all missing skills in career path competencies
         gaps = allCareerPathGaps;
-        console.log('[VerificationService.runGapAnalysis] Gap analysis (all career path competencies)', {
+        const competencyCount = Object.keys(gaps).length;
+        const totalMissingSkills = Object.values(gaps).reduce((sum, skills) => sum + skills.length, 0);
+        console.log('[VerificationService.runGapAnalysis] Step 4: Gap calculation completed', {
           userId,
           examType: normalizedExamType,
           analysisType,
+          careerPathCount: careerPaths.length,
+          competenciesWithGaps: competencyCount,
+          totalMissingSkills: totalMissingSkills,
           gapKeys: Object.keys(gaps)
         });
       }
     } catch (error) {
       console.error(
         '[VerificationService.runGapAnalysis] Error calculating gap analysis',
-        { userId, examType: normalizedExamType, examStatus: normalizedExamStatus, error: error.message }
+        { userId, examType: normalizedExamType, examStatus: normalizedExamStatus, error: error.message, stack: error.stack }
       );
       gaps = {};
     }
 
     // Best-effort: log and send gap analysis to Learner AI MS
     // NOTE: Baseline exams do NOT send gap analysis to Learner AI
+    console.log('[VerificationService.runGapAnalysis] Step 5: Checking if gap should be sent to Learner AI', {
+      userId,
+      examType: normalizedExamType,
+      analysisType,
+      gapCount: Object.keys(gaps).length
+    });
+
     if (normalizedExamType === 'baseline') {
       console.log(
-        '[VerificationService.runGapAnalysis] Skipping Learner AI send for baseline exam',
+        '[VerificationService.runGapAnalysis] Step 5: Skipping Learner AI send for baseline exam',
         { userId, analysisType, gapKeys: Object.keys(gaps) }
       );
     } else {
       // Post-course exams: send gap analysis to Learner AI
       try {
         if (Object.keys(gaps).length > 0) {
+          // Use competency_target_name if provided, otherwise fall back to courseName
+          const targetName = context.competency_target_name || courseName;
+          const examStatusForLearnerAI = normalizedExamStatus;
+          console.log('[VerificationService.runGapAnalysis] Step 5: Preparing to send gaps to Learner AI', {
+            userId,
+            analysisType,
+            examType: normalizedExamType,
+            examStatus: normalizedExamStatus,
+            targetName,
+            examStatusForLearnerAI,
+            competencyCount: Object.keys(gaps).length,
+            totalMissingSkills: Object.values(gaps).reduce((sum, skills) => sum + skills.length, 0)
+          });
           const serializedGaps = JSON.stringify(gaps, null, 2);
           console.log(
-            '[VerificationService.runGapAnalysis] Gaps payload before sending to Learner AI MS',
+            '[VerificationService.runGapAnalysis] Step 5: Gaps payload before sending to Learner AI MS',
             {
               userId,
               analysisType,
@@ -1068,12 +1111,6 @@ class VerificationService {
               gaps: serializedGaps
             }
           );
-          // Use competency_target_name if provided, otherwise fall back to courseName
-          const targetName = context.competency_target_name || courseName;
-          // For baseline exams, always send exam status as "failed" for Learner AI
-          // Baseline exams are diagnostic and should be treated as failed for gap analysis
-          // const examStatusForLearnerAI = normalizedExamType === 'baseline' ? 'failed' : normalizedExamStatus;
-          const examStatusForLearnerAI = normalizedExamStatus;
           await learnerAIMSClient.sendGapAnalysis(
             userId,
             gaps,
@@ -1081,20 +1118,33 @@ class VerificationService {
             targetName,
             examStatusForLearnerAI
           );
+          console.log('[VerificationService.runGapAnalysis] Step 5: Successfully sent gaps to Learner AI', {
+            userId,
+            analysisType,
+            competencyCount: Object.keys(gaps).length
+          });
         } else {
           console.log(
-            '[VerificationService.runGapAnalysis] No gaps to send to Learner AI MS',
+            '[VerificationService.runGapAnalysis] Step 5: No gaps to send to Learner AI MS',
             { userId, analysisType, examType: normalizedExamType, examStatus: normalizedExamStatus }
           );
         }
       } catch (error) {
         // Do not fail exam processing if Learner AI is unavailable
         console.warn(
-          '[VerificationService.runGapAnalysis] Failed to send gap analysis to Learner AI MS',
-          { userId, error: error.message }
+          '[VerificationService.runGapAnalysis] Step 5: Failed to send gap analysis to Learner AI MS',
+          { userId, error: error.message, stack: error.stack }
         );
       }
     }
+
+    console.log('[VerificationService.runGapAnalysis] ===== GAP ANALYSIS COMPLETE =====', {
+      userId,
+      examType: normalizedExamType,
+      examStatus: normalizedExamStatus,
+      analysisType,
+      finalGapCount: Object.keys(gaps).length
+    });
 
     // COMMENTED OUT: Baseline exam gap analysis sending to Learner AI
     // try {
