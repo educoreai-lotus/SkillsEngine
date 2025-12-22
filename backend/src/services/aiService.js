@@ -90,10 +90,48 @@ class AIService {
 
     try {
       const parsed = JSON.parse(jsonText);
-      // Only log structure summary, not full content to prevent rate limits
+      // Only log structure summary / preview, not full content to prevent rate limits
       if (parsed && typeof parsed === 'object') {
-        const keys = Object.keys(parsed);
-        console.log('[callGeminiJSON] Parsed JSON structure:', keys.length > 0 ? keys.join(', ') : 'empty object');
+        if (Array.isArray(parsed)) {
+          const length = parsed.length;
+          let previewItems = [];
+
+          // If it's an array of strings (e.g., list of competencies/skills), log a short preview
+          if (length > 0 && typeof parsed[0] === 'string') {
+            previewItems = parsed.slice(0, 15);
+          }
+          // If it's an array of objects with a common "name" field, use that as a preview
+          else if (length > 0 && typeof parsed[0] === 'object') {
+            previewItems = parsed
+              .map((item) => {
+                if (!item || typeof item !== 'object') return null;
+                // Try common name-like fields
+                return (
+                  item.name ||
+                  item.competency_name ||
+                  item.skill_name ||
+                  (item.data && item.data.Competency && item.data.Competency.name) ||
+                  null
+                );
+              })
+              .filter(Boolean)
+              .slice(0, 15);
+          }
+
+          console.log(
+            '[callGeminiJSON] Parsed JSON structure (array) length=',
+            length,
+            previewItems.length > 0
+              ? 'preview: ' + previewItems.join(', ')
+              : '(no readable preview)'
+          );
+        } else {
+          const keys = Object.keys(parsed);
+          console.log(
+            '[callGeminiJSON] Parsed JSON structure (object keys):',
+            keys.length > 0 ? keys.join(', ') : 'empty object'
+          );
+        }
       }
       return parsed;
     } catch (parseError) {
