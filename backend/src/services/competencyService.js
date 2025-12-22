@@ -137,52 +137,18 @@ class CompetencyService {
 
     // Get MGS from child competencies (if any)
     const children = await competencyRepository.findChildren(competencyId);
-    if (children && children.length > 0) {
-      console.log(`[CompetencyService.getRequiredMGS] Found ${children.length} child competencies for ${competency.competency_name}`, {
-        competency_id: competencyId,
-        competency_name: competency.competency_name,
-        childCount: children.length,
-        children: children.map(c => ({ competency_id: c.competency_id, competency_name: c.competency_name }))
-      });
-    }
     for (const child of children) {
       const childMGS = await this.getRequiredMGS(child.competency_id);
-      const beforeCount = allMGS.size;
       childMGS.forEach(mgs => allMGS.add(mgs.skill_id));
-      const addedCount = allMGS.size - beforeCount;
-      console.log(`[CompetencyService.getRequiredMGS] Added ${addedCount} MGS from child competency`, {
-        parent_competency_name: competency.competency_name,
-        child_competency_id: child.competency_id,
-        child_competency_name: child.competency_name,
-        childMGSCount: childMGS.length,
-        addedCount
-      });
     }
 
     // Get linked L1 skills
     const linkedSkills = await competencyRepository.getLinkedSkills(competencyId);
-    if (linkedSkills && linkedSkills.length > 0) {
-      console.log(`[CompetencyService.getRequiredMGS] Found ${linkedSkills.length} linked L1 skills for ${competency.competency_name}`, {
-        competency_id: competencyId,
-        competency_name: competency.competency_name,
-        linkedSkillCount: linkedSkills.length
-      });
-    }
 
     // For each L1 skill, get all MGS
     for (const skill of linkedSkills || []) {
       const mgs = await skillRepository.findMGS(skill.skill_id);
-      const beforeCount = allMGS.size;
       mgs.forEach(m => allMGS.add(m.skill_id));
-      const addedCount = allMGS.size - beforeCount;
-      if (addedCount > 0) {
-        console.log(`[CompetencyService.getRequiredMGS] Added ${addedCount} MGS from L1 skill`, {
-          competency_name: competency.competency_name,
-          skill_id: skill.skill_id,
-          skill_name: skill.skill_name,
-          mgsCount: mgs.length
-        });
-      }
     }
 
     // Return full MGS objects
@@ -193,14 +159,6 @@ class CompetencyService {
         mgsArray.push(mgsSkill.toJSON());
       }
     }
-
-    console.log(`[CompetencyService.getRequiredMGS] Final MGS count for ${competency.competency_name}`, {
-      competency_id: competencyId,
-      competency_name: competency.competency_name,
-      childCount: children?.length || 0,
-      linkedSkillCount: linkedSkills?.length || 0,
-      totalMGSCount: mgsArray.length
-    });
 
     return mgsArray;
   }
