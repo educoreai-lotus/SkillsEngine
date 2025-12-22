@@ -516,16 +516,58 @@ class VerificationService {
       // Helper: normalize a single verified skill coming from Assessment MS
       // Accepted input format:
       //   - { skill_id, skill_name, status: "acquired" | "failed", score: number }
+      // Or (post-course only): { skill_name, status, score } when skill_id is omitted.
       // We normalize to JSON shape: { skill_id, skill_name, verified, score? }
       // and only persist leaf / MGS skills with status "acquired".
       const normalizeVerifiedSkill = async (rawSkill) => {
-        if (!rawSkill || !rawSkill.skill_id) {
+        if (!rawSkill) {
           return null;
         }
 
-        const { skill_id, skill_name, score } = rawSkill;
+        // Extract basic fields from payload
+        const { score } = rawSkill;
 
-        // Determine status from "status" string (values: "acquired" or "failed")
+        // 1) Resolve skill_id / skill_name
+        //    - Preferred: payload already contains skill_id
+        //    - Fallback: payload contains skill_name + status (no skill_id)
+        let skill_id = rawSkill.skill_id || null;
+        let skill_name = rawSkill.skill_name || null;
+
+        // If skill_id is missing but we have a skill_name, try to resolve it via Skill Repository
+        if (!skill_id && typeof skill_name === 'string' && skill_name.trim().length > 0) {
+          try {
+            const skillRecord = await skillRepository.findByName(skill_name);
+
+            if (!skillRecord) {
+              console.warn(
+                '[VerificationService.processPostCourseExamResults] No skill found for name - skipping skill',
+                { userId, skill_name }
+              );
+              return null;
+            }
+
+            // Use canonical values from DB
+            skill_id = skillRecord.skill_id;
+            skill_name = skillRecord.skill_name;
+          } catch (err) {
+            console.error(
+              '[VerificationService.processPostCourseExamResults] Error resolving skill by name - skipping skill',
+              { userId, skill_name, error: err.message }
+            );
+            return null;
+          }
+        }
+
+        // If we still don't have a valid skill_id, skip this entry
+        if (!skill_id) {
+          console.warn(
+            '[VerificationService.processPostCourseExamResults] Missing skill_id and unable to resolve from name - skipping skill',
+            { userId, rawSkill }
+          );
+          return null;
+        }
+
+        // 2) Determine status from "status" string (values: "acquired" or "failed")
         let skillStatus = null;
         if (typeof rawSkill.status === 'string') {
           skillStatus = rawSkill.status.toLowerCase().trim();
@@ -536,12 +578,12 @@ class VerificationService {
           return null;
         }
 
-        // Only process MGS that are effectively "acquired"
+        // 3) Only process MGS that are effectively "acquired"
         if (skillStatus !== 'acquired') {
           return null; // Skip skills that are "failed" or have invalid status
         }
 
-        // Ensure we only persist MGS / leaf skills in verifiedSkills
+        // 4) Ensure we only persist MGS / leaf skills in verifiedSkills
         // If this skill has children, skip it here so verifiedSkills
         // always represents the most granular skills only.
         try {
@@ -1425,8 +1467,25 @@ class VerificationService {
       // Get root nodes (no parent)
       const roots = Array.from(nodes.values()).filter(node => !node.parentId);
 
-      // Serialize node hierarchy (recursive)
+      // Serialize + prune node hierarchy (recursive)
+      // We drop leaf nodes that have no coverage and no children so that
+      // "deleted" / empty competencies are not sent to Directory MS.
       const serializeNode = (node) => {
+        const childNodes = (node.children || [])
+          .map(serializeNode)
+          .filter(child => child !== null);
+
+        const hasChildren = childNodes.length > 0;
+        const hasCoverage =
+          typeof node.coverage === 'number'
+            ? node.coverage > 0
+            : !!node.coverage;
+
+        // If this node has no coverage and no (kept) children, drop it
+        if (!hasCoverage && !hasChildren) {
+          return null;
+        }
+
         const base = {
           competencyId: node.competencyId,
           competencyName: node.competencyName,
@@ -1434,15 +1493,16 @@ class VerificationService {
           coverage: node.coverage
         };
 
-        const childNodes = (node.children || []).map(serializeNode);
-        if (childNodes.length > 0) {
+        if (hasChildren) {
           base.children = childNodes;
         }
 
         return base;
       };
 
-      const competencies = roots.map(serializeNode);
+      const competencies = roots
+        .map(serializeNode)
+        .filter(node => node !== null);
 
       // Build final payload
       const payload = {
