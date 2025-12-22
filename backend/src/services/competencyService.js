@@ -715,11 +715,15 @@ class CompetencyService {
 
     // Step 2: Extract all nodes from tree
     const nodes = this.extractNodesFromTree(hierarchyTree);
-    console.log(`[CompetencyService] Extracted ${nodes.length} nodes from tree`);
 
     // Step 3: Process and persist nodes
     const stats = await this.persistHierarchy(nodes);
-    console.log('[CompetencyService] Persistence complete:', stats);
+
+    // Step 4: Summary log after hierarchy creation is complete
+    console.log('[CompetencyService] Finished building competency hierarchy from career path', {
+      careerPath,
+      nodeCount: nodes.length,
+    });
 
     return stats;
   }
@@ -805,7 +809,7 @@ class CompetencyService {
         );
         competencyIdMap.set(node.name, newComp.competency_id);
         stats.competenciesCreated++;
-        console.log(`[CompetencyService] Created new competency: ${node.name} (${newComp.competency_id})`);
+
       }
     }
 
@@ -830,12 +834,10 @@ class CompetencyService {
 
       if (alreadyLinked) {
         stats.relationshipsExisting++;
-        console.log(`[CompetencyService] Relationship already exists: ${node.parentId} -> ${node.name}`);
       } else {
         // Create new relationship
         await competencyRepository.linkSubCompetency(parentCompId, childCompId);
         stats.relationshipsCreated++;
-        console.log(`[CompetencyService] Created relationship: ${node.parentId} -> ${node.name}`);
       }
     }
 
