@@ -1,48 +1,26 @@
 {
   "service_name": "skills-engine-backend",
   "description": "Manages user competency profiles and exposes user + competency structures for analytics and RAG.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "data_structure": {
     "user": "object",
-    "user.user_id": "string",
-    "user.user_name": "string",
-    "user.email": "string",
-    "user.company_id": "string",
-    "user.created_at": "datetime",
-    "user.updated_at": "datetime",
-    "competencies": "array",
-    "competencies[].user_id": "string",
-    "competencies[].competency_id": "string",
-    "competencies[].competency_name": "string",
-    "competencies[].coverage_percentage": "number",
-    "competencies[].proficiency_level": "string",
-    "competencies[].verifiedSkills": "array",
-    "competencies[].verifiedSkills[].skill_id": "string",
-    "competencies[].verifiedSkills[].skill_name": "string",
-    "competencies[].verifiedSkills[].verified": "boolean",
-    "competencies[].created_at": "datetime",
-    "competencies[].updated_at": "datetime"
+    "competencies": "object",
+    "skill": "object",
+    "usercompetency": "object",
+    "user_career_path": "object",
+    "skill_subskill": "object",
+    "competency_subcompetency": "object",
+    "competency_skill": "object"
   },
   "field_descriptions": {
-    "user": "Top-level user object representing the learner or employee.",
-    "user.user_id": "Globally unique identifier for the user (UUID).",
-    "user.user_name": "Display name of the user as stored in the users table.",
-    "user.email": "Primary email address for the user.",
-    "user.company_id": "Identifier of the company/tenant the user belongs to. Used as tenant_id for batch queries.",
-    "user.created_at": "Timestamp when the user record was created.",
-    "user.updated_at": "Timestamp when the user record was last updated.",
-    "competencies": "Array of competency profile records for this user.",
-    "competencies[].user_id": "User ID owning this competency record.",
-    "competencies[].competency_id": "Identifier of the competency in the taxonomy.",
-    "competencies[].competency_name": "Human-readable name of the competency when joined with the competencies table.",
-    "competencies[].coverage_percentage": "Coverage percentage (0-100) representing how much of the competency the user has demonstrated.",
-    "competencies[].proficiency_level": "Proficiency level for this competency (BEGINNER, INTERMEDIATE, ADVANCED, EXPERT, or undefined).",
-    "competencies[].verifiedSkills": "Array of verified skills contributing to this competency (MGS).",
-    "competencies[].verifiedSkills[].skill_id": "Identifier of the verified skill.",
-    "competencies[].verifiedSkills[].skill_name": "Human-readable name of the verified skill.",
-    "competencies[].verifiedSkills[].verified": "Whether this skill is currently verified for the user.",
-    "competencies[].created_at": "Timestamp when this usercompetency record was created.",
-    "competencies[].updated_at": "Timestamp when this usercompetency record was last updated."
+    "user": "Top-level user object representing the learner or employee",
+    "competencies": "General competency taxonomy information (not user-specific)",
+    "skill": "General skill taxonomy information (not user-specific)",
+    "usercompetency": "Junction table storing user competency profiles with verification status",
+    "user_career_path": "Junction table storing user career path assignments",
+    "skill_subskill": "Junction table for skill hierarchy (parent-child relationships)",
+    "competency_subcompetency": "Junction table for nested competencies (sub-competencies)",
+    "competency_skill": "Junction table linking competencies to skills"
   },
   "sample_data": {
     "user": {
@@ -53,51 +31,139 @@
       "created_at": "2025-01-10T09:15:23.000Z",
       "updated_at": "2025-02-05T14:42:11.000Z"
     },
-    "competencies": [
-      {
-        "user_id": "user-3f9c8b24-8a7e-4d5d-9b2b-91f7c12d5e41",
-        "competency_id": "comp-frontend-engineering",
-        "competency_name": "Frontend Engineering",
-        "coverage_percentage": 82.5,
-        "proficiency_level": "ADVANCED",
-        "verifiedSkills": [
-          {
-            "skill_id": "skill-react-advanced",
-            "skill_name": "Advanced React Development",
-            "verified": true
-          },
-          {
-            "skill_id": "skill-js-performance",
-            "skill_name": "JavaScript Performance Optimization",
-            "verified": true
-          }
-        ],
-        "created_at": "2025-01-10T09:16:00.000Z",
-        "updated_at": "2025-02-05T14:40:00.000Z"
-      },
-      {
-        "user_id": "user-3f9c8b24-8a7e-4d5d-9b2b-91f7c12d5e41",
-        "competency_id": "comp-accessibility-web",
-        "competency_name": "Web Accessibility",
-        "coverage_percentage": 64.0,
-        "proficiency_level": "INTERMEDIATE",
-        "verifiedSkills": [
-          {
-            "skill_id": "skill-wcag-implementation",
-            "skill_name": "WCAG 2.1 Implementation",
-            "verified": true
-          }
-        ],
-        "created_at": "2025-01-12T11:05:10.000Z",
-        "updated_at": "2025-02-03T10:20:45.000Z"
-      }
-    ]
+    "competencies": {
+      "competency_id": "comp-frontend-engineering",
+      "competency_name": "Frontend Engineering",
+      "description": "Core competencies for frontend web development",
+      "parent_competency_id": "comp-software-engineering",
+      "created_at": "2025-01-01T08:00:00.000Z",
+      "updated_at": "2025-01-10T09:00:00.000Z",
+      "source": "soc"
+    },
+    "skill": {
+      "skill_id": "skill-react-advanced",
+      "skill_name": "Advanced React Development",
+      "parent_skill_id": "skill-react-basics",
+      "description": "Advanced concepts in React including hooks, context, and performance optimization",
+      "created_at": "2025-01-01T08:00:00.000Z",
+      "updated_at": "2025-01-10T09:00:00.000Z",
+      "source": "temp"
+    },
+    "usercompetency": {
+      "user_id": "user-3f9c8b24-8a7e-4d5d-9b2b-91f7c12d5e41",
+      "competency_id": "comp-frontend-engineering",
+      "coverage_percentage": 82.5,
+      "proficiency_level": "ADVANCED",
+      "verifiedskills": [
+        {
+          "skill_id": "skill-react-advanced",
+          "skill_name": "Advanced React Development",
+          "verified": true
+        }
+      ],
+      "created_at": "2025-01-10T09:16:00.000Z",
+      "updated_at": "2025-02-05T14:40:00.000Z"
+    },
+    "user_career_path": {
+      "user_id": "user-3f9c8b24-8a7e-4d5d-9b2b-91f7c12d5e41",
+      "competency_id": "comp-full-stack-development",
+      "root_career_path_competency_id": "comp-software-engineering",
+      "created_at": "2025-01-15T10:30:00.000Z"
+    },
+    "skill_subskill": {
+      "parent_skill_id": "skill-frontend-frameworks",
+      "child_skill_id": "skill-react-basics",
+      "created_at": "2025-01-01T08:00:00.000Z"
+    },
+    "competency_subcompetency": {
+      "parent_competency_id": "comp-software-engineering",
+      "child_competency_id": "comp-full-stack-development",
+      "created_at": "2025-01-01T08:00:00.000Z"
+    },
+    "competency_skill": {
+      "competency_id": "comp-react-framework",
+      "skill_id": "skill-react-advanced",
+      "created_at": "2025-01-01T08:00:00.000Z"
+    }
   },
   "notes": [
-    "Batch sync mode returns data.items as an array of objects shaped exactly like this sample_data (user + competencies).",
-    "Real-time mode returns a direct array of the same objects in the top-level data field.",
-    "competencies[].verifiedSkills is derived from the usercompetency.verifiedskills JSONB column in the Supabase database.",
-    "company_id is used as the tenant_id filter when Coordinator requests batch synchronization."
+    "=== USER OBJECT STRUCTURE ===",
+    "user (object) contains:",
+    "  └─ user_id (string): Globally unique identifier for the user (UUID)",
+    "  └─ user_name (string): Display name of the user as stored in the users table",
+    "  └─ email (string): Primary email address for the user",
+    "  └─ company_id (string): Identifier of the company/tenant the user belongs to (used as tenant_id for batch queries)",
+    "  └─ created_at (datetime): Timestamp when the user record was created",
+    "  └─ updated_at (datetime): Timestamp when the user record was last updated",
+    "",
+    "=== COMPETENCIES OBJECT STRUCTURE ===",
+    "competencies (object) contains general competency taxonomy information (not user-specific):",
+    "  └─ competency_id (string): Globally unique identifier for the competency (UUID)",
+    "  └─ competency_name (string): Human-readable name of the competency",
+    "  └─ description (string, nullable): Text description of the competency",
+    "  └─ parent_competency_id (string, nullable): Foreign key to parent competency in competencies table (UUID). Used for hierarchical structures",
+    "  └─ created_at (datetime): Timestamp when the competency record was created",
+    "  └─ updated_at (datetime): Timestamp when the competency record was last updated",
+    "  └─ source (string): Source of the competency data (default: 'soc')",
+    "",
+    "=== SKILL OBJECT STRUCTURE ===",
+    "skill (object) contains general skill taxonomy information (not user-specific):",
+    "  └─ skill_id (string): Globally unique identifier for the skill (UUID)",
+    "  └─ skill_name (string): Human-readable name of the skill (must be unique)",
+    "  └─ parent_skill_id (string, nullable): Foreign key to parent skill in skills table (UUID). Used for hierarchical structures",
+    "  └─ description (string, nullable): Text description of the skill",
+    "  └─ created_at (datetime): Timestamp when the skill record was created",
+    "  └─ updated_at (datetime): Timestamp when the skill record was last updated",
+    "  └─ source (string): Source of the skill data (default: 'temp')",
+    "",
+    "=== USERCOMPETENCY OBJECT STRUCTURE ===",
+    "usercompetency (object) contains:",
+    "  └─ user_id (string): Foreign key to users table (UUID)",
+    "  └─ competency_id (string): Foreign key to competencies table (UUID)",
+    "  └─ coverage_percentage (number): Coverage percentage (0-100) - NUMERIC(5,2) in database",
+    "  └─ proficiency_level (string): Proficiency level (BEGINNER, INTERMEDIATE, ADVANCED, EXPERT, or NULL)",
+    "  └─ verifiedskills (array): JSONB array of verified skills. Format: [{\"skill_id\": \"...\", \"skill_name\": \"...\", \"verified\": true}]",
+    "  └─ created_at (datetime): Timestamp when this usercompetency record was created",
+    "  └─ updated_at (datetime): Timestamp when this usercompetency record was last updated",
+    "",
+    "=== USER_CAREER_PATH OBJECT STRUCTURE ===",
+    "user_career_path (object) contains:",
+    "  └─ user_id (string): Foreign key to users table (UUID)",
+    "  └─ competency_id (string): Foreign key to competencies table (UUID). The competency assigned to the user's career path",
+    "  └─ root_career_path_competency_id (string, nullable): Foreign key to competencies table (UUID). Links core-competencies to their root career path for efficient queries",
+    "  └─ created_at (datetime): Timestamp when this career path assignment was created",
+    "",
+    "=== SKILL_SUBSKILL OBJECT STRUCTURE ===",
+    "skill_subskill (object) contains:",
+    "  └─ parent_skill_id (string): Foreign key to parent skill in skills table (UUID)",
+    "  └─ child_skill_id (string): Foreign key to child skill in skills table (UUID)",
+    "  └─ created_at (datetime): Timestamp when this skill hierarchy relationship was created",
+    "",
+    "=== COMPETENCY_SUBCOMPETENCY OBJECT STRUCTURE ===",
+    "competency_subcompetency (object) contains:",
+    "  └─ parent_competency_id (string): Foreign key to parent competency in competencies table (UUID)",
+    "  └─ child_competency_id (string): Foreign key to child competency in competencies table (UUID)",
+    "  └─ created_at (datetime): Timestamp when this competency hierarchy relationship was created",
+    "",
+    "=== COMPETENCY_SKILL OBJECT STRUCTURE ===",
+    "competency_skill (object) contains:",
+    "  └─ competency_id (string): Foreign key to competencies table (UUID). Typically links to core competencies (last-level)",
+    "  └─ skill_id (string): Foreign key to skills table (UUID). Links the competency to its associated skills",
+    "  └─ created_at (datetime): Timestamp when this competency-skill relationship was created",
+    "",
+    "=== ADDITIONAL NOTES ===",
+    "competencies table stores general competency taxonomy information, not user-specific data",
+    "skill table stores general skill taxonomy information, not user-specific data",
+    "usercompetency table links users to competencies with user-specific data (coverage_percentage, proficiency_level, verifiedskills)",
+    "Batch sync mode returns data.items as an array of objects shaped exactly like this sample_data (user + competencies)",
+    "Real-time mode returns a direct array of the same objects in the top-level data field",
+    "competencies[].verifiedSkills is derived from the usercompetency.verifiedskills JSONB column in the Supabase database",
+    "company_id is used as the tenant_id filter when Coordinator requests batch synchronization",
+    "usercompetency table uses a composite primary key (user_id, competency_id) to ensure one competency profile per user per competency",
+    "user_career_path table stores career path assignments where HR selects competencies for users",
+    "skill_subskill table represents hierarchical relationships between skills (e.g., L2 → L3 → L4/MGS)",
+    "competency_subcompetency table represents hierarchical relationships between competencies (e.g., High-level → Subcompetency → Core Competency)",
+    "competency_skill table links core competencies (last-level) to skills, acting as the entry point from competency hierarchy to skill hierarchy"
   ]
 }
 

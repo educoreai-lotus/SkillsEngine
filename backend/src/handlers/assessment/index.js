@@ -51,7 +51,7 @@ class AssessmentHandler {
 
       // Normalize exam_type (handle "postcourse" -> "post-course")
       const normalizedExamType = exam_type && typeof exam_type === 'string'
-        ? exam_type.toLowerCase().trim().replace(/^postcourse$/, 'post-course')
+        ? exam_type.toLowerCase().trim().replace(/^postcourse$/, 'postcourse')
         : exam_type;
 
       // Validate user_id early - must be present, not null, and valid UUID format
@@ -168,7 +168,7 @@ class AssessmentHandler {
       let result;
       if (normalizedExamType === 'baseline') {
         result = await verificationService.processBaselineExamResults(user_id, exam_results);
-      } else if (normalizedExamType === 'post-course') {
+      } else if (normalizedExamType === 'postcourse') {
         result = await verificationService.processPostCourseExamResults(user_id, exam_results);
       } else {
         return {

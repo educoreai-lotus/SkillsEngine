@@ -392,7 +392,7 @@ class AIService {
     // Handle direct array format (new format from updated prompt)
     if (Array.isArray(data)) {
       if (data.length === 0) return true; // Empty array is valid
-      
+
       // Validate each item is a non-empty string
       for (const item of data) {
         if (typeof item !== 'string' || !item.trim()) {

@@ -480,7 +480,7 @@ class VerificationService {
     const passed = examResults?.passed;
     const examStatusFromResults = typeof passed === 'boolean' ? (passed ? 'passed' : 'failed') : null;
     const normalizedExamStatus = exam_status || examStatusFromResults;
-    const examType = 'post-course';
+    const examType = exam_type || 'postcourse';
 
     // Log exam metadata if provided
     if (examId || finalGrade !== null || passingGrade !== null || course_name) {
@@ -1007,7 +1007,7 @@ class VerificationService {
     // - Post-course FAIL     -> Narrow (career path competencies, filtered to updated ones only)
     // NOTE: After each exam, gap analysis always uses competencies from career path table
     let analysisType = 'broad';
-    if (normalizedExamType === 'post-course' && normalizedExamStatus === 'failed') {
+    if (normalizedExamType === 'postcourse' && normalizedExamStatus === 'failed') {
       analysisType = 'narrow';
     }
 
