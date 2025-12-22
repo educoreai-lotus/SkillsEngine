@@ -164,19 +164,40 @@ class UnifiedEndpointHandler {
         envelope.response = result || {};
       }
 
-      // Log response being sent back (especially for Learner AI requests)
+      // Log response being sent back to Learner AI (for request_skills_breakdown)
       if (requester_service === 'learnerAI' || requester_service === 'learner-ai-ms') {
-        console.log('[UnifiedEndpointHandler] Sending response back to Learner AI MS:', {
-          requester_service,
-          responseStructure: {
-            hasCompetencies: !!envelope.response.competencies,
-            competencyCount: envelope.response.competencies ? Object.keys(envelope.response.competencies).length : 0,
-            totalMGS: envelope.response.competencies ? Object.values(envelope.response.competencies).reduce((sum, mgs) => {
-              return sum + (Array.isArray(mgs) ? mgs.length : 0);
-            }, 0) : 0
-          },
-          fullResponse: JSON.stringify(envelope, null, 2)
-        });
+        const payloadAction = payload?.action;
+        if (payloadAction === 'request_skills_breakdown' || payloadAction === 'get-mgs-for-competencies') {
+          const competencies = envelope.response?.competencies || {};
+          const totalMGS = Object.values(competencies).reduce((sum, mgs) => {
+            return sum + (Array.isArray(mgs) ? mgs.length : 0);
+          }, 0);
+
+          // Print ALL MGS skills that will be sent to Learner AI
+          console.log('[UnifiedEndpointHandler] Final MGS skills being sent to Learner AI:');
+          Object.keys(competencies).forEach(compName => {
+            const mgs = competencies[compName];
+            if (Array.isArray(mgs)) {
+              console.log(`[UnifiedEndpointHandler] Competency "${compName}" - ${mgs.length} MGS skills:`);
+              mgs.forEach((skill, index) => {
+                console.log(`[UnifiedEndpointHandler]   ${index + 1}. skill_id: ${skill.skill_id}, skill_name: "${skill.skill_name}"`);
+              });
+            } else {
+              console.log(`[UnifiedEndpointHandler] Competency "${compName}" - Error: ${mgs.error}`);
+            }
+          });
+
+          console.log('[UnifiedEndpointHandler] Sending response back to Learner AI (request_skills_breakdown):', {
+            action: payloadAction,
+            competencyCount: Object.keys(competencies).length,
+            totalMGS: totalMGS,
+            responseStructure: {
+              hasCompetencies: !!envelope.response.competencies,
+              competencyNames: Object.keys(competencies)
+            },
+            fullResponseEnvelope: JSON.stringify(envelope, null, 2)
+          });
+        }
       }
 
       // Step 6: Return full object as stringified JSON

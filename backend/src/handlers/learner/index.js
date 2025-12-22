@@ -27,90 +27,106 @@ class LearnerAIHandler {
 
       // Log full incoming Learner AI request for debugging
       console.log(
-        '[LearnerAIHandler] Incoming Learner AI MS request - full payload:',
+        '[LearnerAIHandler] Incoming Learner AI MS request - action:',
+        action,
+        'full payload:',
         JSON.stringify(payload, null, 2)
       );
 
-      if (!Array.isArray(competencies) || competencies.length === 0) {
-        console.warn('[LearnerAIHandler] Invalid competencies array:', { competencies });
-        return { message: 'competencies must be a non-empty array of competency names' };
-      }
-
-      console.log('[LearnerAIHandler] Processing MGS request for competencies:', {
-        competencyCount: competencies.length,
-        competencies: competencies
-      });
-
-      const breakdown = {};
-      let totalMGS = 0;
-
-      for (const name of competencies) {
-        if (typeof name !== 'string' || !name.trim()) {
-          console.warn('[LearnerAIHandler] Skipping invalid competency name:', { name, type: typeof name });
-          continue;
+      // Handle request_skills_breakdown action
+      if (action === 'request_skills_breakdown' || action === 'get-mgs-for-competencies') {
+        if (!Array.isArray(competencies) || competencies.length === 0) {
+          console.warn('[LearnerAIHandler] Invalid competencies array for request_skills_breakdown');
+          return { message: 'competencies must be a non-empty array of competency names' };
         }
 
-        const competencyName = name.trim();
-        console.log(`[LearnerAIHandler] Fetching MGS for competency: "${competencyName}"`);
+        console.log('[LearnerAIHandler] Processing request_skills_breakdown for competencies:', {
+          competencyCount: competencies.length,
+          competencies: competencies
+        });
 
-        try {
-          const mgs = await competencyService.getRequiredMGSByName(competencyName);
-          console.log(`[LearnerAIHandler] Retrieved MGS for competency "${competencyName}":`, {
-            competencyName,
-            mgsCount: mgs.length,
-            mgsSkills: mgs.map(skill => ({
+        const breakdown = {};
+        let totalMGS = 0;
+
+        for (const name of competencies) {
+          if (typeof name !== 'string' || !name.trim()) {
+            console.warn('[LearnerAIHandler] Skipping invalid competency name:', { name, type: typeof name });
+            continue;
+          }
+
+          const competencyName = name.trim();
+          console.log(`[LearnerAIHandler] Fetching MGS for competency: "${competencyName}"`);
+
+          try {
+            const mgs = await competencyService.getRequiredMGSByName(competencyName);
+            // Only include skill_id and skill_name for each skill
+            const mgsArray = mgs.map(skill => ({
               skill_id: skill.skill_id,
               skill_name: skill.skill_name
-            }))
-          });
+            }));
 
-          // Only include skill_id and skill_name for each skill
-          const mgsArray = mgs.map(skill => ({
-            skill_id: skill.skill_id,
-            skill_name: skill.skill_name
-          }));
+            breakdown[competencyName] = mgsArray;
+            totalMGS += mgsArray.length;
 
-          breakdown[competencyName] = mgsArray;
-          totalMGS += mgsArray.length;
-        } catch (err) {
-          // If one competency is not found, capture the error instead of failing the whole request
-          console.error(`[LearnerAIHandler] Error fetching MGS for competency "${competencyName}":`, {
-            competencyName,
-            error: err.message,
-            stack: err.stack
-          });
-          breakdown[competencyName] = {
-            error: err.message
-          };
+            console.log(`[LearnerAIHandler] Retrieved ${mgsArray.length} MGS skills for competency "${competencyName}"`);
+          } catch (err) {
+            // If one competency is not found, capture the error instead of failing the whole request
+            console.error(`[LearnerAIHandler] Error fetching MGS for competency "${competencyName}":`, {
+              error: err.message,
+              stack: err.stack
+            });
+            breakdown[competencyName] = {
+              error: err.message
+            };
+          }
         }
-      }
 
-      // Build response with MGS breakdown
-      const response = {
-        ...(responseTemplate || {}),
-        competencies: breakdown
-      };
+        // Fill the response section with MGS breakdown
+        const response = {
+          ...(responseTemplate || {}),
+          competencies: breakdown
+        };
 
-      // Log what Skills Engine is sending back to Learner AI
-      console.log('[LearnerAIHandler] Sending response to Learner AI MS:', {
-        competencyCount: Object.keys(breakdown).length,
-        totalMGS: totalMGS,
-        breakdown: Object.keys(breakdown).reduce((acc, compName) => {
+        // Log ALL MGS skills that will be sent to Learner AI before sending
+        console.log('[LearnerAIHandler] MGS skills that will be sent to Learner AI:');
+        Object.keys(breakdown).forEach(compName => {
           const mgs = breakdown[compName];
           if (Array.isArray(mgs)) {
-            acc[compName] = {
-              mgsCount: mgs.length,
-              skills: mgs.slice(0, 5).map(s => s.skill_name) // Show first 5 skill names
-            };
+            console.log(`[LearnerAIHandler] Competency "${compName}" - ${mgs.length} MGS skills:`);
+            mgs.forEach((skill, index) => {
+              console.log(`[LearnerAIHandler]   ${index + 1}. skill_id: ${skill.skill_id}, skill_name: "${skill.skill_name}"`);
+            });
           } else {
-            acc[compName] = mgs; // Error object
+            console.log(`[LearnerAIHandler] Competency "${compName}" - Error: ${mgs.error}`);
           }
-          return acc;
-        }, {}),
-        fullResponse: JSON.stringify(response, null, 2)
-      });
+        });
 
-      return response;
+        // Log summary of what Skills Engine is filling in the response section
+        console.log('[LearnerAIHandler] Filling response section with MGS breakdown:', {
+          action: action,
+          competencyCount: Object.keys(breakdown).length,
+          totalMGS: totalMGS,
+          breakdownSummary: Object.keys(breakdown).reduce((acc, compName) => {
+            const mgs = breakdown[compName];
+            if (Array.isArray(mgs)) {
+              acc[compName] = {
+                mgsCount: mgs.length,
+                allSkills: mgs.map(s => ({ skill_id: s.skill_id, skill_name: s.skill_name }))
+              };
+            } else {
+              acc[compName] = mgs; // Error object
+            }
+            return acc;
+          }, {}),
+          fullResponse: JSON.stringify(response, null, 2)
+        });
+
+        return response;
+      }
+
+      // Handle other actions or default behavior
+      console.warn('[LearnerAIHandler] Unknown action:', action);
+      return { message: `Unknown action: ${action}` };
     } catch (error) {
       console.error('[LearnerAIHandler] Unexpected error processing request:', {
         error: error.message,
@@ -123,5 +139,3 @@ class LearnerAIHandler {
 }
 
 module.exports = new LearnerAIHandler();
-
-
