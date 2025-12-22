@@ -7,6 +7,7 @@
 
 const { getCoordinatorClient } = require('../infrastructure/coordinatorClient/coordinatorClient');
 const userService = require('./userService');
+const userCareerPathRepository = require('../repositories/userCareerPathRepository');
 
 const coordinatorClient = getCoordinatorClient();
 
@@ -36,8 +37,21 @@ async function sendGapAnalysis(userId, gap, analysisType, courseName = null, exa
     preferredLanguage = user?.preferred_language || 'en';
 
     if (analysisType === 'broad') {
-      // For broad analysis, get user's path_career from profile
-      competencyTargetName = user?.path_career || user?.career_path_goal || null;
+      // For broad analysis, get the first competency from user_career_path table
+      // (ordered by created_at DESC, so most recently added is first)
+      try {
+        const careerPaths = await userCareerPathRepository.findByUser(userId);
+        if (careerPaths && careerPaths.length > 0 && careerPaths[0].competency_name) {
+          competencyTargetName = careerPaths[0].competency_name;
+        } else {
+          // Fallback to user's path_career if no career paths found in table
+          competencyTargetName = user?.path_career || user?.career_path_goal || null;
+        }
+      } catch (error) {
+        console.error('[learnerAIMSClient] Error fetching user career paths:', error.message);
+        // Fallback to user's path_career if career path fetch fails
+        competencyTargetName = user?.path_career || user?.career_path_goal || null;
+      }
     } else if (analysisType === 'narrow') {
       // For narrow analysis, use course name
       competencyTargetName = courseName;

@@ -161,7 +161,7 @@ class CareerPathService {
       if (careerPaths && careerPaths.length > 0 && careerPaths[0].competency_name) {
         userCareerPath = careerPaths[0].competency_name;
       }
-      console.log('userCareerPath',userCareerPath);
+      console.log('userCareerPath', userCareerPath);
     } catch (error) {
       logger.warn('Failed to fetch career paths for user', { userId, error: error.message });
     }
@@ -246,13 +246,32 @@ class CareerPathService {
     });
 
     // Get user's career path for courseName parameter
+    // Use the name of the first competency in the user's career path list
     let userCareerPath = null;
     try {
-      const profile = await userService.getUserProfile(userId);
-      const user = profile?.user || profile;
-      userCareerPath = user?.path_career || user?.career_path_goal || null;
+      const careerPaths = await userCareerPathRepository.findByUser(userId);
+      if (careerPaths && careerPaths.length > 0 && careerPaths[0].competency_name) {
+        userCareerPath = careerPaths[0].competency_name;
+      } else {
+        // Fallback to user's path_career if no career paths found in table
+        try {
+          const profile = await userService.getUserProfile(userId);
+          const user = profile?.user || profile;
+          userCareerPath = user?.path_career || user?.career_path_goal || null;
+        } catch (profileError) {
+          logger.warn('Failed to fetch user profile for career path', { userId, error: profileError.message });
+        }
+      }
     } catch (error) {
-      logger.warn('Failed to fetch user profile for career path', { userId, error: error.message });
+      logger.warn('Failed to fetch user career paths', { userId, error: error.message });
+      // Fallback to user's path_career if career path fetch fails
+      try {
+        const profile = await userService.getUserProfile(userId);
+        const user = profile?.user || profile;
+        userCareerPath = user?.path_career || user?.career_path_goal || null;
+      } catch (profileError) {
+        logger.warn('Failed to fetch user profile for career path fallback', { userId, error: profileError.message });
+      }
     }
 
     // Send gap analysis to Learner AI (broad analysis for career path)
