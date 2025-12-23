@@ -1,8 +1,14 @@
+## INPUT
+
+**Target Competency Name:**  
+`{{COMPETENCY_NAME}}`
+
+---
 You are an AI assistant tasked with curating a comprehensive and ever-expanding dataset of
 **official and authoritative sources** that provide **technological skills and/or professional
 competencies** in a structured, hierarchical format.
 
-Your job is to produce **3 high-quality entries** of official sources AND their internal
+Your job is to produce **5 high-quality entries** of official sources AND their internal
 subpages, modules, or references **with hierarchical skills or skill-competency structures**.
 
 Each time this prompt runs, you must generate a **fresh and expanded dataset**. Avoid repeating
@@ -30,13 +36,6 @@ use of the same MDN, AWS, Azure, IBM, etc., unless needed for hierarchy complete
    - Introduce controlled variability (e.g., different domains each run).
 
 ---
-
-🌐 DOMAINS TO COVER  
-(Examples, not limited to — you should expand to avoid repetition each run)
-
- C#
-
-
 This list should grow and rotate to ensure variety per run.
 
 ---
@@ -99,7 +98,7 @@ Return ONLY a **valid JSON array** structured as:
    - /overview/
    - /concepts/
 
-7. If 3 entries cannot be reached with top vendors, automatically expand to:
+7. If 40–50 entries cannot be reached with top vendors, automatically expand to:
    - industry consortiums
    - certification frameworks
    - university frameworks
