@@ -87,40 +87,6 @@ class LearnerAIHandler {
           competencies: breakdown
         };
 
-        // Log ALL MGS skills that will be sent to Learner AI before sending
-        console.log('[LearnerAIHandler] MGS skills that will be sent to Learner AI:');
-        Object.keys(breakdown).forEach(compName => {
-          const mgs = breakdown[compName];
-          if (Array.isArray(mgs)) {
-            console.log(`[LearnerAIHandler] Competency "${compName}" - ${mgs.length} MGS skills:`);
-            mgs.forEach((skill, index) => {
-              console.log(`[LearnerAIHandler]   ${index + 1}. skill_id: ${skill.skill_id}, skill_name: "${skill.skill_name}"`);
-            });
-          } else {
-            console.log(`[LearnerAIHandler] Competency "${compName}" - Error: ${mgs.error}`);
-          }
-        });
-
-        // Log summary of what Skills Engine is filling in the response section
-        console.log('[LearnerAIHandler] Filling response section with MGS breakdown:', {
-          action: action,
-          competencyCount: Object.keys(breakdown).length,
-          totalMGS: totalMGS,
-          breakdownSummary: Object.keys(breakdown).reduce((acc, compName) => {
-            const mgs = breakdown[compName];
-            if (Array.isArray(mgs)) {
-              acc[compName] = {
-                mgsCount: mgs.length,
-                allSkills: mgs.map(s => ({ skill_id: s.skill_id, skill_name: s.skill_name }))
-              };
-            } else {
-              acc[compName] = mgs; // Error object
-            }
-            return acc;
-          }, {}),
-          fullResponse: JSON.stringify(response, null, 2)
-        });
-
         return response;
       }
 

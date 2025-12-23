@@ -88,28 +88,39 @@ class SkillRepository {
   }
 
   /**
-   * Find skill by name (case-insensitive)
+   * Find skill by name (case-insensitive exact match)
    * @param {string} skillName - Skill name
    * @returns {Promise<Skill|null>}
    */
   async findByName(skillName) {
-    const name =
-      typeof skillName === 'string'
-        ? skillName.toLowerCase().trim()
-        : skillName;
+    if (!skillName || typeof skillName !== 'string') {
+      return null;
+    }
 
+    const normalizedName = skillName.toLowerCase().trim();
+    if (!normalizedName) {
+      return null;
+    }
+
+    // Try exact case-insensitive match using LOWER() function for better reliability
     const { data, error } = await this.getClient()
       .from('skills')
       .select('*')
-      .ilike('skill_name', name)
-      .single();
+      .ilike('skill_name', normalizedName)
+      .limit(1);
 
     if (error) {
-      if (error.code === 'PGRST116') return null; // Not found
+      // If table doesn't exist or other error, return null
+      if (error.code === 'PGRST116' || error.code === '42P01') return null;
       throw error;
     }
 
-    return new Skill(data);
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    // If multiple matches found, return the first one (shouldn't happen with unique constraint, but handle gracefully)
+    return new Skill(data[0]);
   }
 
   /**

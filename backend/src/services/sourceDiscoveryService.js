@@ -21,64 +21,100 @@ class SourceDiscoveryService {
    * @returns {Promise<{inserted: number, skipped: number, totalDiscovered: number, sources: object[]}>}
    */
   async discoverAndStoreSources() {
-    const discovered = await aiService.discoverOfficialSources();
+    console.log('[SourceDiscoveryService] Starting source discovery process');
 
-    if (!Array.isArray(discovered)) {
-      throw new Error('discoverOfficialSources did not return an array');
-    }
+    try {
+      console.log('[SourceDiscoveryService] Calling AI service to discover official sources');
+      const discovered = await aiService.discoverOfficialSources();
 
-    // If Gemini returned an empty list, short‑circuit without touching the DB
-    if (discovered.length === 0) {
-      return {
-        inserted: 0,
-        skipped: 0,
-        totalDiscovered: 0,
-        sources: [],
-      };
-    }
+      if (!Array.isArray(discovered)) {
+        console.error('[SourceDiscoveryService] AI service did not return an array', { type: typeof discovered });
+        throw new Error('discoverOfficialSources did not return an array');
+      }
 
-    // Load existing minimal data to avoid inserting duplicates
-    const existing = await officialSourceRepository.findAllMinimal();
-    const existingIds = new Set(existing.map((e) => e.source_id));
-    const existingUrls = new Set(existing.map((e) => e.reference_index_url));
+      console.log('[SourceDiscoveryService] AI service discovered sources', { count: discovered.length });
 
-    // Filter out entries that already exist by source_id or URL
-    const newEntries = discovered.filter((entry) => {
-      const id = entry.source_id;
-      const url = entry.reference_index_url;
-      if (!id && !url) return false;
-      if (id && existingIds.has(id)) return false;
-      if (url && existingUrls.has(url)) return false;
-      return true;
-    });
+      // If Gemini returned an empty list, short‑circuit without touching the DB
+      if (discovered.length === 0) {
+        console.log('[SourceDiscoveryService] No sources discovered, returning empty result');
+        return {
+          inserted: 0,
+          skipped: 0,
+          totalDiscovered: 0,
+          sources: [],
+        };
+      }
 
-    const models = newEntries.map((entry) => {
-      // Map hierarchy_support string -> boolean flag
-      const hs = (entry.hierarchy_support || '').toString().toLowerCase();
-      const hierarchySupportBool = hs === 'yes' || hs === 'true';
+      // Load existing minimal data to avoid inserting duplicates
+      console.log('[SourceDiscoveryService] Loading existing sources from database');
+      const existing = await officialSourceRepository.findAllMinimal();
+      const existingIds = new Set(existing.map((e) => e.source_id));
+      const existingUrls = new Set(existing.map((e) => e.reference_index_url));
 
-      return new OfficialSource({
-        source_id: entry.source_id,
-        source_name: entry.source_name,
-        reference_index_url: entry.reference_index_url,
-        reference_type: entry.reference_type,
-        hierarchy_support: hierarchySupportBool,
-        access_method: entry.access_method,
-        provides: entry.provides,
-        coveredtopic: entry.coveredtopic,
-        skill_focus: entry.skill_focus,
-        last_checked: new Date().toISOString(),
+      console.log('[SourceDiscoveryService] Found existing sources', {
+        count: existing.length,
+        uniqueIds: existingIds.size,
+        uniqueUrls: existingUrls.size
       });
-    });
 
-    const saved = models.length > 0 ? await officialSourceRepository.bulkUpsert(models) : [];
+      // Filter out entries that already exist by source_id or URL
+      const newEntries = discovered.filter((entry) => {
+        const id = entry.source_id;
+        const url = entry.reference_index_url;
+        if (!id && !url) return false;
+        if (id && existingIds.has(id)) return false;
+        if (url && existingUrls.has(url)) return false;
+        return true;
+      });
 
-    return {
-      inserted: saved.length,
-      skipped: discovered.length - newEntries.length,
-      totalDiscovered: discovered.length,
-      sources: saved.map((s) => s.toJSON()),
-    };
+      console.log('[SourceDiscoveryService] Filtered new entries', {
+        totalDiscovered: discovered.length,
+        newEntries: newEntries.length,
+        skipped: discovered.length - newEntries.length
+      });
+
+      const models = newEntries.map((entry) => {
+        // Map hierarchy_support string -> boolean flag
+        const hs = (entry.hierarchy_support || '').toString().toLowerCase();
+        const hierarchySupportBool = hs === 'yes' || hs === 'true';
+
+        return new OfficialSource({
+          source_id: entry.source_id,
+          source_name: entry.source_name,
+          reference_index_url: entry.reference_index_url,
+          reference_type: entry.reference_type,
+          hierarchy_support: hierarchySupportBool,
+          access_method: entry.access_method,
+          provides: entry.provides,
+          coveredtopic: entry.coveredtopic,
+          skill_focus: entry.skill_focus,
+          last_checked: new Date().toISOString(),
+        });
+      });
+
+      console.log('[SourceDiscoveryService] Created models for new sources', { count: models.length });
+
+      const saved = models.length > 0 ? await officialSourceRepository.bulkUpsert(models) : [];
+
+      console.log('[SourceDiscoveryService] Source discovery completed', {
+        inserted: saved.length,
+        skipped: discovered.length - newEntries.length,
+        totalDiscovered: discovered.length
+      });
+
+      return {
+        inserted: saved.length,
+        skipped: discovered.length - newEntries.length,
+        totalDiscovered: discovered.length,
+        sources: saved.map((s) => s.toJSON()),
+      };
+    } catch (error) {
+      console.error('[SourceDiscoveryService] Error during source discovery', {
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
   }
 }
 

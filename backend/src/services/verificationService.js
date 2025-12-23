@@ -523,20 +523,25 @@ class VerificationService {
         const { score } = rawSkill;
 
         // 1) Resolve skill_id / skill_name
-        //    - Preferred: payload already contains skill_id
-        //    - Fallback: payload contains skill_name + status (no skill_id)
-        let skill_id = rawSkill.skill_id || null;
+        //    For post-course exams: Assessment MS sends skill_name, score, status (NO skill_id)
+        //    We must always resolve skill_id from skill_name for post-course exams
         let skill_name = rawSkill.skill_name || null;
 
-        // If skill_id is missing but we have a skill_name, try to resolve it via Skill Repository
-        if (!skill_id && typeof skill_name === 'string' && skill_name.trim().length > 0) {
+        // Always resolve skill_id from skill_name for post-course exams
+        // This is the expected flow: Assessment MS sends skill_name, score, status (no skill_id)
+        if (typeof skill_name === 'string' && skill_name.trim().length > 0) {
           try {
+            console.log(
+              '[VerificationService.processPostCourseExamResults] Resolving skill_id from skill_name',
+              { userId, skill_name: skill_name.trim() }
+            );
+
             const skillRecord = await skillRepository.findByName(skill_name);
 
             if (!skillRecord) {
               console.warn(
                 '[VerificationService.processPostCourseExamResults] No skill found for name - skipping skill',
-                { userId, skill_name }
+                { userId, skill_name: skill_name.trim(), rawSkill }
               );
               return null;
             }
@@ -544,10 +549,15 @@ class VerificationService {
             // Use canonical values from DB
             skill_id = skillRecord.skill_id;
             skill_name = skillRecord.skill_name;
+
+            console.log(
+              '[VerificationService.processPostCourseExamResults] Successfully resolved skill_id from skill_name',
+              { userId, original_skill_name: rawSkill.skill_name, resolved_skill_id: skill_id, canonical_skill_name: skill_name }
+            );
           } catch (err) {
             console.error(
               '[VerificationService.processPostCourseExamResults] Error resolving skill by name - skipping skill',
-              { userId, skill_name, error: err.message }
+              { userId, skill_name: skill_name.trim(), error: err.message, stack: err.stack }
             );
             return null;
           }
