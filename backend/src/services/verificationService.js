@@ -79,11 +79,57 @@ class VerificationService {
       // and only persist leaf / MGS skills with status "acquired".
       console.log("test tset");
       const normalizeVerifiedSkill = async (rawSkill) => {
-        if (!rawSkill || !rawSkill.skill_id) {
+        if (!rawSkill) {
           return null;
         }
 
-        const { skill_id, skill_name, score } = rawSkill;
+        // Baseline exams are expected to send skill_id, but we also support
+        // resolving it from skill_name if only the name is provided.
+        let { skill_id, skill_name, score } = rawSkill;
+
+        // If skill_id is missing but we have a skill_name, try to resolve it via Skill Repository
+        if (!skill_id && typeof skill_name === 'string' && skill_name.trim().length > 0) {
+          try {
+            console.log(
+              '[VerificationService.processBaselineExamResults] Resolving skill_id from skill_name',
+              { userId, skill_name: skill_name.trim() }
+            );
+
+            const skillRecord = await skillRepository.findByName(skill_name);
+
+            if (!skillRecord) {
+              console.warn(
+                '[VerificationService.processBaselineExamResults] No skill found for name - skipping skill',
+                { userId, skill_name: skill_name.trim(), rawSkill }
+              );
+              return null;
+            }
+
+            // Use canonical values from DB
+            skill_id = skillRecord.skill_id;
+            skill_name = skillRecord.skill_name;
+
+            console.log(
+              '[VerificationService.processBaselineExamResults] Successfully resolved skill_id from skill_name',
+              { userId, original_skill_name: rawSkill.skill_name, resolved_skill_id: skill_id, canonical_skill_name: skill_name }
+            );
+          } catch (err) {
+            console.error(
+              '[VerificationService.processBaselineExamResults] Error resolving skill by name - skipping skill',
+              { userId, skill_name: skill_name.trim(), error: err.message, stack: err.stack }
+            );
+            return null;
+          }
+        }
+
+        // If we still don't have a valid skill_id, skip this entry
+        if (!skill_id) {
+          console.warn(
+            '[VerificationService.processBaselineExamResults] Missing skill_id and unable to resolve from name - skipping skill',
+            { userId, rawSkill }
+          );
+          return null;
+        }
 
         // Determine status from "status" string (values: "acquired" or "failed")
         let skillStatus = null;
@@ -519,13 +565,14 @@ class VerificationService {
           return null;
         }
 
-        // Extract basic fields from payload
-        const { score } = rawSkill;
+        // Extract basic fields from payload: name, status, and score
+        let { skill_name, status, score } = rawSkill;
 
         // 1) Resolve skill_id / skill_name
         //    For post-course exams: Assessment MS sends skill_name, score, status (NO skill_id)
         //    We must always resolve skill_id from skill_name for post-course exams
-        let skill_name = rawSkill.skill_name || null;
+        let skill_id = null;
+        skill_name = skill_name || null;
 
         // Always resolve skill_id from skill_name for post-course exams
         // This is the expected flow: Assessment MS sends skill_name, score, status (no skill_id)
@@ -574,8 +621,8 @@ class VerificationService {
 
         // 2) Determine status from "status" string (values: "acquired" or "failed")
         let skillStatus = null;
-        if (typeof rawSkill.status === 'string') {
-          skillStatus = rawSkill.status.toLowerCase().trim();
+        if (typeof status === 'string') {
+          skillStatus = status.toLowerCase().trim();
         }
 
         // If we still don't know the status, skip this entry
