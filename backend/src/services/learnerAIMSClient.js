@@ -50,7 +50,7 @@ async function sendGapAnalysis(userId, gap, analysisType, courseName = null, exa
       } catch (error) {
         console.error('[learnerAIMSClient] Error fetching user career paths:', error.message);
         // Fallback to user's path_career if career path fetch fails
-        competencyTargetName = user?.path_career || user?.career_path_goal || null;
+      competencyTargetName = user?.path_career || user?.career_path_goal || null;
       }
     } else if (analysisType === 'narrow') {
       // For narrow analysis, use course name

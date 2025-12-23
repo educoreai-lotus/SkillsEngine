@@ -401,18 +401,29 @@ class CompetencyService {
 
     let competency = await competencyRepository.findByName(competencyName);
     let foundViaAlias = false;
+    const normalizedInput = competencyName.toLowerCase().trim();
 
     // Check if the competency was found via alias (by checking if competencyName matches an alias)
     if (competency) {
       try {
         const aliases = await competencyRepository.getAliases(competency.competency_id);
-        const normalizedInput = competencyName.toLowerCase().trim();
         const normalizedCompetencyName = competency.competency_name.toLowerCase().trim();
 
         // If input name doesn't match competency name but matches an alias, it was found via alias
         if (normalizedInput !== normalizedCompetencyName && aliases && aliases.some(alias => alias.toLowerCase().trim() === normalizedInput)) {
           foundViaAlias = true;
           console.log(`[CompetencyService.getRequiredMGSByName] Competency found via alias: "${competencyName}" -> "${competency.competency_name}" (${competency.competency_id})`);
+        } else if (normalizedInput !== normalizedCompetencyName) {
+          // Input name is different from stored name - save it as an alias to preserve the input
+          try {
+            await competencyRepository.addAlias(competency.competency_id, normalizedInput);
+            console.log(`[CompetencyService.getRequiredMGSByName] Added input competency name as alias: "${competencyName}" -> "${competency.competency_name}" (${competency.competency_id})`);
+          } catch (aliasErr) {
+            // Ignore duplicate alias errors
+            if (!aliasErr.message.includes('duplicate') && !aliasErr.message.includes('unique')) {
+              console.warn(`[CompetencyService.getRequiredMGSByName] Failed to add alias for competency:`, aliasErr.message);
+            }
+          }
         }
       } catch (err) {
         // Ignore errors checking aliases
@@ -426,6 +437,7 @@ class CompetencyService {
       try {
         // Use createCompetencyWithAlias to check for semantic duplicates first
         // This will find existing competencies via aliases or similar names
+        // AND ensure the input competency name is saved (either as new competency or as alias)
         competency = await this.createCompetencyWithAlias({
           competency_name: competencyName,
           description: `Core competency: ${competencyName}`,
@@ -433,11 +445,20 @@ class CompetencyService {
           source: 'auto_created'
         });
 
-        if (competency.competency_name.toLowerCase().trim() !== competencyName.toLowerCase().trim()) {
+        if (competency.competency_name.toLowerCase().trim() !== normalizedInput) {
           // Found existing competency via alias/semantic duplicate
-          console.log(`[CompetencyService.getRequiredMGSByName] Found existing competency via alias/semantic match: ${competency.competency_name} (${competency.competency_id})`);
+          // Ensure input name is saved as alias if different
+          try {
+            await competencyRepository.addAlias(competency.competency_id, normalizedInput);
+            console.log(`[CompetencyService.getRequiredMGSByName] Found existing competency via semantic match and added input name as alias: "${competencyName}" -> "${competency.competency_name}" (${competency.competency_id})`);
+          } catch (aliasErr) {
+            // Ignore duplicate alias errors
+            if (!aliasErr.message.includes('duplicate') && !aliasErr.message.includes('unique')) {
+              console.warn(`[CompetencyService.getRequiredMGSByName] Failed to add alias:`, aliasErr.message);
+            }
+          }
         } else {
-          // Created new competency
+          // Created new competency with the exact input name
           console.log(`[CompetencyService.getRequiredMGSByName] Created new competency: ${competency.competency_id} (${competency.competency_name})`);
         }
       } catch (err) {

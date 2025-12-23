@@ -215,10 +215,48 @@ class VerificationService {
           }
           const uniqueCompetencies = Array.from(uniqueCompetenciesMap.values());
 
+          // For baseline exams: FIRST filter to only competencies the user already owns
+          // This prevents processing parent competencies that don't exist in user's profile
+          // even when a skill relates to multiple competencies
+          const userOwnedCompetencies = [];
+          for (const competency of uniqueCompetencies) {
+            try {
+              const userComp = await userCompetencyRepository.findByUserAndCompetency(
+                userId,
+                competency.competency_id
+              );
+              if (userComp) {
+                userOwnedCompetencies.push(competency);
+              } else {
+                console.log(
+                  '[VerificationService.processBaselineExamResults] Skipping competency - user does not own it (baseline exam only updates existing competencies)',
+                  {
+                    userId,
+                    competency_id: competency.competency_id,
+                    competency_name: competency.competency_name,
+                    skill_id,
+                    skill_name
+                  }
+                );
+              }
+            } catch (err) {
+              console.warn(
+                '[VerificationService.processBaselineExamResults] Error checking user ownership for competency - skipping',
+                {
+                  userId,
+                  competency_id: competency.competency_id,
+                  competency_name: competency.competency_name,
+                  error: err.message
+                }
+              );
+              // Skip if we can't check ownership
+            }
+          }
+
           // Extra safety: only update competencies for which this skill_id
           // is actually part of their required MGS set.
           const filteredCompetencies = [];
-          for (const competency of uniqueCompetencies) {
+          for (const competency of userOwnedCompetencies) {
             try {
               const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
               const isRequired = requiredMGS.some(mgs => mgs.skill_id === skill_id);
@@ -256,12 +294,13 @@ class VerificationService {
 
           if (filteredCompetencies.length === 0 && uniqueCompetencies.length > 0) {
             console.warn(
-              '[VerificationService.processBaselineExamResults] No competencies passed MGS validation for skill',
+              '[VerificationService.processBaselineExamResults] No competencies passed validation for skill',
               {
                 userId,
                 skill_id,
                 skill_name,
                 found_competencies_count: uniqueCompetencies.length,
+                user_owned_count: userOwnedCompetencies.length,
                 found_competency_names: uniqueCompetencies.map(c => c.competency_name)
               }
             );
@@ -269,16 +308,16 @@ class VerificationService {
 
           for (const competency of filteredCompetencies) {
             try {
-              let userComp = await userCompetencyRepository.findByUserAndCompetency(
+              // Get userCompetency (we already verified it exists above, but fetch it again for processing)
+              const userComp = await userCompetencyRepository.findByUserAndCompetency(
                 userId,
                 competency.competency_id
               );
 
+              // This should never happen since we filtered above, but keep as safety check
               if (!userComp) {
-                // For baseline exams, only update competencies the user already owns
-                // Don't create new competencies - baseline is diagnostic, not for learning new competencies
-                console.log(
-                  '[VerificationService.processBaselineExamResults] Skipping competency - user does not own it (baseline exam only updates existing competencies)',
+                console.warn(
+                  '[VerificationService.processBaselineExamResults] UserCompetency not found after filtering - skipping',
                   {
                     userId,
                     competency_id: competency.competency_id,
@@ -287,7 +326,7 @@ class VerificationService {
                     skill_name
                   }
                 );
-                continue; // Skip competencies the user doesn't own for baseline exams
+                continue;
               }
 
               // Double-check: Verify the skill is actually in the required MGS before adding
