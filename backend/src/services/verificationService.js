@@ -1134,17 +1134,31 @@ class VerificationService {
         );
         gaps = {};
       } else {
-        console.log('[VerificationService.runGapAnalysis] Step 3: Calling calculateCareerPathGap for all career path competencies', {
-          userId,
-          careerPathCount: careerPaths.length,
-          analysisType
-        });
-        // Always calculate gap analysis for all career path competencies
-        const allCareerPathGaps = await gapAnalysisService.calculateCareerPathGap(userId);
+        if (normalizedExamType === 'postcourse' && normalizedExamStatus === 'failed') {
+          // NARROW: Only calculate gaps for competencies updated by this exam
+          const targetCompetencyIds = Array.from(updatedCompetencies || []);
+          console.log('[VerificationService.runGapAnalysis] Step 3: Calling calculateGapForCompetencies for updated competencies only', {
+            userId,
+            updatedCompetencyCount: targetCompetencyIds.length,
+            updatedCompetencyIds: targetCompetencyIds.slice(0, 10) // Show first 10 for brevity
+          });
 
-        // Both broad and narrow analysis return all career path gaps
-        // Narrow analysis still shows all missing skills in career path competencies
-        gaps = allCareerPathGaps;
+          if (targetCompetencyIds.length > 0) {
+            gaps = await gapAnalysisService.calculateGapForCompetencies(userId, targetCompetencyIds);
+          } else {
+            console.log('[VerificationService.runGapAnalysis] Step 3: No updated competencies - returning empty gap');
+            gaps = {};
+          }
+        } else {
+          // BASELINE or POST-COURSE PASS: Calculate gaps for all career path competencies
+          console.log('[VerificationService.runGapAnalysis] Step 3: Calling calculateCareerPathGap for all career path competencies', {
+            userId,
+            careerPathCount: careerPaths.length,
+            analysisType
+          });
+          gaps = await gapAnalysisService.calculateCareerPathGap(userId);
+        }
+
         const competencyCount = Object.keys(gaps).length;
         const totalMissingSkills = Object.values(gaps).reduce((sum, skills) => sum + skills.length, 0);
         console.log('[VerificationService.runGapAnalysis] Step 4: Gap calculation completed', {

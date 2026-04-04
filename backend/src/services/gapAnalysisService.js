@@ -251,6 +251,122 @@ class GapAnalysisService {
 
     return gaps;
   }
+
+  /**
+   * Calculate gap analysis for specific competencies
+   * @param {string} userId - User ID
+   * @param {Array<string>} competencyIds - Array of competency IDs to calculate gaps for
+   * @returns {Promise<Object>} Simple gap structure: { "Competency Name": [{ skill_id, skill_name }] }
+   */
+  async calculateGapForCompetencies(userId, competencyIds = []) {
+    if (!userId) {
+      throw new Error('user_id is required');
+    }
+
+    if (!competencyIds || competencyIds.length === 0) {
+      console.log('[GapAnalysisService] No competency IDs provided - returning empty gap');
+      return {};
+    }
+
+    console.log('[GapAnalysisService] ===== STARTING GAP CALCULATION FOR SPECIFIC COMPETENCIES =====', {
+      userId,
+      competencyCount: competencyIds.length,
+      competencyIds: competencyIds.slice(0, 10) // Show first 10 for brevity
+    });
+
+    // Get all user competencies to find verified skills
+    const userCompetencies = await userCompetencyRepository.findByUser(userId);
+    console.log('[GapAnalysisService] Step 1: Found user competencies', {
+      userId,
+      userCompetencyCount: userCompetencies?.length || 0
+    });
+
+    // Build a set of all verified skill IDs from user competencies
+    const allVerifiedSkillIds = new Set();
+    for (const userComp of userCompetencies) {
+      const verifiedSkills = userComp.verifiedSkills || [];
+      for (const skill of verifiedSkills) {
+        if (skill.verified !== false) {
+          allVerifiedSkillIds.add(skill.skill_id);
+        }
+      }
+    }
+    console.log('[GapAnalysisService] Step 2: Collected all verified skills', {
+      userId,
+      totalVerifiedSkillCount: allVerifiedSkillIds.size
+    });
+
+    const gaps = {};
+
+    // For each target competency, calculate the gap
+    console.log('[GapAnalysisService] Step 3: Processing each target competency');
+    for (const competencyId of competencyIds) {
+      try {
+        const competency = await competencyService.getCompetencyById(competencyId);
+        if (!competency) {
+          console.warn('[GapAnalysisService] Competency not found - skipping', { competencyId });
+          continue;
+        }
+
+        const competencyName = competency.competency_name || 'Unknown';
+        console.log('[GapAnalysisService] Processing competency', {
+          competency_id: competencyId,
+          competency_name: competencyName
+        });
+
+        // Get required MGS for this competency
+        const requiredMGS = await competencyService.getRequiredMGS(competencyId);
+        console.log('[GapAnalysisService] Got required MGS for competency', {
+          competency_id: competencyId,
+          competency_name: competencyName,
+          requiredMGSCount: requiredMGS?.length || 0
+        });
+
+        // Find missing skills (required but not verified)
+        const missingSkills = requiredMGS.filter(
+          mgs => !allVerifiedSkillIds.has(mgs.skill_id)
+        );
+        console.log('[GapAnalysisService] Calculated missing skills for competency', {
+          competency_id: competencyId,
+          competency_name: competencyName,
+          requiredMGSCount: requiredMGS?.length || 0,
+          missingSkillCount: missingSkills.length
+        });
+
+        // Only add to gaps if there are missing skills
+        if (missingSkills.length > 0) {
+          gaps[competencyName] = missingSkills.map(skill => ({
+            skill_id: skill.skill_id,
+            skill_name: skill.skill_name
+          }));
+          console.log('[GapAnalysisService] Added competency to gaps', {
+            competency_name: competencyName,
+            missingSkillCount: missingSkills.length
+          });
+        } else {
+          console.log('[GapAnalysisService] Skipped competency (no missing skills)', {
+            competency_name: competencyName
+          });
+        }
+      } catch (error) {
+        console.error('[GapAnalysisService] Error calculating gap for competency', {
+          competency_id: competencyId,
+          error: error.message
+        });
+      }
+    }
+
+    const competencyCount = Object.keys(gaps).length;
+    const totalMissingSkills = Object.values(gaps).reduce((sum, skills) => sum + skills.length, 0);
+    console.log('[GapAnalysisService] ===== GAP CALCULATION COMPLETE =====', {
+      userId,
+      targetCompetencyCount: competencyIds.length,
+      competenciesWithGaps: competencyCount,
+      totalMissingSkills: totalMissingSkills
+    });
+
+    return gaps;
+  }
 }
 
 module.exports = new GapAnalysisService();
