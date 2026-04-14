@@ -67,6 +67,10 @@ export const api = {
   // User Profile
   getUserProfile: async (userId) => {
     const response = await apiClient.get(`/api/user/${userId}`);
+    console.log('[API UserProfile Debug]', {
+      requestUrl: `${response.config?.baseURL || ''}${response.config?.url || ''}`,
+      rawResponseData: response.data
+    });
     const data = response.data;
     // Backend typically returns { success: true, data: profile }
     const profile = data?.data ?? data;

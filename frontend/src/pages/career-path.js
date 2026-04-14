@@ -232,6 +232,20 @@ export default function CareerPathPage() {
     );
   }
 
+  console.log('[CareerPath Access Check Debug]', {
+    companyId,
+    learnerId,
+    learnerCompanyId,
+    companyIdType: typeof companyId,
+    learnerCompanyIdType: typeof learnerCompanyId,
+    profile,
+    user,
+    isAuthorized,
+    loading,
+    profileLoading,
+    error
+  });
+
   // Company authorization check
   // Domain rule: The learner's company_id must match the company_id parameter
   if (!isAuthorized) {
