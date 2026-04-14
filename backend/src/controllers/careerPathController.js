@@ -154,8 +154,12 @@ class CareerPathController {
     async calculateGapAndSend(req, res) {
         try {
             const { userId } = req.params;
+            const authorizationHeader = req.headers.authorization || null;
+            const accessToken = authorizationHeader && authorizationHeader.startsWith('Bearer ')
+                ? authorizationHeader.substring(7)
+                : null;
 
-            const gapAnalysis = await careerPathService.calculateGapAndSend(userId);
+            const gapAnalysis = await careerPathService.calculateGapAndSend(userId, accessToken);
 
             res.json({
                 success: true,

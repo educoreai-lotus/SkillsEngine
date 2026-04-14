@@ -95,9 +95,10 @@ async function getUserData(userId) {
  * (Called after career path submission to sync chosen competencies)
  * @param {string} userId - User ID
  * @param {Array} careerPaths - Array of career path objects from user_career_path table
+ * @param {string|null} accessToken - Optional access token for Directory auth
  * @returns {Promise<Object>} Response envelope from Coordinator
  */
-async function sendCareerPathCompetencies(userId, careerPaths) {
+async function sendCareerPathCompetencies(userId, careerPaths, accessToken = null) {
   // Format career paths for Directory MS (only competency_id and competency_name)
   const competencies = careerPaths.map(cp => ({
     competency_id: cp.competency_id,
@@ -110,6 +111,7 @@ async function sendCareerPathCompetencies(userId, careerPaths) {
       action: 'Update user career path competencies',
       description: 'This request to Directory MS is to show the career-path competencies for the employee',
       user_id: userId,
+      ...(accessToken ? { access_token: accessToken } : {}),
       career_path_competencies: competencies
     },
     response: {}

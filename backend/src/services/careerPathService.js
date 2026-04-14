@@ -133,9 +133,10 @@ class CareerPathService {
   /**
    * Calculate gap and send to Learner AI
    * @param {string} userId - User ID
+   * @param {string|null} accessToken - Optional access token to forward to Directory MS
    * @returns {Promise<Object>} Gap analysis result
    */
-  async calculateGapAndSend(userId) {
+  async calculateGapAndSend(userId, accessToken = null) {
     if (!userId) {
       throw new Error('user_id is required');
     }
@@ -192,7 +193,7 @@ class CareerPathService {
 
       // Send career path competencies to Directory MS
       if (careerPaths && careerPaths.length > 0) {
-        await directoryMSClient.sendCareerPathCompetencies(userId, careerPaths);
+        await directoryMSClient.sendCareerPathCompetencies(userId, careerPaths, accessToken);
         logger.info('Successfully sent career path competencies to Directory MS', {
           userId,
           competencyCount: careerPaths.length
