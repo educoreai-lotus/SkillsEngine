@@ -40,6 +40,17 @@ export default function CareerPathPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // First-entry auth bootstrap from Directory redirect hash:
+    // /career-path?...#access_token=...
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const accessTokenFromHash = hashParams.get('access_token');
+    if (accessTokenFromHash && accessTokenFromHash.trim().length > 0) {
+      window.localStorage.setItem('auth_token', accessTokenFromHash);
+      // Remove token hash from URL while preserving pathname + query params
+      const cleanUrl = `${window.location.pathname}${window.location.search}`;
+      window.history.replaceState(null, '', cleanUrl);
+    }
+
     const searchParams = new URLSearchParams(window.location.search);
     const extractedCompanyId = searchParams.get('company_id');
     // Support both learnerId (camelCase) and learner_id (snake_case) for compatibility
