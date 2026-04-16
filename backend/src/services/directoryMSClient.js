@@ -108,8 +108,8 @@ async function sendCareerPathCompetencies(userId, careerPaths, accessToken = nul
   const envelope = {
     requester_service: 'skills-engine-service',
     payload: {
-      action: 'Update user career path competencies',
-      description: 'This request to Directory MS is to show the career-path competencies for the employee',
+      action: 'Send employee career path competencies to Directory microservice for persistence',
+      description: 'Forward this request to the Directory microservice to save the employee career path competencies in Directory database for later display in the employee profile',
       user_id: userId,
       ...(accessToken ? { access_token: accessToken } : {}),
       career_path_competencies: competencies
