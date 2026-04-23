@@ -30,21 +30,30 @@ function getBearerToken(req) {
 async function validateAccessTokenViaCoordinator(req, accessToken) {
   const envelope = {
     requester_service: 'skills-engine-service',
-    target_service: 'nauth-service',
     payload: {
-      action: 'nauth.validate_access_token',
-      access_token: accessToken
+      action: 'Route this request to nAuth service only for access token validation and session continuity decision.',
+      access_token: accessToken,
+      route: req.originalUrl || req.path || '',
+      method: req.method || 'GET'
     },
-    response: {}
+    response: {
+      valid: false,
+      reason: '',
+      auth_state: '',
+      directory_user_id: '',
+      organization_id: '',
+      primary_role: '',
+      is_system_admin: false,
+      new_access_token: ''
+    }
   };
 
   console.log('[Auth Debug] Outgoing Coordinator auth validation request', {
     requester_service: envelope.requester_service,
-    target_service: envelope.target_service,
     action: envelope.payload.action,
     has_access_token: Boolean(envelope.payload.access_token),
-    route: req.originalUrl,
-    method: req.method
+    route: envelope.payload.route,
+    method: envelope.payload.method
   });
 
   return coordinatorClient.post(envelope, {
@@ -53,43 +62,25 @@ async function validateAccessTokenViaCoordinator(req, accessToken) {
 }
 
 function extractValidationResult(coordinatorResponse) {
-  const answer = coordinatorResponse?.response?.answer;
-  const payload = coordinatorResponse?.payload;
-
+  const parsed = coordinatorResponse || {};
   return (
-    answer ||
-    coordinatorResponse?.response ||
-    payload ||
-    coordinatorResponse ||
-    {}
+    parsed.response ||
+    parsed.data?.response ||
+    parsed.data ||
+    parsed
   );
 }
 
 function normalizeValidationResult(rawValidation) {
   const validation = rawValidation || {};
   return {
-    valid: validation.valid === true || validation.is_valid === true,
-    directory_user_id:
-      validation.directory_user_id ||
-      validation.directoryUserId ||
-      validation.user_id ||
-      null,
-    organization_id:
-      validation.organization_id ||
-      validation.organizationId ||
-      validation.company_id ||
-      null,
-    primary_role:
-      validation.primary_role ||
-      validation.primaryRole ||
-      validation.role ||
-      null,
-    is_system_admin:
-      validation.is_system_admin === true || validation.isSystemAdmin === true,
-    new_access_token:
-      validation.new_access_token ||
-      validation.newAccessToken ||
-      null,
+    valid: validation.valid === true,
+    reason: validation.reason || '',
+    directory_user_id: validation.directory_user_id || null,
+    organization_id: validation.organization_id || null,
+    primary_role: validation.primary_role || null,
+    is_system_admin: validation.is_system_admin === true,
+    new_access_token: validation.new_access_token || '',
     raw: validation
   };
 }
@@ -123,28 +114,24 @@ const authenticate = async (req, res, next) => {
         responseKeys: Object.keys(coordinatorResponse || {}),
         validationKeys: Object.keys(rawValidation || {}),
         hasValid: Object.prototype.hasOwnProperty.call(rawValidation || {}, 'valid'),
+        hasReason: Object.prototype.hasOwnProperty.call(rawValidation || {}, 'reason'),
         hasDirectoryUserId:
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'directory_user_id') ||
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'directoryUserId') ||
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'user_id'),
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'directory_user_id'),
         hasOrganizationId:
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'organization_id') ||
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'organizationId') ||
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'company_id'),
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'organization_id'),
         hasPrimaryRole:
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'primary_role') ||
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'primaryRole') ||
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'role'),
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'primary_role'),
+        hasIsSystemAdmin:
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'is_system_admin'),
         hasNewAccessToken:
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'new_access_token') ||
-          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'newAccessToken')
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'new_access_token')
       });
     }
 
     if (validation.valid !== true) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid or expired token'
+        error: validation.reason || 'Invalid or expired token'
       });
     }
 
@@ -165,7 +152,7 @@ const authenticate = async (req, res, next) => {
       is_system_admin: req.user.is_system_admin
     });
 
-    if (validation.new_access_token) {
+    if (validation.new_access_token && validation.new_access_token.trim().length > 0) {
       res.setHeader('X-New-Access-Token', validation.new_access_token);
     }
 
@@ -201,7 +188,7 @@ const optionalAuth = async (req, res, next) => {
         auth_source: 'coordinator-nauth',
         raw: validation.raw
       };
-      if (validation.new_access_token) {
+      if (validation.new_access_token && validation.new_access_token.trim().length > 0) {
         res.setHeader('X-New-Access-Token', validation.new_access_token);
       }
     }
