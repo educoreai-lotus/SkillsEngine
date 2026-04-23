@@ -30,14 +30,22 @@ function getBearerToken(req) {
 async function validateAccessTokenViaCoordinator(req, accessToken) {
   const envelope = {
     requester_service: 'skills-engine-service',
+    target_service: 'nauth-service',
     payload: {
-      action: 'Validate access token via nAuth',
-      access_token: accessToken,
-      route: req.originalUrl,
-      method: req.method
+      action: 'nauth.validate_access_token',
+      access_token: accessToken
     },
     response: {}
   };
+
+  console.log('[Auth Debug] Outgoing Coordinator auth validation request', {
+    requester_service: envelope.requester_service,
+    target_service: envelope.target_service,
+    action: envelope.payload.action,
+    has_access_token: Boolean(envelope.payload.access_token),
+    route: req.originalUrl,
+    method: req.method
+  });
 
   return coordinatorClient.post(envelope, {
     endpoint: '/request'
