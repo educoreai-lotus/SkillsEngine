@@ -6,6 +6,8 @@ const express = require('express');
 const router = express.Router();
 const competencyController = require('../../../controllers/competencyController');
 const { controller: importController, upload } = require('../../../controllers/importController');
+const { authenticate } = require('../../../middleware/auth');
+const { authorizeHR } = require('../../../middleware/authorization');
 
 // CSV Import (trainer only)
 router.post('/import', upload, importController.importCSV.bind(importController));
@@ -15,7 +17,12 @@ router.post('/import/validate', upload, importController.validateCSV.bind(import
 router.get('/', competencyController.getAllCompetencies.bind(competencyController));
 
 // Search competencies by name (case-insensitive, ?q=pattern)
-router.get('/search', competencyController.searchCompetencies.bind(competencyController));
+router.get(
+  '/search',
+  authenticate,
+  authorizeHR,
+  competencyController.searchCompetencies.bind(competencyController)
+);
 
 // Get single competency info by name (body: { competency_name })
 router.post('/by-name', competencyController.getCompetencyByName.bind(competencyController));
@@ -24,7 +31,12 @@ router.post('/by-name', competencyController.getCompetencyByName.bind(competency
 router.post('/mgs/by-name', competencyController.getRequiredMGSByName.bind(competencyController));
 
 // Get complete competency hierarchy with skills and subskills (must be before /:competencyId)
-router.get('/:competencyId/complete-hierarchy', competencyController.getCompleteHierarchy.bind(competencyController));
+router.get(
+  '/:competencyId/complete-hierarchy',
+  authenticate,
+  authorizeHR,
+  competencyController.getCompleteHierarchy.bind(competencyController)
+);
 
 // Get competency hierarchy (parent with children competencies only, no skills)
 router.get('/:competencyId/hierarchy', competencyController.getCompetencyHierarchy.bind(competencyController));

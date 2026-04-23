@@ -3,6 +3,7 @@
  */
 
 import axios from 'axios';
+import { redirectToAuthLogin } from '@/lib/authRedirect';
 
 // Resolve API base URL from environment
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -50,13 +51,26 @@ apiClient.interceptors.request.use((config) => {
 
 // Handle errors
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (typeof window !== 'undefined') {
+      const rotatedToken = response?.headers?.['x-new-access-token'];
+      if (rotatedToken && typeof rotatedToken === 'string' && rotatedToken.trim().length > 0) {
+        window.localStorage.setItem('auth_token', rotatedToken);
+      }
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       // Handle unauthorized
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem('auth_token');
-        window.location.href = '/login';
+        redirectToAuthLogin();
+      }
+    }
+    if (error.response?.status === 403) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/unauthorized';
       }
     }
     return Promise.reject(error);

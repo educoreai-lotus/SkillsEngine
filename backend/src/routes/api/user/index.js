@@ -5,6 +5,8 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../../../controllers/userController');
+const { authenticate } = require('../../../middleware/auth');
+const { authorizeHR, authorizeCompanyScope } = require('../../../middleware/authorization');
 
 // Extract from raw data
 router.post('/:userId/extract', userController.extractFromRawData.bind(userController));
@@ -25,7 +27,13 @@ router.post('/:userId/request-baseline-exam', userController.requestBaselineExam
 router.post('/onboard', userController.onboardAndIngest.bind(userController));
 
 // Get user basic profile (no skills/competencies)
-router.get('/:userId', userController.getUserProfile.bind(userController));
+router.get(
+  '/:userId',
+  authenticate,
+  authorizeHR,
+  authorizeCompanyScope(['params.userId']),
+  userController.getUserProfile.bind(userController)
+);
 
 // Create or update user
 router.post('/', userController.createOrUpdateUser.bind(userController));

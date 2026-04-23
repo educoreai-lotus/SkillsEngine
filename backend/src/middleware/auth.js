@@ -1,83 +1,207 @@
 /**
  * Authentication Middleware
- * 
- * Validates JWT tokens and sets user context.
+ *
+ * Validates end-user Bearer tokens through Coordinator -> nAuth.
  */
 
-const jwt = require('jsonwebtoken');
+const { getCoordinatorClient } = require('../infrastructure/coordinatorClient/coordinatorClient');
+
+const coordinatorClient = getCoordinatorClient();
+let hasLoggedAuthContractKeys = false;
+
+function getBearerToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return { error: 'Authentication required. Please provide a Bearer token.' };
+  }
+
+  if (!authHeader.startsWith('Bearer ')) {
+    return { error: 'Invalid Authorization header format. Expected Bearer token.' };
+  }
+
+  const token = authHeader.substring(7).trim();
+  if (!token) {
+    return { error: 'Authentication required. Please provide a Bearer token.' };
+  }
+
+  return { token };
+}
+
+async function validateAccessTokenViaCoordinator(req, accessToken) {
+  const envelope = {
+    requester_service: 'skills-engine-service',
+    payload: {
+      action: 'Validate access token via nAuth',
+      access_token: accessToken,
+      route: req.originalUrl,
+      method: req.method
+    },
+    response: {}
+  };
+
+  return coordinatorClient.post(envelope, {
+    endpoint: '/request'
+  });
+}
+
+function extractValidationResult(coordinatorResponse) {
+  const answer = coordinatorResponse?.response?.answer;
+  const payload = coordinatorResponse?.payload;
+
+  return (
+    answer ||
+    coordinatorResponse?.response ||
+    payload ||
+    coordinatorResponse ||
+    {}
+  );
+}
+
+function normalizeValidationResult(rawValidation) {
+  const validation = rawValidation || {};
+  return {
+    valid: validation.valid === true || validation.is_valid === true,
+    directory_user_id:
+      validation.directory_user_id ||
+      validation.directoryUserId ||
+      validation.user_id ||
+      null,
+    organization_id:
+      validation.organization_id ||
+      validation.organizationId ||
+      validation.company_id ||
+      null,
+    primary_role:
+      validation.primary_role ||
+      validation.primaryRole ||
+      validation.role ||
+      null,
+    is_system_admin:
+      validation.is_system_admin === true || validation.isSystemAdmin === true,
+    new_access_token:
+      validation.new_access_token ||
+      validation.newAccessToken ||
+      null,
+    raw: validation
+  };
+}
 
 /**
- * Authenticate request using Bearer token
+ * Authenticate request using Bearer token + Coordinator token validation.
  */
-const authenticate = (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
+const authenticate = async (req, res, next) => {
+  console.log('[Auth Debug] Authorization header present', {
+    hasAuthorizationHeader: Boolean(req.headers?.authorization),
+    route: req.originalUrl,
+    method: req.method
+  });
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required. Please provide a Bearer token.'
+  const { token, error } = getBearerToken(req);
+  if (error) {
+    return res.status(401).json({
+      success: false,
+      error
+    });
+  }
+
+  try {
+    const coordinatorResponse = await validateAccessTokenViaCoordinator(req, token);
+    const rawValidation = extractValidationResult(coordinatorResponse);
+    const validation = normalizeValidationResult(rawValidation);
+
+    if (!hasLoggedAuthContractKeys) {
+      hasLoggedAuthContractKeys = true;
+      console.log('[Auth Contract Debug] Coordinator response keys', {
+        responseKeys: Object.keys(coordinatorResponse || {}),
+        validationKeys: Object.keys(rawValidation || {}),
+        hasValid: Object.prototype.hasOwnProperty.call(rawValidation || {}, 'valid'),
+        hasDirectoryUserId:
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'directory_user_id') ||
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'directoryUserId') ||
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'user_id'),
+        hasOrganizationId:
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'organization_id') ||
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'organizationId') ||
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'company_id'),
+        hasPrimaryRole:
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'primary_role') ||
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'primaryRole') ||
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'role'),
+        hasNewAccessToken:
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'new_access_token') ||
+          Object.prototype.hasOwnProperty.call(rawValidation || {}, 'newAccessToken')
       });
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    if (validation.valid !== true) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired token'
+      });
+    }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-
-    // Attach user to request
     req.user = {
-      user_id: decoded.user_id,
-      employee_type: decoded.employee_type,
-      company_id: decoded.company_id
+      directory_user_id: validation.directory_user_id,
+      organization_id: validation.organization_id,
+      primary_role: validation.primary_role,
+      is_system_admin: validation.is_system_admin,
+      access_token: token,
+      auth_source: 'coordinator-nauth',
+      raw: validation.raw
     };
 
-    next();
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid token'
-      });
+    console.log('[Auth Contract Debug] Sanitized req.user auth fields', {
+      directory_user_id: req.user.directory_user_id,
+      organization_id: req.user.organization_id,
+      primary_role: req.user.primary_role,
+      is_system_admin: req.user.is_system_admin
+    });
+
+    if (validation.new_access_token) {
+      res.setHeader('X-New-Access-Token', validation.new_access_token);
     }
 
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        error: 'Token expired'
-      });
-    }
-
-    return res.status(500).json({
+    return next();
+  } catch (coordinatorError) {
+    return res.status(401).json({
       success: false,
-      error: 'Authentication error'
+      error: 'Authentication validation failed'
     });
   }
 };
 
 /**
- * Optional authentication - doesn't fail if no token
+ * Optional authentication - ignores missing/invalid tokens.
  */
-const optionalAuth = (req, res, next) => {
+const optionalAuth = async (req, res, next) => {
+  const { token } = getBearerToken(req);
+  if (!token) {
+    return next();
+  }
+
   try {
-    const authHeader = req.headers.authorization;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-
+    const coordinatorResponse = await validateAccessTokenViaCoordinator(req, token);
+    const rawValidation = extractValidationResult(coordinatorResponse);
+    const validation = normalizeValidationResult(rawValidation);
+    if (validation.valid === true) {
       req.user = {
-        user_id: decoded.user_id,
-        employee_type: decoded.employee_type,
-        company_id: decoded.company_id
+        directory_user_id: validation.directory_user_id,
+        organization_id: validation.organization_id,
+        primary_role: validation.primary_role,
+        is_system_admin: validation.is_system_admin,
+        access_token: token,
+        auth_source: 'coordinator-nauth',
+        raw: validation.raw
       };
+      if (validation.new_access_token) {
+        res.setHeader('X-New-Access-Token', validation.new_access_token);
+      }
     }
-
-    next();
   } catch (error) {
     // Ignore errors for optional auth
-    next();
   }
+
+  return next();
 };
 
 module.exports = {

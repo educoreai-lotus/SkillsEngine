@@ -16,6 +16,11 @@
 const express = require('express');
 const router = express.Router();
 const userCareerPathController = require('../../controllers/userCareerPathController');
+const { authenticate } = require('../../middleware/auth');
+const { authorizeHR, authorizeCompanyScope } = require('../../middleware/authorization');
+
+router.use(authenticate, authorizeHR);
+router.use(authorizeCompanyScope(['params.userId', 'body.user_id']));
 
 /**
  * @route   POST /api/user-career-path

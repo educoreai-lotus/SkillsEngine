@@ -21,6 +21,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { redirectToAuthLogin } from '@/lib/authRedirect';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import CareerPathHierarchyBrowser from '@/components/CareerPathHierarchyBrowser';
 import Header from '@/components/Header';
@@ -49,6 +50,12 @@ export default function CareerPathPage() {
       // Remove token hash from URL while preserving pathname + query params
       const cleanUrl = `${window.location.pathname}${window.location.search}`;
       window.history.replaceState(null, '', cleanUrl);
+    }
+
+    const token = window.localStorage.getItem('auth_token');
+    if (!token) {
+      redirectToAuthLogin();
+      return;
     }
 
     const searchParams = new URLSearchParams(window.location.search);
