@@ -1,6 +1,6 @@
 import { redirectToAuthLogin } from '@/lib/authRedirect';
 
-const AUTH_STORAGE_KEYS = ['auth_token', 'userId', 'tenant_id'];
+const AUTH_STORAGE_KEYS = ['auth_token', 'authToken', 'userId', 'tenant_id'];
 
 export function getNAuthBaseUrl() {
   const value = process.env.NEXT_PUBLIC_NAUTH_BASE_URL || '';
@@ -34,13 +34,27 @@ export async function callNAuthLogout() {
   }
 
   const logoutUrl = `${baseUrl}/auth/logout`;
-  await fetch(logoutUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  });
+  console.log('[Logout Debug] calling nAuth logout', { logoutUrl });
+  try {
+    const response = await fetch(logoutUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+    console.log('[Logout Debug] nAuth logout response', {
+      status: response.status,
+      ok: response.ok,
+      logoutUrl
+    });
+  } catch (error) {
+    console.warn('[Logout Debug] nAuth logout request threw', {
+      message: error?.message || 'Unknown logout request error',
+      logoutUrl
+    });
+    throw error;
+  }
 }
 
 export function clearLocalAuthState() {
