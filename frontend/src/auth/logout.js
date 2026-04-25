@@ -69,18 +69,15 @@ export async function logout(options = {}) {
   } finally {
     clearLocalAuthState();
 
-    if (!shouldRedirect || typeof window === 'undefined') {
-      return;
+    if (shouldRedirect && typeof window !== 'undefined') {
+      const frontendUrl = getNAuthFrontendUrl();
+      if (frontendUrl) {
+        window.location.href = `${frontendUrl}/login`;
+      } else {
+        // Fall back to existing auth-login redirect helper when nAuth frontend URL is not configured.
+        redirectToAuthLogin();
+      }
     }
-
-    const frontendUrl = getNAuthFrontendUrl();
-    if (frontendUrl) {
-      window.location.href = `${frontendUrl}/login`;
-      return;
-    }
-
-    // Fall back to existing auth-login redirect helper when nAuth frontend URL is not configured.
-    redirectToAuthLogin();
   }
 }
 
