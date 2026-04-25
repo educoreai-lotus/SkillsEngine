@@ -20,7 +20,6 @@ const { authenticate } = require('../../middleware/auth');
 const { authorizeHR, authorizeCompanyScope } = require('../../middleware/authorization');
 
 router.use(authenticate, authorizeHR);
-router.use(authorizeCompanyScope(['params.userId', 'body.user_id']));
 
 /**
  * @route   POST /api/user-career-path
@@ -28,7 +27,11 @@ router.use(authorizeCompanyScope(['params.userId', 'body.user_id']));
  * @body    { user_id: string, competency_id: string } OR { user_id: string, competency_name: string }
  * @note    user_id must be the learner's ID, not the HR's ID
  */
-router.post('/', userCareerPathController.addCareerPath.bind(userCareerPathController));
+router.post(
+  '/',
+  authorizeCompanyScope(['body.user_id']),
+  userCareerPathController.addCareerPath.bind(userCareerPathController)
+);
 
 /**
  * @route   GET /api/user-career-path/:userId
@@ -36,7 +39,11 @@ router.post('/', userCareerPathController.addCareerPath.bind(userCareerPathContr
  * @param   userId - The learner's user ID
  * @note    userId must be the learner's ID, not the HR's ID
  */
-router.get('/:userId', userCareerPathController.getCurrentCareerPath.bind(userCareerPathController));
+router.get(
+  '/:userId',
+  authorizeCompanyScope(['params.userId']),
+  userCareerPathController.getCurrentCareerPath.bind(userCareerPathController)
+);
 
 /**
  * @route   GET /api/user-career-path/:userId/all
@@ -44,7 +51,11 @@ router.get('/:userId', userCareerPathController.getCurrentCareerPath.bind(userCa
  * @param   userId - The learner's user ID
  * @note    userId must be the learner's ID, not the HR's ID
  */
-router.get('/:userId/all', userCareerPathController.getAllCareerPaths.bind(userCareerPathController));
+router.get(
+  '/:userId/all',
+  authorizeCompanyScope(['params.userId']),
+  userCareerPathController.getAllCareerPaths.bind(userCareerPathController)
+);
 
 /**
  * @route   DELETE /api/user-career-path/:userId/:competencyId
@@ -53,7 +64,11 @@ router.get('/:userId/all', userCareerPathController.getAllCareerPaths.bind(userC
  * @param   competencyId - The competency ID to remove
  * @note    userId must be the learner's ID, not the HR's ID
  */
-router.delete('/:userId/:competencyId', userCareerPathController.deleteCareerPath.bind(userCareerPathController));
+router.delete(
+  '/:userId/:competencyId',
+  authorizeCompanyScope(['params.userId']),
+  userCareerPathController.deleteCareerPath.bind(userCareerPathController)
+);
 
 /**
  * @route   DELETE /api/user-career-path/:userId
@@ -61,7 +76,11 @@ router.delete('/:userId/:competencyId', userCareerPathController.deleteCareerPat
  * @param   userId - The learner's user ID
  * @note    userId must be the learner's ID, not the HR's ID
  */
-router.delete('/:userId', userCareerPathController.deleteAllCareerPaths.bind(userCareerPathController));
+router.delete(
+  '/:userId',
+  authorizeCompanyScope(['params.userId']),
+  userCareerPathController.deleteAllCareerPaths.bind(userCareerPathController)
+);
 
 module.exports = router;
 

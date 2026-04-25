@@ -136,6 +136,13 @@ class UserCareerPathController {
         errorMessage: error.message,
         errorStack: error.stack
       });
+      if (error?.code === '23505') {
+        return res.status(200).json({
+          success: true,
+          message: 'Career path already exists',
+          alreadyExists: true
+        });
+      }
       res.status(400).json({
         success: false,
         error: error.message
