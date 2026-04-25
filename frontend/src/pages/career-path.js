@@ -22,6 +22,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { redirectToAuthLogin } from '@/lib/authRedirect';
+import { logout } from '@/auth/logout';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import CareerPathHierarchyBrowser from '@/components/CareerPathHierarchyBrowser';
 import Header from '@/components/Header';
@@ -32,6 +33,7 @@ export default function CareerPathPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Extract companyId and learnerId from window.location.search
   // Domain rule: company_id = company ID (company performing the edit)
@@ -219,6 +221,16 @@ export default function CareerPathPage() {
     }
   };
 
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   // Get list of added competency IDs for the hierarchy browser
   const addedCompetencyIds = careerPaths.map(path => path.competency_id);
 
@@ -233,6 +245,8 @@ export default function CareerPathPage() {
           <Header
             isDarkMode={isDarkMode}
             setIsDarkMode={setIsDarkMode}
+            onLogout={handleLogout}
+            isLoggingOut={isLoggingOut}
           />
           <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]" style={{ paddingTop: '96px' }}>
             <div className="max-w-md mx-auto px-4 text-center">
@@ -263,6 +277,8 @@ export default function CareerPathPage() {
         <Header
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
+          onLogout={handleLogout}
+          isLoggingOut={isLoggingOut}
         />
         <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]" style={{ paddingTop: '96px' }}>
           <div className="text-lg font-medium text-slate-900 dark:text-slate-50">Loading...</div>
@@ -297,6 +313,8 @@ export default function CareerPathPage() {
           <Header
             isDarkMode={isDarkMode}
             setIsDarkMode={setIsDarkMode}
+            onLogout={handleLogout}
+            isLoggingOut={isLoggingOut}
           />
           <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]" style={{ paddingTop: '96px' }}>
             <div className="max-w-md mx-auto px-4 text-center">
@@ -331,6 +349,8 @@ export default function CareerPathPage() {
           <Header
             isDarkMode={isDarkMode}
             setIsDarkMode={setIsDarkMode}
+            onLogout={handleLogout}
+            isLoggingOut={isLoggingOut}
           />
 
         <div className="max-w-4xl mx-auto px-4 py-8" style={{ paddingTop: '96px' }}>

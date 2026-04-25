@@ -7,9 +7,9 @@ import { Sun, Moon, Bell } from 'lucide-react';
 import Image from 'next/image';
 
 /**
- * @param {{isDarkMode: boolean, setIsDarkMode: function}} props
+ * @param {{isDarkMode: boolean, setIsDarkMode: function, onLogout?: function, isLoggingOut?: boolean}} props
  */
-export default function Header({ isDarkMode, setIsDarkMode }) {
+export default function Header({ isDarkMode, setIsDarkMode, onLogout, isLoggingOut = false }) {
   return (
     <header
       className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md transition-all duration-300 ease-in-out"
@@ -72,6 +72,19 @@ export default function Header({ isDarkMode, setIsDarkMode }) {
 
         {/* Right: Header Controls */}
         <div className="flex items-center gap-4">
+          {/* Logout Button */}
+          {typeof onLogout === 'function' && (
+            <button
+              type="button"
+              onClick={onLogout}
+              disabled={isLoggingOut}
+              className="px-4 h-11 rounded-xl flex items-center justify-center bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700 hover:shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed text-sm font-medium text-slate-700 dark:text-slate-200"
+              aria-label="Logout"
+            >
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </button>
+          )}
+
           {/* Notifications Button */}
           <button
             type="button"
