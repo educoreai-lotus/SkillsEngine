@@ -114,9 +114,19 @@ export default function CareerPathPage() {
 
     setCareerPathsLoading(true);
     try {
+      console.log('[CareerPath Debug] Fetching career paths', {
+        learnerId,
+        endpoint: `/api/user-career-path/${learnerId}/all`
+      });
       // Call GET /api/user-career-path/{learnerId}/all to get all competencies in the learner's current career path
       // Uses ONLY learnerId - does NOT use companyId in this request
       const response = await api.getAllCareerPaths(learnerId);
+      console.log('[CareerPath Debug] Career paths fetch response', {
+        learnerId,
+        response,
+        dataIsArray: Array.isArray(response?.data),
+        count: Array.isArray(response?.data) ? response.data.length : null
+      });
       // Handle response - API returns { success: true, data: careerPaths[] } or { success: false, error: ... }
       if (response && response.data) {
         // API returns an array of career path objects (all competencies in the learner's career path)
@@ -125,7 +135,12 @@ export default function CareerPathPage() {
         setCareerPaths([]);
       }
     } catch (error) {
-      console.error('Error fetching career paths:', error);
+      console.error('[CareerPath Debug] Career paths fetch failed', {
+        learnerId,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       setCareerPaths([]);
     } finally {
       setCareerPathsLoading(false);
@@ -142,10 +157,30 @@ export default function CareerPathPage() {
   // Domain rule: All career path APIs operate on the learner (learnerId), never the company
   const handleAddCompetency = async (competency) => {
     try {
-      await api.addCareerPath(learnerId, competency.competency_id);
+      console.log('[CareerPath Debug] Add competency clicked', {
+        learnerId,
+        competency_id: competency?.competency_id,
+        competency_name: competency?.competency_name,
+        rawCompetency: competency
+      });
+      console.log('[CareerPath Debug] Dispatching addCareerPath request', {
+        endpoint: '/api/user-career-path',
+        body: {
+          user_id: learnerId,
+          competency_id: competency?.competency_id
+        }
+      });
+      const response = await api.addCareerPath(learnerId, competency.competency_id);
+      console.log('[CareerPath Debug] Add competency response', response);
       fetchCareerPaths(); // Refresh the list
     } catch (error) {
-      console.error('Error adding competency:', error);
+      console.error('[CareerPath Debug] Add competency failed', {
+        learnerId,
+        competency_id: competency?.competency_id,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       alert('Failed to add competency. It may already exist.');
     }
   };

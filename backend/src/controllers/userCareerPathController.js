@@ -19,9 +19,20 @@ class UserCareerPathController {
    */
   async addCareerPath(req, res) {
     try {
+      console.log('[UserCareerPath Debug] addCareerPath request', {
+        body: req.body,
+        user: {
+          directory_user_id: req.user?.directory_user_id,
+          organization_id: req.user?.organization_id,
+          primary_role: req.user?.primary_role
+        }
+      });
       const { user_id, competency_id, competency_name } = req.body;
 
       if (!user_id) {
+        console.warn('[UserCareerPath Debug] addCareerPath validation failed: missing user_id', {
+          body: req.body
+        });
         return res.status(400).json({
           success: false,
           error: 'user_id is required'
@@ -43,6 +54,9 @@ class UserCareerPathController {
       }
 
       if (!resolvedCompetencyId) {
+        console.warn('[UserCareerPath Debug] addCareerPath validation failed: missing competency_id and competency_name', {
+          body: req.body
+        });
         return res.status(400).json({
           success: false,
           error: 'Either competency_id or competency_name is required'
@@ -52,6 +66,9 @@ class UserCareerPathController {
       // Verify competency exists
       const competency = await competencyService.getCompetencyById(resolvedCompetencyId);
       if (!competency) {
+        console.warn('[UserCareerPath Debug] addCareerPath validation failed: competency not found', {
+          resolvedCompetencyId
+        });
         return res.status(404).json({
           success: false,
           error: `Competency with ID "${resolvedCompetencyId}" not found`
@@ -64,6 +81,9 @@ class UserCareerPathController {
 
       // Only allow adding leaf nodes (core competencies), not parent competencies
       if (!isCore) {
+        console.warn('[UserCareerPath Debug] addCareerPath validation failed: non-leaf competency', {
+          resolvedCompetencyId
+        });
         return res.status(400).json({
           success: false,
           error: 'Only leaf nodes (core competencies) can be added to career path. Please select a competency with no sub-competencies.'
@@ -111,6 +131,11 @@ class UserCareerPathController {
         message: 'Career path added successfully'
       });
     } catch (error) {
+      console.error('[UserCareerPath Debug] addCareerPath failed', {
+        body: req.body,
+        errorMessage: error.message,
+        errorStack: error.stack
+      });
       res.status(400).json({
         success: false,
         error: error.message
@@ -153,9 +178,22 @@ class UserCareerPathController {
    */
   async getAllCareerPaths(req, res) {
     try {
+      console.log('[UserCareerPath Debug] getAllCareerPaths request', {
+        params: req.params,
+        userId: req.params?.userId,
+        user: {
+          directory_user_id: req.user?.directory_user_id,
+          organization_id: req.user?.organization_id,
+          primary_role: req.user?.primary_role
+        }
+      });
       const { userId } = req.params;
 
       const careerPaths = await userCareerPathRepository.findByUser(userId);
+      console.log('[UserCareerPath Debug] getAllCareerPaths result', {
+        userId,
+        count: Array.isArray(careerPaths) ? careerPaths.length : null
+      });
 
       res.json({
         success: true,
@@ -163,6 +201,11 @@ class UserCareerPathController {
         count: careerPaths.length
       });
     } catch (error) {
+      console.error('[UserCareerPath Debug] getAllCareerPaths failed', {
+        params: req.params,
+        errorMessage: error.message,
+        errorStack: error.stack
+      });
       res.status(500).json({
         success: false,
         error: error.message

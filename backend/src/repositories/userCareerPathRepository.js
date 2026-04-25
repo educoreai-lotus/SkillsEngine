@@ -30,6 +30,11 @@ class UserCareerPathRepository {
    */
   async create(data) {
     const model = new UserCareerPath(data);
+    console.log('[UserCareerPathRepository Debug] create input', {
+      user_id: model?.user_id,
+      competency_id: model?.competency_id,
+      root_career_path_competency_id: model?.root_career_path_competency_id
+    });
     const validation = model.validate();
     if (!validation.valid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
@@ -51,7 +56,16 @@ class UserCareerPathRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[UserCareerPathRepository Debug] create db insert failed', {
+        user_id: model?.user_id,
+        competency_id: model?.competency_id,
+        errorMessage: error.message,
+        errorDetails: error.details || null,
+        errorCode: error.code || null
+      });
+      throw error;
+    }
     return new UserCareerPath(result);
   }
 
@@ -61,11 +75,18 @@ class UserCareerPathRepository {
    * @returns {Promise<UserCareerPath[]>}
    */
   async findByUser(userId) {
+    console.log('[UserCareerPathRepository Debug] findByUser', { userId });
     const { data, error } = await this.getClient()
       .from('user_career_path')
       .select('user_id, competency_id, root_career_path_competency_id, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
+
+    console.log('[UserCareerPathRepository Debug] findByUser result', {
+      userId,
+      rowCount: data?.length ?? 0,
+      error: error?.message
+    });
 
     if (error) throw error;
 
