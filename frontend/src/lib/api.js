@@ -64,12 +64,20 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Handle unauthorized
       if (typeof window !== 'undefined') {
+        console.log('[API Auth Redirect Debug] 401 redirect triggered', {
+          logoutInProgress: window.sessionStorage.getItem('logout_in_progress') === 'true',
+          requestUrl: `${error?.config?.baseURL || ''}${error?.config?.url || ''}`
+        });
         window.localStorage.removeItem('auth_token');
         redirectToAuthLogin();
       }
     }
     if (error.response?.status === 403) {
       if (typeof window !== 'undefined') {
+        console.log('[API Auth Redirect Debug] 403 redirect triggered', {
+          logoutInProgress: window.sessionStorage.getItem('logout_in_progress') === 'true',
+          requestUrl: `${error?.config?.baseURL || ''}${error?.config?.url || ''}`
+        });
         window.location.href = '/unauthorized';
       }
     }

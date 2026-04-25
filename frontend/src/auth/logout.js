@@ -57,8 +57,13 @@ export function clearLocalAuthState() {
 }
 
 export async function logout(options = {}) {
-  console.log('[Logout Debug] Logout started');
+  console.log('[Logout Debug] Logout started', {
+    NEXT_PUBLIC_NAUTH_FRONTEND_URL: process.env.NEXT_PUBLIC_NAUTH_FRONTEND_URL || '',
+  });
   const shouldRedirect = options.redirect !== false;
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.setItem('logout_in_progress', 'true');
+  }
 
   try {
     await callNAuthLogout();
@@ -71,12 +76,21 @@ export async function logout(options = {}) {
 
     if (shouldRedirect && typeof window !== 'undefined') {
       const frontendUrl = getNAuthFrontendUrl();
+      console.log('[Logout Debug] redirect decision', {
+        shouldRedirect,
+        hasWindow: typeof window !== 'undefined',
+        frontendUrl,
+      });
       if (frontendUrl) {
+        console.log('[Logout Debug] redirecting to', `${frontendUrl}/login`);
         window.location.href = `${frontendUrl}/login`;
       } else {
         // Fall back to existing auth-login redirect helper when nAuth frontend URL is not configured.
+        console.log('[Logout Debug] using fallback redirectToAuthLogin');
         redirectToAuthLogin();
       }
+    } else if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem('logout_in_progress');
     }
   }
 }
