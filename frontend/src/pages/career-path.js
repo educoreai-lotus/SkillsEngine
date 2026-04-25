@@ -26,8 +26,6 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import CareerPathHierarchyBrowser from '@/components/CareerPathHierarchyBrowser';
 import Header from '@/components/Header';
 
-const DEFAULT_USER_ID = '550e8400-e29b-41d4-a716-446655440000';
-
 export default function CareerPathPage() {
   const [companyId, setCompanyId] = useState(null);
   const [learnerId, setLearnerId] = useState(null);
@@ -91,8 +89,7 @@ export default function CareerPathPage() {
 
   // Get learner user (learnerId) - used for all API operations
   // Domain rule: All career path APIs operate on the learner (learnerId), never the company
-  const currentUserId = learnerId || DEFAULT_USER_ID;
-  const { profile, loading: profileLoading } = useUserProfile(currentUserId);
+  const { profile, loading: profileLoading } = useUserProfile(learnerId || null);
   const user = profile?.user || profile;
   const targetRole = user?.path_career || user?.career_path_goal;
   const userName = user?.user_name || user?.userName;

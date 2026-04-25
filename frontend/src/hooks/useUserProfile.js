@@ -15,6 +15,13 @@ export function useUserProfile(userId) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!userId) {
+      setProfile(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     const fetchProfile = async () => {
       try {
         setLoading(true);
@@ -35,9 +42,7 @@ export function useUserProfile(userId) {
       }
     };
 
-    if (userId) {
-      fetchProfile();
-    }
+    fetchProfile();
   }, [userId]);
 
   const refetch = async () => {
