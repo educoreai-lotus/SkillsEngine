@@ -2,18 +2,11 @@ import { redirectToAuthLogin } from '@/lib/authRedirect';
 
 const AUTH_STORAGE_KEYS = ['auth_token', 'userId', 'tenant_id'];
 
-function readEnv(primaryKey, secondaryKey) {
-  if (typeof process === 'undefined' || !process.env) {
-    return '';
-  }
-  return process.env[primaryKey] || process.env[secondaryKey] || '';
-}
-
 export function getNAuthBaseUrl() {
-  const value = readEnv('NEXT_PUBLIC_NAUTH_BASE_URL', 'VITE_NAUTH_BASE_URL');
+  const value = process.env.NEXT_PUBLIC_NAUTH_BASE_URL || '';
   if (!value) {
     console.error(
-      '[Logout Debug] Missing nAuth base URL env. Expected NEXT_PUBLIC_NAUTH_BASE_URL (or VITE_NAUTH_BASE_URL).'
+      '[Logout Debug] Missing nAuth base URL env. Expected NEXT_PUBLIC_NAUTH_BASE_URL.'
     );
     return '';
   }
@@ -21,10 +14,13 @@ export function getNAuthBaseUrl() {
 }
 
 export function getNAuthFrontendUrl() {
-  const value = readEnv('NEXT_PUBLIC_NAUTH_FRONTEND_URL', 'VITE_NAUTH_FRONTEND_URL');
+  const value =
+    process.env.NEXT_PUBLIC_NAUTH_FRONTEND_URL ||
+    process.env.NEXT_PUBLIC_AUTH_LOGIN_URL ||
+    '';
   if (!value) {
     console.error(
-      '[Logout Debug] Missing nAuth frontend URL env. Expected NEXT_PUBLIC_NAUTH_FRONTEND_URL (or VITE_NAUTH_FRONTEND_URL).'
+      '[Logout Debug] Missing nAuth frontend URL env. Expected NEXT_PUBLIC_NAUTH_FRONTEND_URL or NEXT_PUBLIC_AUTH_LOGIN_URL.'
     );
     return '';
   }
@@ -58,6 +54,7 @@ export function clearLocalAuthState() {
 
 export async function logout(options = {}) {
   console.log('[Logout Debug] Logout started', {
+    NEXT_PUBLIC_NAUTH_BASE_URL: Boolean(process.env.NEXT_PUBLIC_NAUTH_BASE_URL),
     NEXT_PUBLIC_NAUTH_FRONTEND_URL: process.env.NEXT_PUBLIC_NAUTH_FRONTEND_URL || '',
   });
   const shouldRedirect = options.redirect !== false;
