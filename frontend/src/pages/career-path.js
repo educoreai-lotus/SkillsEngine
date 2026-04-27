@@ -47,8 +47,19 @@ export default function CareerPathPage() {
     const accessTokenFromHash = hashParams.get('access_token');
     if (accessTokenFromHash && accessTokenFromHash.trim().length > 0) {
       window.localStorage.setItem('auth_token', accessTokenFromHash);
-      // Remove token hash from URL while preserving pathname + query params
-      const cleanUrl = `${window.location.pathname}${window.location.search}`;
+      // Remove token hash from URL immediately and preserve only safe params.
+      const currentSearchParams = new URLSearchParams(window.location.search);
+      const safeSearchParams = new URLSearchParams();
+      ['company_id', 'learner_id', 'learnerId'].forEach((key) => {
+        const value = currentSearchParams.get(key);
+        if (value) {
+          safeSearchParams.set(key, value);
+        }
+      });
+      const safeQuery = safeSearchParams.toString();
+      const cleanUrl = safeQuery
+        ? `${window.location.pathname}?${safeQuery}`
+        : window.location.pathname;
       window.history.replaceState(null, '', cleanUrl);
     }
 
