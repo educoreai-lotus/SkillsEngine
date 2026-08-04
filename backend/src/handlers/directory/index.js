@@ -15,6 +15,8 @@ const extractionService = require('../../services/extractionService');
 const normalizationService = require('../../services/normalizationService');
 const competencyRepository = require('../../repositories/competencyRepository');
 const userCareerPathRepository = require('../../repositories/userCareerPathRepository');
+const userCompetencyRepository = require('../../repositories/userCompetencyRepository');
+const verificationService = require('../../services/verificationService');
 
 class DirectoryHandler {
   /**
@@ -91,20 +93,49 @@ class DirectoryHandler {
    *  }
    */
   async handleOnboardAndIngest(payload, responseTemplate) {
-    // Optional short-circuit: if Directory sends an existing user_id, do not rebuild the profile.
-    // Instead, return a simple message so Directory knows the user already exists.
+    // If Directory sends an existing user_id, do not rebuild the profile.
+    // Distinguish in-progress generation (user row exists, no competencies yet)
+    // from a completed profile (stored user competencies exist).
     const incomingUserId = payload && payload.user_id;
     if (incomingUserId) {
+      let userExists = false;
       try {
-        // Reuse userService to check if the user exists.
         await userService.getUserProfile(incomingUserId);
-        return {
-          ...(responseTemplate || {}),
-          userId: incomingUserId,
-          message: 'User already exists'
-        };
+        userExists = true;
       } catch (err) {
         // If user is not found, proceed with normal onboarding flow.
+      }
+
+      if (userExists) {
+        const storedCompetencies = await userCompetencyRepository.findByUser(incomingUserId);
+        const hasStoredCompetencies =
+          Array.isArray(storedCompetencies) && storedCompetencies.length > 0;
+
+        if (!hasStoredCompetencies) {
+          return {
+            ...(responseTemplate || {}),
+            status: 'processing',
+            userId: incomingUserId,
+            competencies: [],
+            relevance_score: 0,
+            relevanceScore: 0,
+            message: 'Profile generation in progress'
+          };
+        }
+
+        const profile = await verificationService.buildUpdatedProfilePayload(incomingUserId);
+        const competencies = (profile && profile.competencies) || [];
+        const relevanceScore =
+          (profile && (profile.relevanceScore ?? profile.relevance_score)) ?? 0;
+
+        return {
+          ...(responseTemplate || {}),
+          status: 'completed',
+          userId: incomingUserId,
+          competencies,
+          relevance_score: relevanceScore,
+          relevanceScore
+        };
       }
     }
 
