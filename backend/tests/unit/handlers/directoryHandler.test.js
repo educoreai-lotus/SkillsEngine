@@ -76,7 +76,7 @@ describe('DirectoryHandler.handleOnboardAndIngest', () => {
   });
 
   describe('existing user with stored competencies', () => {
-    it('returns status completed with stored hierarchy and ignores template empties', async () => {
+    it('returns status completed with stored hierarchy and passes includeZeroCoverage', async () => {
       const hierarchy = [
         {
           competencyId: 'comp-js',
@@ -120,7 +120,39 @@ describe('DirectoryHandler.handleOnboardAndIngest', () => {
       expect(extractionService.extractFromUserData).not.toHaveBeenCalled();
       expect(normalizationService.normalize).not.toHaveBeenCalled();
       expect(userService.buildInitialProfile).not.toHaveBeenCalled();
-      expect(verificationService.buildUpdatedProfilePayload).toHaveBeenCalledWith(USER_ID);
+      expect(verificationService.buildUpdatedProfilePayload).toHaveBeenCalledWith(
+        USER_ID,
+        { includeZeroCoverage: true }
+      );
+    });
+
+    it('returns processing when reconstructed hierarchy is empty', async () => {
+      userService.getUserProfile.mockResolvedValue({ user: { user_id: USER_ID } });
+      userCompetencyRepository.findByUser.mockResolvedValue([
+        { user_id: USER_ID, competency_id: 'comp-js' }
+      ]);
+      verificationService.buildUpdatedProfilePayload.mockResolvedValue({
+        userId: USER_ID,
+        relevanceScore: 0,
+        competencies: []
+      });
+
+      const result = await directoryHandler.handleOnboardAndIngest(
+        { user_id: USER_ID },
+        EMPTY_TEMPLATE
+      );
+
+      expect(result.status).toBe('processing');
+      expect(result.competencies).toEqual([]);
+      expect(result.message).toBe('Profile generation in progress');
+      expect(userService.createBasicProfile).not.toHaveBeenCalled();
+      expect(extractionService.extractFromUserData).not.toHaveBeenCalled();
+      expect(normalizationService.normalize).not.toHaveBeenCalled();
+      expect(userService.buildInitialProfile).not.toHaveBeenCalled();
+      expect(verificationService.buildUpdatedProfilePayload).toHaveBeenCalledWith(
+        USER_ID,
+        { includeZeroCoverage: true }
+      );
     });
   });
 
@@ -217,6 +249,10 @@ describe('DirectoryHandler.handleOnboardAndIngest', () => {
       expect(result.competencies).toEqual(hierarchy);
       expect(result.competencies).not.toEqual([]);
       expect(result.userId).toBe(USER_ID);
+      expect(verificationService.buildUpdatedProfilePayload).toHaveBeenCalledWith(
+        USER_ID,
+        { includeZeroCoverage: true }
+      );
     });
   });
 
@@ -241,6 +277,7 @@ describe('DirectoryHandler.handleOnboardAndIngest', () => {
       expect(extractionService.extractFromUserData).not.toHaveBeenCalled();
       expect(normalizationService.normalize).not.toHaveBeenCalled();
       expect(userService.buildInitialProfile).not.toHaveBeenCalled();
+      expect(verificationService.buildUpdatedProfilePayload).not.toHaveBeenCalled();
     });
   });
 });

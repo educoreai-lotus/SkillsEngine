@@ -123,10 +123,27 @@ class DirectoryHandler {
           };
         }
 
-        const profile = await verificationService.buildUpdatedProfilePayload(incomingUserId);
-        const competencies = (profile && profile.competencies) || [];
+        const profile = await verificationService.buildUpdatedProfilePayload(
+          incomingUserId,
+          { includeZeroCoverage: true }
+        );
+        const competencies = Array.isArray(profile?.competencies)
+          ? profile.competencies
+          : [];
         const relevanceScore =
           (profile && (profile.relevanceScore ?? profile.relevance_score)) ?? 0;
+
+        if (competencies.length === 0) {
+          return {
+            ...(responseTemplate || {}),
+            status: 'processing',
+            userId: incomingUserId,
+            competencies: [],
+            relevance_score: 0,
+            relevanceScore: 0,
+            message: 'Profile generation in progress'
+          };
+        }
 
         return {
           ...(responseTemplate || {}),

@@ -1490,9 +1490,11 @@ class VerificationService {
    * Build updated profile payload for Directory MS
    * Builds a hierarchical competency profile with current coverage and proficiency levels
    * @param {string} userId - User ID
+   * @param {Object} [options]
+   * @param {boolean} [options.includeZeroCoverage=false] - When true, retain leaf nodes with coverage 0
    * @returns {Promise<Object>} Profile payload for Directory MS
    */
-  async buildUpdatedProfilePayload(userId) {
+  async buildUpdatedProfilePayload(userId, { includeZeroCoverage = false } = {}) {
     try {
       // Get all user competencies
       const userCompetencies = await userCompetencyRepository.findByUser(userId);
@@ -1628,7 +1630,8 @@ class VerificationService {
             : !!node.coverage;
 
         // If this node has no coverage and no (kept) children, drop it
-        if (!hasCoverage && !hasChildren) {
+        // (unless Directory opted in to include zero-coverage competencies)
+        if (!includeZeroCoverage && !hasCoverage && !hasChildren) {
           return null;
         }
 
