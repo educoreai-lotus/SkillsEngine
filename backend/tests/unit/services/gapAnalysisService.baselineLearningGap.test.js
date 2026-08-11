@@ -104,7 +104,7 @@ describe('GapAnalysisService Baseline learning-gap helpers', () => {
       expect(competencyRepository.getParentCompetencies).not.toHaveBeenCalled();
     });
 
-    it('Test 3: many-to-many skill does not decide the target alone', async () => {
+    it('Test 3: many-to-many skill is unioned and only exact full-set MGS wins', async () => {
       competencyService.getCompetenciesBySkill.mockImplementation(async (skillId) => {
         if (skillId === 's-for') {
           return [CONTROL_FLOW, JS];
@@ -128,11 +128,12 @@ describe('GapAnalysisService Baseline learning-gap helpers', () => {
       const result = await gapAnalysisService.findUniqueExactMgsMatch(['s-for', 's-if']);
 
       expect(result).toEqual({ name: 'javascript', source: 'exact_mgs_match' });
-      expect(competencyService.getRequiredMGS).not.toHaveBeenCalledWith(CONTROL_FLOW.competency_id);
+      expect(competencyService.getRequiredMGS).toHaveBeenCalledWith(CONTROL_FLOW.competency_id);
+      expect(competencyService.getRequiredMGS).toHaveBeenCalledWith(JS.competency_id);
       expect(competencyRepository.findAll).not.toHaveBeenCalled();
     });
 
-    it('Test 4: zero intersection is unresolved and does not scan all competencies', async () => {
+    it('Test 4: disjoint reverse mappings keep JavaScript via UNION + exact verify', async () => {
       competencyService.getCompetenciesBySkill.mockImplementation(async (skillId) => {
         if (skillId === 's-a') {
           return [JS];
@@ -143,12 +144,90 @@ describe('GapAnalysisService Baseline learning-gap helpers', () => {
         return [];
       });
       competencyRepository.findParent.mockResolvedValue(null);
+      competencyService.getRequiredMGS.mockImplementation(async (id) => {
+        if (id === JS.competency_id) {
+          return [
+            { skill_id: 's-a', skill_name: 's-a' },
+            { skill_id: 's-b', skill_name: 's-b' }
+          ];
+        }
+        return [{ skill_id: 's-b', skill_name: 's-b' }];
+      });
 
       const result = await gapAnalysisService.findUniqueExactMgsMatch(['s-a', 's-b']);
 
-      expect(result).toEqual({ name: null, source: 'unresolved' });
+      expect(result).toEqual({ name: 'javascript', source: 'exact_mgs_match' });
+      expect(competencyService.getRequiredMGS).toHaveBeenCalledWith(JS.competency_id);
+      expect(competencyService.getRequiredMGS).toHaveBeenCalledWith(PYTHON.competency_id);
       expect(competencyRepository.findAll).not.toHaveBeenCalled();
+    });
+
+    it('skips a skill that reverse-maps to [] and can still resolve JavaScript', async () => {
+      competencyService.getCompetenciesBySkill.mockImplementation(async (skillId) => {
+        if (skillId === 's-orphan') {
+          return [];
+        }
+        return [JS];
+      });
+      competencyRepository.findParent.mockResolvedValue(null);
+      competencyService.getRequiredMGS.mockImplementation(async (id) => {
+        if (id === JS.competency_id) {
+          return [
+            { skill_id: 's-orphan', skill_name: 'orphan' },
+            { skill_id: 's-if', skill_name: 'conditionals' }
+          ];
+        }
+        return [];
+      });
+
+      const result = await gapAnalysisService.findUniqueExactMgsMatch(['s-orphan', 's-if']);
+
+      expect(result).toEqual({ name: 'javascript', source: 'exact_mgs_match' });
+      expect(competencyRepository.findAll).not.toHaveBeenCalled();
+    });
+
+    it('fail-closed: a reverse-map exception is verification_failed', async () => {
+      competencyService.getCompetenciesBySkill.mockImplementation(async (skillId) => {
+        if (skillId === 's-bad') {
+          throw new Error('postgrest unavailable');
+        }
+        return [JS];
+      });
+
+      const result = await gapAnalysisService.findUniqueExactMgsMatch(['s-ok', 's-bad']);
+
+      expect(result).toEqual({ name: null, source: 'verification_failed' });
+      expect(result.name).not.toBe('javascript');
       expect(competencyService.getRequiredMGS).not.toHaveBeenCalled();
+      expect(competencyRepository.findAll).not.toHaveBeenCalled();
+    });
+
+    it('never runs more than 8 getCompetenciesBySkill calls concurrently', async () => {
+      const skillIds = Array.from({ length: 24 }, (_, i) => `skill-js-${i}`);
+      let inFlight = 0;
+      let maxInFlight = 0;
+
+      competencyService.getCompetenciesBySkill.mockImplementation(async () => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        inFlight -= 1;
+        return [JS];
+      });
+      competencyRepository.findParent.mockResolvedValue(null);
+      competencyService.getRequiredMGS.mockImplementation(async (id) => {
+        if (id === JS.competency_id) {
+          return skillIds.map((skill_id) => ({ skill_id, skill_name: skill_id }));
+        }
+        return [];
+      });
+
+      const result = await gapAnalysisService.findUniqueExactMgsMatch(skillIds);
+
+      expect(result).toEqual({ name: 'javascript', source: 'exact_mgs_match' });
+      expect(maxInFlight).toBeLessThanOrEqual(8);
+      expect(maxInFlight).toBe(8);
+      expect(competencyService.getCompetenciesBySkill).toHaveBeenCalledTimes(24);
     });
 
     it('Test 5: surviving candidate whose MGS differs is unresolved', async () => {
@@ -235,7 +314,7 @@ describe('GapAnalysisService Baseline learning-gap helpers', () => {
       expect(competencyRepository.findAll).not.toHaveBeenCalled();
     });
 
-    it('rejects a parent superset that survives intersection', async () => {
+    it('rejects a parent superset that is included via UNION ancestors', async () => {
       competencyService.getCompetenciesBySkill.mockResolvedValue([JS]);
       competencyRepository.findParent.mockImplementation(async (id) => {
         if (id === JS.competency_id) {

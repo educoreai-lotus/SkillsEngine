@@ -297,6 +297,22 @@ describe('VerificationService.processBaselineExamResults learning gap', () => {
     expect(competencyRepository.findAll).not.toHaveBeenCalled();
   });
 
+  it('Case 9b: reverse-map exception fails closed and does not send Learner', async () => {
+    competencyService.getCompetenciesBySkill.mockRejectedValue(
+      new Error('postgrest unavailable')
+    );
+
+    await verificationService.processBaselineExamResults(USER_ID, {
+      exam_id: EXAM_ID,
+      exam_type: 'baseline',
+      skills: [resultSkill('conditionals', 'failed', 43)]
+    });
+
+    expect(learnerAIMSClient.sendGapAnalysis).not.toHaveBeenCalled();
+    expect(directoryMSClient.sendUpdatedProfile).toHaveBeenCalledTimes(1);
+    expect(competencyRepository.findAll).not.toHaveBeenCalled();
+  });
+
   it('Case 10: no exact MGS match skips Learner and continues Directory', async () => {
     competencyService.getCompetenciesBySkill.mockResolvedValue([
       { competency_id: 'comp-python', competency_name: 'python' }

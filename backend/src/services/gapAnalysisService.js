@@ -14,6 +14,52 @@ const Logger = require('../utils/logger');
 
 const logger = new Logger('GapAnalysisService');
 
+const BASELINE_TARGET_REVERSE_MAP_CONCURRENCY = 8;
+
+/**
+ * Request-local bounded mapper for Baseline target reverse-map only.
+ * At most `limit` workers run at once. Does not cache or mutate shared state.
+ * @template T, R
+ * @param {T[]} items
+ * @param {number} limit
+ * @param {(item: T, index: number) => Promise<R>} worker
+ * @returns {Promise<R[]>}
+ */
+async function mapWithConcurrencyLimit(items, limit, worker) {
+  const list = Array.from(items || []);
+  if (list.length === 0) {
+    return [];
+  }
+
+  const workerCount = Math.min(Math.max(1, limit), list.length);
+  const results = new Array(list.length);
+  let nextIndex = 0;
+  let firstError = null;
+
+  const runWorker = async () => {
+    while (firstError == null) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= list.length) {
+        return;
+      }
+      try {
+        results[index] = await worker(list[index], index);
+      } catch (error) {
+        firstError = error;
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+
+  if (firstError) {
+    throw firstError;
+  }
+
+  return results;
+}
+
 class GapAnalysisService {
   /**
    * Calculate gap analysis for a user
@@ -390,16 +436,17 @@ class GapAnalysisService {
    *
    * Bounded algorithm (no full taxonomy scan):
    *   reverse-map each result skill via getCompetenciesBySkill
+   *     (bounded concurrency, resolver-local)
    *   → expand via competencies.parent_competency_id (findParent)
-   *   → intersect candidate IDs
-   *   → exact getRequiredMGS only on the remaining candidates
+   *   → UNION candidate IDs
+   *   → exact getRequiredMGS only on the union candidates
    *
    * Uses existing competencies only. Does not create or generate taxonomy.
    * Does not use getRequiredMGSByName (that helper can auto-create trees).
    * Does not use getParentCompetencies (competency_subcompetency).
    *
    * @param {Iterable<string>} resultSkillIds
-   * @returns {Promise<{ name: string|null, source: 'exact_mgs_match'|'unresolved'|'ambiguous' }>}
+   * @returns {Promise<{ name: string|null, source: 'exact_mgs_match'|'unresolved'|'ambiguous'|'verification_failed' }>}
    */
   async findUniqueExactMgsMatch(resultSkillIds) {
     const targetSet = new Set(
@@ -415,23 +462,27 @@ class GapAnalysisService {
       return { name: null, source: 'unresolved' };
     }
 
+    const skillIds = Array.from(targetSet);
+    let reverseResults;
+    try {
+      reverseResults = await mapWithConcurrencyLimit(
+        skillIds,
+        BASELINE_TARGET_REVERSE_MAP_CONCURRENCY,
+        (skillId) => competencyService.getCompetenciesBySkill(skillId)
+      );
+    } catch (error) {
+      console.warn('[GapAnalysisService.findUniqueExactMgsMatch] Reverse-map failed', {
+        error: error.message
+      });
+      console.log('[BASELINE][TARGET-RESOLUTION]', { reason: 'verification_failed' });
+      return { name: null, source: 'verification_failed' };
+    }
+
     const ancestorCache = new Map();
     const competencyById = new Map();
-    let intersection = null;
+    const unionIds = new Set();
 
-    for (const skillId of targetSet) {
-      let reverseComps = [];
-      try {
-        reverseComps = await competencyService.getCompetenciesBySkill(skillId);
-      } catch (error) {
-        console.warn('[GapAnalysisService.findUniqueExactMgsMatch] Reverse-map failed', {
-          skill_id: skillId,
-          error: error.message
-        });
-        reverseComps = [];
-      }
-
-      const expandedIds = new Set();
+    for (const reverseComps of reverseResults) {
       for (const competency of reverseComps || []) {
         if (!competency || !competency.competency_id) {
           continue;
@@ -443,38 +494,21 @@ class GapAnalysisService {
           competencyById
         );
         for (const id of chainIds) {
-          expandedIds.add(id);
+          unionIds.add(id);
         }
-      }
-
-      if (expandedIds.size === 0) {
-        console.log('[BASELINE][TARGET-RESOLUTION]', {
-          intersection_candidate_count: 0,
-          reason: 'unresolved'
-        });
-        return { name: null, source: 'unresolved' };
-      }
-
-      if (intersection === null) {
-        intersection = expandedIds;
-      } else {
-        intersection = new Set([...intersection].filter((id) => expandedIds.has(id)));
-      }
-
-      if (intersection.size === 0) {
-        console.log('[BASELINE][TARGET-RESOLUTION]', {
-          intersection_candidate_count: 0,
-          reason: 'unresolved'
-        });
-        return { name: null, source: 'unresolved' };
       }
     }
 
     console.log('[BASELINE][TARGET-RESOLUTION]', {
-      intersection_candidate_count: intersection.size
+      union_candidate_count: unionIds.size
     });
 
-    const candidateIds = Array.from(intersection);
+    if (unionIds.size === 0) {
+      console.log('[BASELINE][TARGET-RESOLUTION]', { reason: 'unresolved' });
+      return { name: null, source: 'unresolved' };
+    }
+
+    const candidateIds = Array.from(unionIds);
     console.log('[BASELINE][TARGET-RESOLUTION]', {
       exact_verification_candidate_count: candidateIds.length
     });
