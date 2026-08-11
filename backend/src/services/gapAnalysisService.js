@@ -7,6 +7,7 @@
 
 const userCompetencyRepository = require('../repositories/userCompetencyRepository');
 const userCareerPathRepository = require('../repositories/userCareerPathRepository');
+const competencyRepository = require('../repositories/competencyRepository');
 const competencyService = require('./competencyService');
 const skillRepository = require('../repositories/skillRepository');
 const Logger = require('../utils/logger');
@@ -366,6 +367,112 @@ class GapAnalysisService {
     });
 
     return gaps;
+  }
+
+  /**
+   * True empty-gap guard for Learner AI.
+   * Learner AI treats {} as truthy, so Object.keys alone is not enough.
+   * @param {Object} gap
+   * @returns {boolean}
+   */
+  gapHasSkills(gap) {
+    if (!gap || typeof gap !== 'object') {
+      return false;
+    }
+    return Object.values(gap).some(
+      (skills) => Array.isArray(skills) && skills.length > 0
+    );
+  }
+
+  /**
+   * Find an existing competency whose required MGS skill_id set
+   * exactly equals the provided Baseline result skill_id set.
+   *
+   * Uses existing competencies only. Does not create or generate taxonomy.
+   * Does not use getRequiredMGSByName (that helper can auto-create trees).
+   *
+   * @param {Iterable<string>} resultSkillIds
+   * @returns {Promise<{ name: string|null, source: 'exact_mgs_match'|'unresolved'|'ambiguous' }>}
+   */
+  async findUniqueExactMgsMatch(resultSkillIds) {
+    const targetSet = new Set(
+      Array.from(resultSkillIds || []).filter((id) => typeof id === 'string' && id.length > 0)
+    );
+
+    if (targetSet.size === 0) {
+      return { name: null, source: 'unresolved' };
+    }
+
+    const matches = [];
+    const pageSize = 100;
+    let offset = 0;
+
+    while (true) {
+      let page = [];
+      try {
+        page = await competencyRepository.findAll({ limit: pageSize, offset });
+      } catch (error) {
+        console.warn('[GapAnalysisService.findUniqueExactMgsMatch] Failed to list competencies', {
+          offset,
+          error: error.message
+        });
+        break;
+      }
+
+      if (!page || page.length === 0) {
+        break;
+      }
+
+      for (const competency of page) {
+        if (!competency || !competency.competency_id) {
+          continue;
+        }
+        try {
+          const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
+          const mgsIds = new Set(
+            (requiredMGS || [])
+              .map((skill) => skill && skill.skill_id)
+              .filter((id) => typeof id === 'string' && id.length > 0)
+          );
+          if (this._skillIdSetsEqual(targetSet, mgsIds)) {
+            matches.push(competency);
+          }
+        } catch (error) {
+          console.warn('[GapAnalysisService.findUniqueExactMgsMatch] Skipping competency', {
+            competency_id: competency.competency_id,
+            error: error.message
+          });
+        }
+      }
+
+      if (page.length < pageSize) {
+        break;
+      }
+      offset += pageSize;
+    }
+
+    if (matches.length === 1) {
+      return {
+        name: matches[0].competency_name || null,
+        source: matches[0].competency_name ? 'exact_mgs_match' : 'unresolved'
+      };
+    }
+    if (matches.length === 0) {
+      return { name: null, source: 'unresolved' };
+    }
+    return { name: null, source: 'ambiguous' };
+  }
+
+  _skillIdSetsEqual(setA, setB) {
+    if (!setA || !setB || setA.size !== setB.size) {
+      return false;
+    }
+    for (const value of setA) {
+      if (!setB.has(value)) {
+        return false;
+      }
+    }
+    return true;
   }
 }
 

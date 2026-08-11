@@ -69,6 +69,44 @@ class VerificationService {
         examResults?.verifiedSkills ||
         [];
 
+      // Capture raw Baseline evidence BEFORE ownership / persistence filtering.
+      // Acquired IDs must be retained even when they are not written to verifiedSkills.
+      const currentBaselineAcquiredSkillIds = new Set();
+      const failedBaselineSkills = [];
+      const allBaselineResultSkillIds = new Set();
+      let baselineErrorCount = 0;
+
+      for (const rawBaselineSkill of Array.isArray(verifiedSkillsInput) ? verifiedSkillsInput : []) {
+        try {
+          const resolved = await this.resolveBaselineResultSkillIdentity(rawBaselineSkill);
+          if (!resolved) {
+            continue;
+          }
+
+          allBaselineResultSkillIds.add(resolved.skill_id);
+
+          const skillStatus = typeof rawBaselineSkill.status === 'string'
+            ? rawBaselineSkill.status.toLowerCase().trim()
+            : null;
+
+          if (skillStatus === 'acquired') {
+            currentBaselineAcquiredSkillIds.add(resolved.skill_id);
+          } else if (skillStatus === 'failed') {
+            failedBaselineSkills.push({
+              skill_id: resolved.skill_id,
+              skill_name: resolved.skill_name
+            });
+          } else if (skillStatus === 'error') {
+            baselineErrorCount += 1;
+          }
+        } catch (err) {
+          console.warn(
+            '[VerificationService.processBaselineExamResults] Failed to capture Baseline skill evidence',
+            { userId, rawSkill: rawBaselineSkill, error: err.message }
+          );
+        }
+      }
+
       // Update userCompetency with verified skills
       const updatedCompetencies = new Set();
 
@@ -492,6 +530,23 @@ class VerificationService {
         );
       }
 
+      // Baseline-only Learner AI handoff. Isolated from runGapAnalysis / Career Path / Post-course.
+      try {
+        await this.sendBaselineLearningGapIfNeeded(userId, examResults, {
+          examId,
+          currentBaselineAcquiredSkillIds,
+          failedBaselineSkills,
+          allBaselineResultSkillIds,
+          errorCount: baselineErrorCount
+        });
+      } catch (err) {
+        console.warn('[BASELINE][LEARNER-AI][ERROR]', {
+          user_id: userId,
+          exam_id: examId,
+          error: err.message
+        });
+      }
+
       // Automatically send updated profile to Directory MS after processing exam results
       // This happens automatically whenever userCompetency is updated
       try {
@@ -540,6 +595,217 @@ class VerificationService {
       // Return error message on failure
       return { message: error.message || 'Failed to process exam results' };
     }
+  }
+
+  /**
+   * Resolve a Baseline result row to a stable skill_id without creating skills.
+   * @param {Object} rawSkill
+   * @returns {Promise<{ skill_id: string, skill_name: string }|null>}
+   */
+  async resolveBaselineResultSkillIdentity(rawSkill) {
+    if (!rawSkill) {
+      return null;
+    }
+
+    let skill_id = rawSkill.skill_id;
+    let skill_name = rawSkill.skill_name;
+
+    if (!skill_id && typeof skill_name === 'string' && skill_name.trim().length > 0) {
+      try {
+        const skillRecord = await skillRepository.findByName(skill_name);
+        if (!skillRecord) {
+          return null;
+        }
+        skill_id = skillRecord.skill_id;
+        skill_name = skillRecord.skill_name;
+      } catch (err) {
+        console.warn(
+          '[VerificationService.resolveBaselineResultSkillIdentity] findByName failed',
+          { skill_name, error: err.message }
+        );
+        return null;
+      }
+    }
+
+    if (!skill_id) {
+      return null;
+    }
+
+    return {
+      skill_id,
+      skill_name: skill_name || rawSkill.skill_name || skill_id
+    };
+  }
+
+  /**
+   * Resolve the assessed Baseline competency from already-present payload
+   * fields or a unique exact MGS-set match. Never creates taxonomy.
+   * @param {Object} examResults
+   * @param {Set<string>} allBaselineResultSkillIds
+   * @returns {Promise<{ name: string|null, source: string }>}
+   */
+  async resolveBaselineCompetencyTarget(examResults, allBaselineResultSkillIds) {
+    const competencyId = examResults?.competency_id || examResults?.competencyId || null;
+    if (competencyId) {
+      try {
+        const competency = await competencyService.getCompetencyById(competencyId);
+        if (competency && competency.competency_name) {
+          return {
+            name: competency.competency_name,
+            source: 'payload_competency_id'
+          };
+        }
+      } catch (err) {
+        console.warn(
+          '[VerificationService.resolveBaselineCompetencyTarget] competency_id lookup failed',
+          { competencyId, error: err.message }
+        );
+      }
+    }
+
+    const competencyName = examResults?.competency_name || examResults?.competencyName || null;
+    if (competencyName && typeof competencyName === 'string' && competencyName.trim().length > 0) {
+      try {
+        const competency = await competencyRepository.findByName(competencyName);
+        if (competency && competency.competency_name) {
+          return {
+            name: competency.competency_name,
+            source: 'payload_competency_name'
+          };
+        }
+      } catch (err) {
+        console.warn(
+          '[VerificationService.resolveBaselineCompetencyTarget] competency_name lookup failed',
+          { competencyName, error: err.message }
+        );
+      }
+    }
+
+    return gapAnalysisService.findUniqueExactMgsMatch(allBaselineResultSkillIds);
+  }
+
+  /**
+   * Build and optionally send the Baseline-only learning gap to Learner AI.
+   * Non-fatal: callers already wrap this in try/catch.
+   */
+  async sendBaselineLearningGapIfNeeded(userId, examResults, evidence) {
+    const {
+      examId = null,
+      currentBaselineAcquiredSkillIds = new Set(),
+      failedBaselineSkills = [],
+      allBaselineResultSkillIds = new Set(),
+      errorCount = 0
+    } = evidence || {};
+
+    const userCompetencies = await userCompetencyRepository.findByUser(userId);
+    const persistedVerifiedSkillIds = new Set();
+    for (const userComp of userCompetencies || []) {
+      for (const skill of userComp.verifiedSkills || []) {
+        if (skill && skill.skill_id && skill.verified !== false) {
+          persistedVerifiedSkillIds.add(skill.skill_id);
+        }
+      }
+    }
+
+    const knownSkillIds = new Set([
+      ...persistedVerifiedSkillIds,
+      ...currentBaselineAcquiredSkillIds
+    ]);
+
+    const seenFailedIds = new Set();
+    const baselineMissingSkills = [];
+    for (const skill of failedBaselineSkills) {
+      if (!skill || !skill.skill_id) {
+        continue;
+      }
+      if (knownSkillIds.has(skill.skill_id) || seenFailedIds.has(skill.skill_id)) {
+        continue;
+      }
+      seenFailedIds.add(skill.skill_id);
+      baselineMissingSkills.push({
+        skill_id: skill.skill_id,
+        skill_name: skill.skill_name
+      });
+    }
+
+    const target = await this.resolveBaselineCompetencyTarget(
+      examResults,
+      allBaselineResultSkillIds
+    );
+    const resolvedTarget = target && target.name ? target.name : null;
+    const targetResolutionSource = (target && target.source) || 'unresolved';
+
+    console.log('[BASELINE][LEARNING-GAP]', {
+      user_id: userId,
+      exam_id: examId,
+      resolved_target: resolvedTarget,
+      target_resolution_source: targetResolutionSource,
+      acquired_count: currentBaselineAcquiredSkillIds.size,
+      failed_count: failedBaselineSkills.length,
+      error_count: errorCount,
+      outgoing_gap_skill_count: baselineMissingSkills.length
+    });
+
+    if (baselineMissingSkills.length === 0) {
+      console.log('[BASELINE][LEARNER-AI][SKIP]', {
+        user_id: userId,
+        exam_id: examId,
+        reason: 'empty_gap'
+      });
+      return;
+    }
+
+    if (targetResolutionSource === 'ambiguous') {
+      console.warn('[BASELINE][LEARNER-AI][SKIP]', {
+        user_id: userId,
+        exam_id: examId,
+        reason: 'ambiguous_target'
+      });
+      return;
+    }
+
+    if (!resolvedTarget || targetResolutionSource === 'unresolved') {
+      console.warn('[BASELINE][LEARNER-AI][SKIP]', {
+        user_id: userId,
+        exam_id: examId,
+        reason: 'unresolved_target'
+      });
+      return;
+    }
+
+    const baselineGap = {
+      [resolvedTarget]: baselineMissingSkills
+    };
+
+    if (!gapAnalysisService.gapHasSkills(baselineGap)) {
+      console.log('[BASELINE][LEARNER-AI][SKIP]', {
+        user_id: userId,
+        exam_id: examId,
+        reason: 'empty_gap'
+      });
+      return;
+    }
+
+    console.log('[BASELINE][LEARNER-AI][SEND]', {
+      user_id: userId,
+      exam_id: examId,
+      target: resolvedTarget,
+      gap_skill_count: baselineMissingSkills.length
+    });
+
+    await learnerAIMSClient.sendGapAnalysis(
+      userId,
+      baselineGap,
+      'narrow',
+      resolvedTarget,
+      'fail'
+    );
+
+    console.log('[BASELINE][LEARNER-AI][SUCCESS]', {
+      user_id: userId,
+      exam_id: examId,
+      target: resolvedTarget
+    });
   }
 
   /**
