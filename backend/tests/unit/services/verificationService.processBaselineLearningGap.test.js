@@ -27,6 +27,7 @@ jest.mock('../../../src/repositories/competencyRepository', () => ({
   findById: jest.fn(),
   findByName: jest.fn(),
   findAll: jest.fn(),
+  findParent: jest.fn(),
   getParentCompetencies: jest.fn()
 }));
 jest.mock('../../../src/services/learnerAIMSClient', () => ({
@@ -85,6 +86,7 @@ describe('VerificationService.processBaselineExamResults learning gap', () => {
     competencyRepository.findByName.mockResolvedValue(null);
     competencyRepository.findById.mockResolvedValue(null);
     competencyRepository.findAll.mockResolvedValue([]);
+    competencyRepository.findParent.mockResolvedValue(null);
     competencyRepository.getParentCompetencies.mockResolvedValue([]);
     userService.getUserProfile.mockResolvedValue({
       user: {
@@ -252,6 +254,7 @@ describe('VerificationService.processBaselineExamResults learning gap', () => {
 
     expect(competencyRepository.findByName).toHaveBeenCalled();
     expect(competencyRepository.findAll).not.toHaveBeenCalled();
+    expect(competencyService.getCompetenciesBySkill).not.toHaveBeenCalled();
     expect(learnerAIMSClient.sendGapAnalysis.mock.calls[0][3]).toBe('python');
   });
 
@@ -270,13 +273,15 @@ describe('VerificationService.processBaselineExamResults learning gap', () => {
 
     expect(competencyService.getCompetencyById).toHaveBeenCalledWith('comp-python');
     expect(competencyRepository.findAll).not.toHaveBeenCalled();
+    expect(competencyService.getCompetenciesBySkill).not.toHaveBeenCalled();
     expect(learnerAIMSClient.sendGapAnalysis.mock.calls[0][3]).toBe('python');
   });
 
   it('Case 9: unique exact MGS-set match resolves the target and sends', async () => {
-    competencyRepository.findAll.mockResolvedValue([
+    competencyService.getCompetenciesBySkill.mockResolvedValue([
       { competency_id: 'comp-python', competency_name: 'python' }
     ]);
+    competencyRepository.findParent.mockResolvedValue(null);
     competencyService.getRequiredMGS.mockResolvedValue([
       { skill_id: SKILLS.conditionals.skill_id, skill_name: 'conditionals' }
     ]);
@@ -289,12 +294,14 @@ describe('VerificationService.processBaselineExamResults learning gap', () => {
 
     expect(learnerAIMSClient.sendGapAnalysis).toHaveBeenCalledTimes(1);
     expect(learnerAIMSClient.sendGapAnalysis.mock.calls[0][3]).toBe('python');
+    expect(competencyRepository.findAll).not.toHaveBeenCalled();
   });
 
   it('Case 10: no exact MGS match skips Learner and continues Directory', async () => {
-    competencyRepository.findAll.mockResolvedValue([
+    competencyService.getCompetenciesBySkill.mockResolvedValue([
       { competency_id: 'comp-python', competency_name: 'python' }
     ]);
+    competencyRepository.findParent.mockResolvedValue(null);
     competencyService.getRequiredMGS.mockResolvedValue([
       { skill_id: SKILLS.lambda.skill_id, skill_name: 'lambda functions' }
     ]);
@@ -307,13 +314,15 @@ describe('VerificationService.processBaselineExamResults learning gap', () => {
 
     expect(learnerAIMSClient.sendGapAnalysis).not.toHaveBeenCalled();
     expect(directoryMSClient.sendUpdatedProfile).toHaveBeenCalledTimes(1);
+    expect(competencyRepository.findAll).not.toHaveBeenCalled();
   });
 
   it('Case 11: multiple exact MGS matches skip Learner fail-safe', async () => {
-    competencyRepository.findAll.mockResolvedValue([
+    competencyService.getCompetenciesBySkill.mockResolvedValue([
       { competency_id: 'comp-a', competency_name: 'python' },
       { competency_id: 'comp-b', competency_name: 'python programming' }
     ]);
+    competencyRepository.findParent.mockResolvedValue(null);
     competencyService.getRequiredMGS.mockResolvedValue([
       { skill_id: SKILLS.conditionals.skill_id, skill_name: 'conditionals' }
     ]);
@@ -326,6 +335,7 @@ describe('VerificationService.processBaselineExamResults learning gap', () => {
 
     expect(learnerAIMSClient.sendGapAnalysis).not.toHaveBeenCalled();
     expect(directoryMSClient.sendUpdatedProfile).toHaveBeenCalledTimes(1);
+    expect(competencyRepository.findAll).not.toHaveBeenCalled();
   });
 
   it('Case 12: true empty gap does not send', async () => {

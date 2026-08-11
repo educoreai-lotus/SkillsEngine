@@ -388,8 +388,15 @@ class GapAnalysisService {
    * Find an existing competency whose required MGS skill_id set
    * exactly equals the provided Baseline result skill_id set.
    *
+   * Bounded algorithm (no full taxonomy scan):
+   *   reverse-map each result skill via getCompetenciesBySkill
+   *   → expand via competencies.parent_competency_id (findParent)
+   *   → intersect candidate IDs
+   *   → exact getRequiredMGS only on the remaining candidates
+   *
    * Uses existing competencies only. Does not create or generate taxonomy.
    * Does not use getRequiredMGSByName (that helper can auto-create trees).
+   * Does not use getParentCompetencies (competency_subcompetency).
    *
    * @param {Iterable<string>} resultSkillIds
    * @returns {Promise<{ name: string|null, source: 'exact_mgs_match'|'unresolved'|'ambiguous' }>}
@@ -399,68 +406,180 @@ class GapAnalysisService {
       Array.from(resultSkillIds || []).filter((id) => typeof id === 'string' && id.length > 0)
     );
 
+    console.log('[BASELINE][TARGET-RESOLUTION]', {
+      result_skill_count: targetSet.size
+    });
+
     if (targetSet.size === 0) {
+      console.log('[BASELINE][TARGET-RESOLUTION]', { reason: 'unresolved' });
       return { name: null, source: 'unresolved' };
     }
 
-    const matches = [];
-    const pageSize = 100;
-    let offset = 0;
+    const ancestorCache = new Map();
+    const competencyById = new Map();
+    let intersection = null;
 
-    while (true) {
-      let page = [];
+    for (const skillId of targetSet) {
+      let reverseComps = [];
       try {
-        page = await competencyRepository.findAll({ limit: pageSize, offset });
+        reverseComps = await competencyService.getCompetenciesBySkill(skillId);
       } catch (error) {
-        console.warn('[GapAnalysisService.findUniqueExactMgsMatch] Failed to list competencies', {
-          offset,
+        console.warn('[GapAnalysisService.findUniqueExactMgsMatch] Reverse-map failed', {
+          skill_id: skillId,
+          error: error.message
+        });
+        reverseComps = [];
+      }
+
+      const expandedIds = new Set();
+      for (const competency of reverseComps || []) {
+        if (!competency || !competency.competency_id) {
+          continue;
+        }
+        competencyById.set(competency.competency_id, competency);
+        const chainIds = await this._expandCompetencyWithAncestors(
+          competency,
+          ancestorCache,
+          competencyById
+        );
+        for (const id of chainIds) {
+          expandedIds.add(id);
+        }
+      }
+
+      if (expandedIds.size === 0) {
+        console.log('[BASELINE][TARGET-RESOLUTION]', {
+          intersection_candidate_count: 0,
+          reason: 'unresolved'
+        });
+        return { name: null, source: 'unresolved' };
+      }
+
+      if (intersection === null) {
+        intersection = expandedIds;
+      } else {
+        intersection = new Set([...intersection].filter((id) => expandedIds.has(id)));
+      }
+
+      if (intersection.size === 0) {
+        console.log('[BASELINE][TARGET-RESOLUTION]', {
+          intersection_candidate_count: 0,
+          reason: 'unresolved'
+        });
+        return { name: null, source: 'unresolved' };
+      }
+    }
+
+    console.log('[BASELINE][TARGET-RESOLUTION]', {
+      intersection_candidate_count: intersection.size
+    });
+
+    const candidateIds = Array.from(intersection);
+    console.log('[BASELINE][TARGET-RESOLUTION]', {
+      exact_verification_candidate_count: candidateIds.length
+    });
+
+    const matches = [];
+    for (const competencyId of candidateIds) {
+      try {
+        const requiredMGS = await competencyService.getRequiredMGS(competencyId);
+        if (requiredMGS != null && !Array.isArray(requiredMGS)) {
+          throw new Error('getRequiredMGS returned a non-array result');
+        }
+        const mgsIds = new Set(
+          (requiredMGS || [])
+            .map((skill) => skill && skill.skill_id)
+            .filter((id) => typeof id === 'string' && id.length > 0)
+        );
+        if (!this._skillIdSetsEqual(targetSet, mgsIds)) {
+          continue;
+        }
+
+        let competency = competencyById.get(competencyId);
+        if (!competency || !competency.competency_name) {
+          competency = await competencyService.getCompetencyById(competencyId);
+        }
+        if (!competency || !competency.competency_name) {
+          throw new Error('exact MGS match has no usable competency name');
+        }
+        matches.push(competency);
+      } catch (error) {
+        console.warn('[GapAnalysisService.findUniqueExactMgsMatch] Candidate verification failed', {
+          competency_id: competencyId,
+          error: error.message
+        });
+        console.log('[BASELINE][TARGET-RESOLUTION]', { reason: 'verification_failed' });
+        return { name: null, source: 'verification_failed' };
+      }
+    }
+
+    if (matches.length === 1) {
+      console.log('[BASELINE][TARGET-RESOLUTION]', {
+        resolved_target: matches[0].competency_name,
+        source: 'exact_mgs_match'
+      });
+      return {
+        name: matches[0].competency_name,
+        source: 'exact_mgs_match'
+      };
+    }
+
+    if (matches.length === 0) {
+      console.log('[BASELINE][TARGET-RESOLUTION]', { reason: 'unresolved' });
+      return { name: null, source: 'unresolved' };
+    }
+
+    console.log('[BASELINE][TARGET-RESOLUTION]', { reason: 'ambiguous' });
+    return { name: null, source: 'ambiguous' };
+  }
+
+  /**
+   * Expand a competency with its parent_competency_id ancestors.
+   * Uses competencyRepository.findParent (column hierarchy), not
+   * getParentCompetencies (competency_subcompetency).
+   * @returns {Promise<string[]>} competency IDs including self, root last
+   */
+  async _expandCompetencyWithAncestors(competency, ancestorCache, competencyById) {
+    const ids = [];
+    let current = competency;
+    const visited = new Set();
+
+    while (current && current.competency_id && !visited.has(current.competency_id)) {
+      visited.add(current.competency_id);
+      ids.push(current.competency_id);
+      competencyById.set(current.competency_id, current);
+
+      if (ancestorCache.has(current.competency_id)) {
+        ids.push(...ancestorCache.get(current.competency_id));
+        break;
+      }
+
+      let parent = null;
+      try {
+        parent = await competencyRepository.findParent(current.competency_id);
+      } catch (error) {
+        console.warn('[GapAnalysisService.findUniqueExactMgsMatch] Ancestor lookup failed', {
+          competency_id: current.competency_id,
           error: error.message
         });
         break;
       }
 
-      if (!page || page.length === 0) {
+      if (!parent || !parent.competency_id) {
+        ancestorCache.set(current.competency_id, []);
         break;
       }
 
-      for (const competency of page) {
-        if (!competency || !competency.competency_id) {
-          continue;
-        }
-        try {
-          const requiredMGS = await competencyService.getRequiredMGS(competency.competency_id);
-          const mgsIds = new Set(
-            (requiredMGS || [])
-              .map((skill) => skill && skill.skill_id)
-              .filter((id) => typeof id === 'string' && id.length > 0)
-          );
-          if (this._skillIdSetsEqual(targetSet, mgsIds)) {
-            matches.push(competency);
-          }
-        } catch (error) {
-          console.warn('[GapAnalysisService.findUniqueExactMgsMatch] Skipping competency', {
-            competency_id: competency.competency_id,
-            error: error.message
-          });
-        }
-      }
-
-      if (page.length < pageSize) {
-        break;
-      }
-      offset += pageSize;
+      current = parent;
     }
 
-    if (matches.length === 1) {
-      return {
-        name: matches[0].competency_name || null,
-        source: matches[0].competency_name ? 'exact_mgs_match' : 'unresolved'
-      };
+    for (let i = 0; i < ids.length; i += 1) {
+      if (!ancestorCache.has(ids[i])) {
+        ancestorCache.set(ids[i], ids.slice(i + 1));
+      }
     }
-    if (matches.length === 0) {
-      return { name: null, source: 'unresolved' };
-    }
-    return { name: null, source: 'ambiguous' };
+
+    return ids;
   }
 
   _skillIdSetsEqual(setA, setB) {
